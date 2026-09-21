@@ -1,0 +1,766 @@
+import json
+from decimal import Decimal
+import subprocess
+import sys
+import tempfile
+import threading
+import unittest
+from unittest.mock import patch
+from pathlib import Path
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+from forgelab.api import ApiError, make_server
+from forgelab.model_router import ProviderResponse
+from forgelab.runner import RunRequest, run_isolated
+
+
+TOKEN = "test-token-with-at-least-24-characters"
+
+
+class ApiTests(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = Path(self.folder.name)
+
+        self.run = self.root / "run-test123"
+        self.run.mkdir()
+
+        (self.run / "RunSummary.json").write_text(
+            json.dumps({
+                "run_id": "run-test123",
+                "status": "READY_FOR_DECISION",
+                "created_at": "2026-09-19T00:00:00+00:00",
+                "decision": "Human gate pending",
+            }),
+            encoding="utf-8",
+        )
+
+        (self.run / "TestEvidence.json").write_text(
+            json.dumps({"status": "PASS"}),
+            encoding="utf-8",
+        )
+
+        self.server = make_server(
+            self.root,
+            TOKEN,
+            "http://localhost:5173",
+            port=0,
+        )
+
+        self.thread = threading.Thread(
+            target=self.server.serve_forever,
+            daemon=True,
+        )
+
+        self.thread.start()
+
+        self.base = (
+            f"http://127.0.0.1:"
+            f"{self.server.server_port}"
+        )
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+        self.folder.cleanup()
+
+    def request(
+        self,
+        path,
+        method="GET",
+        payload=None,
+        token=TOKEN,
+        origin="http://localhost:5173",
+    ):
+        body = (
+            None
+            if payload is None
+            else json.dumps(payload).encode("utf-8")
+        )
+
+        headers = {
+            "Origin": origin,
+        }
+
+        if token:
+            headers["Authorization"] = (
+                f"Bearer {token}"
+            )
+
+        if body:
+            headers["Content-Type"] = (
+                "application/json"
+            )
+
+        return urlopen(
+            Request(
+                self.base + path,
+                data=body,
+                headers=headers,
+                method=method,
+            ),
+            timeout=15,
+        )
+
+    def make_demo_repo(self) -> Path:
+        repo = self.root / "dashboard-demo"
+        repo.mkdir()
+
+        (repo / "calculator.py").write_text(
+            "def add(a, b):\n"
+            "    return a - b\n",
+            encoding="utf-8",
+        )
+
+        (
+            repo / "test_calculator.py"
+        ).write_text(
+            "import unittest\n"
+            "from calculator import add\n\n"
+            "class CalculatorTests(unittest.TestCase):\n"
+            "    def test_add(self):\n"
+            "        self.assertEqual(add(2, 3), 5)\n",
+            encoding="utf-8",
+        )
+
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "init",
+                "-b",
+                "main",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "add",
+                ".",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "-c",
+                "user.name=ForgeLab Test",
+                "-c",
+                "user.email=forgelab-test@local",
+                "commit",
+                "-m",
+                "demo",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        return repo
+
+    def test_health_is_available_without_token(self):
+        with self.request(
+            "/health",
+            token=None,
+        ) as response:
+            self.assertEqual(
+                response.status,
+                200,
+            )
+
+    def test_run_listing_requires_bearer_token(self):
+        with self.assertRaises(HTTPError) as denied:
+            self.request(
+                "/v1/runs",
+                token=None,
+            )
+
+        self.assertEqual(
+            denied.exception.code,
+            401,
+        )
+
+        with self.request(
+            "/v1/runs"
+        ) as response:
+            payload = json.load(response)
+
+        self.assertEqual(
+            payload["runs"][0]["run_id"],
+            "run-test123",
+        )
+
+    def test_artifacts_are_returned_from_allowlist(self):
+        (self.run / "private.txt").write_text(
+            "not exposed",
+            encoding="utf-8",
+        )
+
+        with self.request(
+            "/v1/runs/run-test123/artifacts"
+        ) as response:
+            payload = json.load(response)
+
+        self.assertIn(
+            "RunSummary.json",
+            payload["artifacts"],
+        )
+
+        self.assertNotIn(
+            "private.txt",
+            payload["artifacts"],
+        )
+
+    def test_approval_promotes_to_local_branch_without_touching_main(self):
+        repo = self.make_demo_repo()
+        request = RunRequest(
+            repository=repo,
+            objective="Fix calculator addition",
+            target_path="calculator.py",
+            old_text="return a - b",
+            new_text="return a + b",
+            test_command=[
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-v",
+            ],
+        )
+        run_dir = run_isolated(request, self.root)
+        source_head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        with self.request(
+            f"/v1/runs/{run_dir.name}/decisions",
+            "POST",
+            {
+                "decision": "approve",
+                "actor": "Product Owner",
+            },
+        ) as response:
+            payload = json.load(response)
+
+        self.assertEqual(payload["decision"], "APPROVE")
+        self.assertTrue(payload["promotion_executed"])
+        self.assertEqual(payload["status"], "DONE")
+        self.assertTrue(payload["promotion_branch"].startswith("forgelab/promote/"))
+        self.assertTrue(payload["commit"])
+
+        current_head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        current_branch = subprocess.run(
+            ["git", "-C", str(repo), "branch", "--show-current"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        promoted_file = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "show",
+                f"{payload['promotion_branch']}:calculator.py",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+
+        self.assertEqual(current_head, source_head)
+        self.assertEqual(current_branch, "main")
+        self.assertIn("return a - b", (repo / "calculator.py").read_text(encoding="utf-8"))
+        self.assertIn("return a + b", promoted_file)
+        self.assertTrue((run_dir / "GateDecision.staged.json").is_file())
+        self.assertTrue((run_dir / "PromotionResult.json").is_file())
+
+        with self.assertRaises(HTTPError) as second:
+            self.request(
+                f"/v1/runs/{run_dir.name}/decisions",
+                "POST",
+                {
+                    "decision": "approve",
+                    "actor": "Product Owner",
+                },
+            )
+        self.assertEqual(second.exception.code, 400)
+
+    def test_create_run_executes_multi_agent_pipeline(self):
+        repo = self.make_demo_repo()
+
+        request_payload = {
+            "repository": str(repo.resolve()),
+            "objective": (
+                "Fix calculator addition "
+                "from the Control Plane API"
+            ),
+            "change": {
+                "operation": "replace_text",
+                "path": "calculator.py",
+                "old": "return a - b",
+                "new": "return a + b",
+            },
+            "test_command": [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-v",
+            ],
+            "timeout_seconds": 60,
+            "risk": "normal",
+            "max_repair_attempts": 1,
+        }
+
+        with self.request(
+            "/v1/runs",
+            "POST",
+            request_payload,
+        ) as response:
+            self.assertEqual(
+                response.status,
+                201,
+            )
+            created = json.load(response)
+
+        run_id = created["run_id"]
+
+        self.assertTrue(
+            run_id.startswith("run-")
+        )
+
+        self.assertEqual(
+            created["status"],
+            "READY_FOR_DECISION",
+        )
+
+        run_dir = self.root / run_id
+
+        self.assertTrue(
+            (run_dir / "RunSummary.json").is_file()
+        )
+
+        self.assertTrue(
+            (run_dir / "ExecutionPlan.json").is_file()
+        )
+
+        self.assertTrue(
+            (run_dir / "TestEvidence.json").is_file()
+        )
+
+        source = (
+            repo / "calculator.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "return a - b",
+            source,
+        )
+
+        git_status = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "status",
+                "--porcelain",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        self.assertEqual(
+            git_status,
+            "",
+        )
+
+    def test_create_run_accepts_ai_generate_without_old_new(self):
+        repo = self.make_demo_repo()
+
+        generated_patch = json.dumps({
+            "schema_version": "1.0",
+            "path": "calculator.py",
+            "old_text": "return a - b",
+            "new_text": "return a + b",
+            "summary": "Fix calculator addition",
+        })
+
+        scripted = [
+            ProviderResponse(
+                "Bounded plan",
+                10,
+                5,
+                actual_cost=Decimal("0"),
+            ),
+            ProviderResponse(
+                generated_patch,
+                30,
+                20,
+                actual_cost=Decimal("0"),
+            ),
+            ProviderResponse(
+                "Independent review",
+                10,
+                5,
+                actual_cost=Decimal("0"),
+            ),
+        ]
+
+        request_payload = {
+            "repository":
+                str(repo.resolve()),
+            "objective":
+                "Fix calculator addition "
+                "without user-supplied patch",
+            "change": {
+                "operation":
+                    "ai_generate",
+                "path":
+                    "calculator.py",
+            },
+            "test_command": [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-v",
+            ],
+            "timeout_seconds": 60,
+            "risk": "normal",
+            "max_repair_attempts": 0,
+        }
+
+        with patch(
+            "forgelab.orchestrator.OllamaProvider.invoke",
+            side_effect=scripted,
+        ):
+            with self.request(
+                "/v1/runs",
+                "POST",
+                request_payload,
+            ) as response:
+
+                self.assertEqual(
+                    response.status,
+                    201,
+                )
+
+                created = json.load(
+                    response
+                )
+
+        self.assertEqual(
+            created["operation"],
+            "ai_generate",
+        )
+
+        run_dir = (
+            self.root /
+            created["run_id"]
+        )
+
+        self.assertTrue(
+            (
+                run_dir /
+                "AIDeveloperPatch.json"
+            ).is_file()
+        )
+
+        usage = json.loads(
+            (
+                run_dir /
+                "UsageReport.json"
+            ).read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            usage["llm_calls"],
+            3,
+        )
+
+        self.assertIn(
+            "return a - b",
+            (
+                repo /
+                "calculator.py"
+            ).read_text(
+                encoding="utf-8"
+            ),
+        )
+
+
+    def test_create_run_accepts_ai_generate_with_two_authorized_paths(self):
+        repo = self.make_demo_repo()
+
+        (repo / "operation.py").write_text(
+            'OPERATION = "subtract"\n',
+            encoding="utf-8",
+        )
+        (repo / "test_operation.py").write_text(
+            "import unittest\n"
+            "from operation import OPERATION\n\n"
+            "class OperationTests(unittest.TestCase):\n"
+            '    def test_operation(self): self.assertEqual(OPERATION, "add")\n',
+            encoding="utf-8",
+        )
+
+        subprocess.run(
+            ["git", "-C", str(repo), "add", "."],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            [
+                "git", "-C", str(repo),
+                "-c", "user.name=ForgeLab Test",
+                "-c", "user.email=forgelab-test@local",
+                "commit", "-m", "multi-file fixture",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        generated_patch = json.dumps({
+            "schema_version": "2.0",
+            "summary": "Fix calculator and metadata",
+            "changes": [
+                {
+                    "path": "calculator.py",
+                    "old_text": "return a - b",
+                    "new_text": "return a + b",
+                    "summary": "Fix addition",
+                },
+                {
+                    "path": "operation.py",
+                    "old_text": 'OPERATION = "subtract"',
+                    "new_text": 'OPERATION = "add"',
+                    "summary": "Fix operation metadata",
+                },
+            ],
+        })
+
+        scripted = [
+            ProviderResponse(
+                "Bounded multi-file plan",
+                10,
+                5,
+                actual_cost=Decimal("0"),
+            ),
+            ProviderResponse(
+                generated_patch,
+                50,
+                30,
+                actual_cost=Decimal("0"),
+            ),
+            ProviderResponse(
+                "Independent review",
+                10,
+                5,
+                actual_cost=Decimal("0"),
+            ),
+        ]
+
+        request_payload = {
+            "repository": str(repo.resolve()),
+            "objective": (
+                "Fix calculator addition and "
+                "operation metadata"
+            ),
+            "change": {
+                "operation": "ai_generate",
+                "paths": [
+                    "calculator.py",
+                    "operation.py",
+                ],
+            },
+            "test_command": [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-v",
+            ],
+            "timeout_seconds": 60,
+            "risk": "normal",
+            "max_repair_attempts": 0,
+        }
+
+        with patch(
+            "forgelab.orchestrator.OllamaProvider.invoke",
+            side_effect=scripted,
+        ):
+            with self.request(
+                "/v1/runs",
+                "POST",
+                request_payload,
+            ) as response:
+                self.assertEqual(
+                    response.status,
+                    201,
+                )
+                created = json.load(response)
+
+        self.assertEqual(
+            created["allowed_paths"],
+            [
+                "calculator.py",
+                "operation.py",
+            ],
+        )
+
+        run_dir = self.root / created["run_id"]
+        summary = json.loads(
+            (run_dir / "RunSummary.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        plan = json.loads(
+            (run_dir / "ExecutionPlan.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            summary["status"],
+            "READY_FOR_DECISION",
+        )
+        self.assertEqual(
+            summary["changes"],
+            [
+                "calculator.py",
+                "operation.py",
+            ],
+        )
+        self.assertEqual(
+            plan["allowed_paths"],
+            [
+                "calculator.py",
+                "operation.py",
+            ],
+        )
+
+        self.assertIn(
+            "return a - b",
+            (repo / "calculator.py").read_text(
+                encoding="utf-8"
+            ),
+        )
+        self.assertIn(
+            'OPERATION = "subtract"',
+            (repo / "operation.py").read_text(
+                encoding="utf-8"
+            ),
+        )
+
+
+    def test_create_run_rejects_more_than_three_ai_paths(self):
+        repo = self.make_demo_repo()
+
+        for index in range(4):
+            (repo / f"extra_{index}.py").write_text(
+                f"VALUE = {index}\n",
+                encoding="utf-8",
+            )
+
+        request_payload = {
+            "repository": str(repo.resolve()),
+            "objective": "Reject unbounded AI file scope",
+            "change": {
+                "operation": "ai_generate",
+                "paths": [
+                    "extra_0.py",
+                    "extra_1.py",
+                    "extra_2.py",
+                    "extra_3.py",
+                ],
+            },
+            "test_command": [
+                sys.executable,
+                "-m",
+                "unittest",
+            ],
+        }
+
+        with self.assertRaises(HTTPError) as denied:
+            self.request(
+                "/v1/runs",
+                "POST",
+                request_payload,
+            )
+
+        self.assertEqual(
+            denied.exception.code,
+            400,
+        )
+
+
+    def test_create_run_rejects_target_path_escape(self):
+        repo = self.make_demo_repo()
+
+        request_payload = {
+            "repository": str(repo.resolve()),
+            "objective": (
+                "Reject unsafe target path "
+                "outside repository"
+            ),
+            "change": {
+                "operation": "replace_text",
+                "path": "../outside.py",
+                "old": "old",
+                "new": "new",
+            },
+            "test_command": [
+                sys.executable,
+                "-m",
+                "unittest",
+            ],
+        }
+
+        with self.assertRaises(HTTPError) as denied:
+            self.request(
+                "/v1/runs",
+                "POST",
+                request_payload,
+            )
+
+        self.assertEqual(
+            denied.exception.code,
+            400,
+        )
+
+    def test_non_loopback_binding_is_rejected(self):
+        with self.assertRaises(ApiError):
+            make_server(
+                self.root,
+                TOKEN,
+                "http://localhost:5173",
+                host="0.0.0.0",
+                port=0,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

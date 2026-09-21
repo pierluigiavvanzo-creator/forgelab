@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "protected_branches": ["main", "master"],
+  "network_default": "deny",
+  "network_allowlist": [],
+  "destructive_actions_require_gate": true,
+  "promotion_requires_human": true,
+  "max_repair_attempts": 3,
+  "audit": {"arguments": "sha256", "include_secret_values": false}
+}
