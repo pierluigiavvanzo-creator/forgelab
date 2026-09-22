@@ -61,14 +61,13 @@ Validated in the current project history:
 
 M8.9 established:
 
-- canonical local Git source of truth;
+- canonical Git source baseline;
 - 168 tracked canonical files;
 - baseline commit `58d22eeca66c27871738c04c6d850c59efabf115`;
 - baseline tree `63b6c91427edb19cd038cf557904451dfc08a947`;
-- canonical manifest SHA-256 `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3b`;
+- canonical manifest SHA-256 `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`;
 - source/runtime/generated separation;
-- branch/worktree discipline;
-- zero remotes/push/merge/force at checkpoint.
+- branch/worktree discipline.
 
 **Status: PASS — reproducibility/governance asset.**
 
@@ -186,6 +185,18 @@ The dominant risk is **over-engineering before product validation**.
 ForgeLab already has enough technical infrastructure to attempt a real MVP test.
 
 Additional architecture, governance, tests, scaling, deployment, multi-tenancy, billing or observability should be low priority unless a real MVP run proves one of them is a blocker.
+
+## Post-audit source synchronization closeout
+
+After this audit, the validated M8.9 source was synchronized with the GitHub repository and canonical governance:
+
+- exact M8.9 baseline published to `baseline/m8.9-local`;
+- code + governance integrated on `integration/m8.9-code-plus-governance`;
+- PR #2 merged into GitHub `main`;
+- merge commit `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
+- local `main` fast-forwarded to the same GitHub `main` commit and verified clean.
+
+This removes the source-synchronization gap identified during the audit, but **does not change the PRE-MVP verdict**. Product validation still requires MVP-1.
 
 ## Immediate MVP test
 

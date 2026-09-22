@@ -10,7 +10,7 @@ Its target workflow is:
 
 **PRE-MVP / MVP validation active**
 
-The technical foundation has passed M8.9 local acceptance, including:
+The technical foundation has passed M8.9 acceptance, including:
 
 - 88 regression tests PASS;
 - API health PASS;
@@ -20,9 +20,9 @@ The technical foundation has passed M8.9 local acceptance, including:
 - repository-context selection;
 - independent review/security;
 - explicit human promotion gate;
-- canonical local Git source baseline.
+- canonical Git source baseline.
 
-However, ForgeLab has **not yet passed a real product MVP test** on an external application with minimal Product Owner intervention.
+ForgeLab has **not yet passed a real product MVP test** on an external application with minimal Product Owner intervention.
 
 ## Current priority
 
@@ -34,20 +34,24 @@ The Product Owner should ideally be able to:
 
 If normal use requires repeated PowerShell scripts, log transport or manual debugging, the MVP test is considered failed.
 
-## Canonical local baseline
+## Canonical source and M8.9 baseline
 
-The currently validated local control-plane source is **not yet fully synchronized to this GitHub repository**.
-
-Local baseline:
+Historical validated M8.9 baseline:
 
 - root: `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
-- local branch: `main`
-- commit: `58d22eeca66c27871738c04c6d850c59efabf115`
-- tree: `63b6c91427edb19cd038cf557904451dfc08a947`
+- baseline commit: `58d22eeca66c27871738c04c6d850c59efabf115`
+- baseline tree: `63b6c91427edb19cd038cf557904451dfc08a947`
 - tracked canonical files: 168
-- manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3b`
+- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
 
-This remote currently serves as the canonical **project/governance memory** until the local source is separately reviewed and synchronized.
+Synchronization status:
+
+- exact M8.9 baseline published to `baseline/m8.9-local`;
+- code + governance integrated on `integration/m8.9-code-plus-governance`;
+- PR #2 merged with merge commit `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
+- local `main` fast-forwarded to that GitHub `main` commit and verified clean.
+
+GitHub `pierluigiavvanzo-creator/forgelab` is now the canonical shared source of truth for ForgeLab code and project governance. The local checkout tracks the same canonical history.
 
 ## Start here
 

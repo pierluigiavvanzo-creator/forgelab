@@ -151,21 +151,18 @@ Every significant work item is classified:
 
 User manual effort on D work is exceptional and justified only by material A-level risk.
 
-## 10. Current validated technical baseline
+## 10. Validated M8.9 technical baseline
 
-Current local ForgeLab baseline:
+Historical validated M8.9 baseline:
 
 - root: `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
-- canonical Git branch: `main`
 - baseline commit: `58d22eeca66c27871738c04c6d850c59efabf115`
 - baseline tree: `63b6c91427edb19cd038cf557904451dfc08a947`
 - tracked canonical files: 168
-- manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3b`
+- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
 - regression tests: 88 PASS
 - API `/health`: HTTP 200
 - dashboard `/`: HTTP 200
-- Git remotes: 0 at checkpoint
-- remote publication: none at checkpoint
 
 Validated capabilities include:
 
@@ -176,7 +173,22 @@ Validated capabilities include:
 - independent review/security;
 - human-approved exact promotion.
 
-## 11. Current product status
+## 11. Canonical source synchronization status
+
+Synchronization of the validated source is complete.
+
+Evidence:
+
+- exact M8.9 baseline published to `baseline/m8.9-local`;
+- code + governance integrated on `integration/m8.9-code-plus-governance`;
+- PR #2 merged into GitHub `main`;
+- integration merge commit: `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
+- local `main` fast-forwarded to the same GitHub `main` commit and verified clean;
+- no force or rebase used for synchronization.
+
+GitHub repository `pierluigiavvanzo-creator/forgelab` is now the canonical shared source of truth for ForgeLab code and project governance. The local checkout tracks the same canonical history.
+
+## 12. Current product status
 
 **PRE-MVP**
 
@@ -186,7 +198,7 @@ The project must not claim MVP completion until a real external application comp
 
 Infrastructure expansion is frozen except when required by a concrete failed MVP gate.
 
-## 12. MVP-1
+## 13. MVP-1
 
 ### Name
 
@@ -214,7 +226,7 @@ Example objective:
 6. APPROVE / REJECT / REPAIR.
 7. If approved, verify the promoted application works.
 
-## 13. MVP gates
+## 14. MVP gates
 
 ForgeLab MVP-1 is PASS only when all five pass:
 
@@ -238,7 +250,7 @@ Required tests, review and security checks pass.
 
 Nothing is promoted before explicit Product Owner approval.
 
-## 14. Failure rule
+## 15. Failure rule
 
 If MVP-1 fails:
 
@@ -249,7 +261,7 @@ If MVP-1 fails:
 
 Do not compensate for poor UX with more manual PowerShell instructions.
 
-## 15. Minimum product KPIs
+## 16. Minimum product KPIs
 
 Measure for every real run:
 
@@ -267,7 +279,7 @@ Primary MVP economic KPI:
 
 `USER_TIME_SAVED_PER_SUCCESSFUL_RUN`
 
-## 16. Product Definition of Done
+## 17. Product Definition of Done
 
 A ForgeLab capability is DONE only when:
 
@@ -281,7 +293,7 @@ A ForgeLab capability is DONE only when:
 
 Green tests alone are not sufficient.
 
-## 17. Current priority
+## 18. Current priority
 
 **A — Product Critical**
 
@@ -289,9 +301,11 @@ Green tests alone are not sufficient.
 
 Do not prioritize remote publication, advanced observability, scale, multi-tenancy or billing before MVP evidence unless they are proven blockers.
 
-## 18. Source of truth
+## 19. Source of truth
 
-Canonical project memory should remain repository-backed:
+Canonical project and source truth is repository-backed in GitHub `pierluigiavvanzo-creator/forgelab` on `main`, with the local ForgeLab checkout tracking that history.
+
+Canonical memory includes:
 
 - `MANIFEST.md`
 - `AGENTS.md`
@@ -304,7 +318,7 @@ Canonical project memory should remain repository-backed:
 
 A new session must be able to reconstruct what is known, decided, tested and next without depending on chat history.
 
-## 19. Reporting format
+## 20. Reporting format
 
 Every material milestone closes with:
 
@@ -320,7 +334,7 @@ Only real blockers/gates.
 ### PROSSIMO PASSO
 One preferred next action with owner.
 
-## 20. Immediate next action
+## 21. Immediate next action
 
 `FORGELAB_MVP_1_REAL_APPLICATION_TEST`
 

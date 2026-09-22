@@ -6,7 +6,7 @@
 
 ## Current product state
 
-ForgeLab has a technically validated local control-plane foundation but has not yet proven its full user-facing MVP workflow on a real external application.
+ForgeLab has a technically validated control-plane foundation but has not yet proven its full user-facing MVP workflow on a real external application.
 
 ### Validated technical capabilities
 
@@ -29,28 +29,36 @@ ForgeLab has a technically validated local control-plane foundation but has not 
 - local commit;
 - reviewed-diff equivalence.
 
-### M8.9 local canonical source baseline
+### M8.9 validated baseline
 
-- local root: `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
-- local branch: `main`
-- commit: `58d22eeca66c27871738c04c6d850c59efabf115`
-- tree: `63b6c91427edb19cd038cf557904451dfc08a947`
+- local root at acceptance: `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
+- baseline commit: `58d22eeca66c27871738c04c6d850c59efabf115`
+- baseline tree: `63b6c91427edb19cd038cf557904451dfc08a947`
 - tracked canonical files: 168
-- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3b`
+- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
 - working tree clean at acceptance
 - 88 regression tests PASS
 - API `/health` HTTP 200
 - dashboard `/` HTTP 200
 - protected API unauthenticated behavior HTTP 401
-- zero remote/push/merge/force/publication at the M8.9 checkpoint
 
-## Important synchronization status
+## Canonical synchronization status
 
-The GitHub repository `pierluigiavvanzo-creator/forgelab` now exists.
+**COMPLETE**
 
-This remote currently contains project/governance memory only.
+The GitHub repository `pierluigiavvanzo-creator/forgelab` now contains the validated ForgeLab source plus canonical project/governance memory.
 
-**The full local 168-file ForgeLab source baseline has not yet been verified as synchronized to GitHub and must not be treated as published source of truth until a separate source-sync operation is performed and verified.**
+Synchronization evidence:
+
+- baseline branch `baseline/m8.9-local` -> `58d22eeca66c27871738c04c6d850c59efabf115`;
+- integration branch `integration/m8.9-code-plus-governance`;
+- integration commit `8dfd9c81a9c8b1c17ef16833beaef7cc437c46a4`;
+- PR #2 merged into `main`;
+- PR #2 merge commit `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
+- local `main` fast-forwarded to the same GitHub `main` commit and verified clean;
+- no force push or rebase used.
+
+GitHub `main` is now the canonical shared source of truth. The local ForgeLab checkout tracks that canonical history.
 
 ## Infrastructure freeze
 
@@ -63,7 +71,7 @@ Deferred unless justified by MVP evidence:
 - multi-tenant;
 - billing;
 - scale optimization;
-- remote source publication hardening.
+- unrelated infrastructure hardening.
 
 ## Current blocker
 

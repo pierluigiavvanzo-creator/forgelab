@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-09-22
-**Checkpoint:** M8.9 technical acceptance complete / infrastructure freeze
-**Status:** PASS tecnico locale; passaggio immediato a MVP product-facing
+**Checkpoint:** M8.9 source synchronization complete / infrastructure freeze
+**Status:** GitHub + local main aligned; next action is MVP-1
 
 ## 1. Mission
 
@@ -60,7 +60,7 @@ Do not repeat without concrete regression evidence:
 - M8.7 — Bounded AI Developer repair — PASS
 - M8.7.1 — Windows-safe exact patch artifact persistence — PASS
 - M8.8 — Bounded repository context / project-memory injection — PASS
-- M8.9 — Canonical local Git source / self-hosting readiness — TECHNICAL PASS
+- M8.9 — Canonical Git source / self-hosting readiness — TECHNICAL PASS
 
 Validated flow:
 
@@ -85,38 +85,45 @@ Validated flow:
 → reviewed-diff equivalence
 → `DONE`
 
-## 4. M8.9 local canonical baseline
+## 4. M8.9 validated baseline
 
-- local branch: `main`
+Historical validated M8.9 baseline:
+
 - baseline commit: `58d22eeca66c27871738c04c6d850c59efabf115`
 - baseline tree: `63b6c91427edb19cd038cf557904451dfc08a947`
 - tracked canonical files: 168
-- manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3b`
+- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
 - worktree smoke: PASS
-- working tree clean at acceptance
 - regression suite: 88 tests PASS, exit 0
 - API `/health`: HTTP 200
 - dashboard `/`: HTTP 200
 - protected unauthenticated API behavior: HTTP 401
-- no remote/push/merge/force/publication at the M8.9 checkpoint
 
-M8.9 separated canonical source from runtime/cache/log/backup/generated material and established local Git discipline.
+M8.9 separated canonical source from runtime/cache/log/backup/generated material and established Git discipline.
 
-## 5. GitHub state
+## 5. GitHub and local synchronization state
 
-Remote repository now exists:
+Repository:
 
 `pierluigiavvanzo-creator/forgelab`
 
-Current remote role:
+Synchronization is **COMPLETE**.
 
-**shared project/governance memory**
+Evidence:
 
-Important:
+- exact M8.9 source baseline published to `baseline/m8.9-local` at `58d22eeca66c27871738c04c6d850c59efabf115`;
+- code + governance integrated on `integration/m8.9-code-plus-governance`;
+- integration commit `8dfd9c81a9c8b1c17ef16833beaef7cc437c46a4`;
+- PR #2 merged into GitHub `main`;
+- PR #2 merge commit `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
+- local `main` fast-forwarded to the same GitHub `main` commit and verified clean;
+- no force push or rebase used.
 
-The full 168-file local source baseline has **not yet been verified as synchronized to GitHub**.
+Decision:
 
-Do not claim the remote contains the complete validated implementation until a separate source-sync operation compares the remote contents against the M8.9 local baseline.
+**GitHub `main` is now the canonical shared source of truth for ForgeLab code and project governance.**
+
+The local checkout tracks the same canonical history.
 
 ## 6. Product Owner decision — infrastructure freeze
 
@@ -147,7 +154,7 @@ What is proven:
 - bounded repair;
 - review/security;
 - human approval/promotion controls;
-- local canonical source baseline.
+- canonical source synchronized between GitHub and local checkout.
 
 What is not yet proven:
 
@@ -212,7 +219,8 @@ Do not hide a failed product journey behind another broad infrastructure milesto
 
 Preserve:
 
-- local canonical Git source truth;
+- GitHub `main` as canonical shared source truth;
+- local checkout aligned to canonical history;
 - deterministic mode;
 - AI-assisted mode;
 - bounded multi-file scope;
@@ -252,7 +260,7 @@ Primary economic KPI:
 
 ## 13. Bootstrap instruction for a new session
 
-Read, in order:
+Use GitHub `pierluigiavvanzo-creator/forgelab` as the source of truth and read, in order:
 
 1. `MANIFEST.md`
 2. `AGENTS.md`
