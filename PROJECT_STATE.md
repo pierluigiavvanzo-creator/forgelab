@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-09-22  
-**Current phase:** PRE-MVP / real application validation  
+**Last updated:** 2026-09-22
+**Current phase:** PRE-MVP / real application validation
 **Current priority:** A — Product Critical
 
 ## Current product state

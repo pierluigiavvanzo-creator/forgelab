@@ -1,6 +1,6 @@
 # ForgeLab — Product & Outcome Audit
 
-**Audit date:** 2026-09-22  
+**Audit date:** 2026-09-22
 **Scope:** ForgeLab through M8.9, audited against the Build Specification, current handover and REGOLE OPERATIVE COMUNI 2026-09-02.
 
 ## Executive conclusion

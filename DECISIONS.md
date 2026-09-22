@@ -2,7 +2,7 @@
 
 ## D-001 — Product before infrastructure
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-22
 **Status:** Accepted
 
 ForgeLab development is frozen at the infrastructure layer unless a real MVP test exposes a concrete product blocker.
@@ -13,7 +13,7 @@ Reason: the project has accumulated substantial technical capability, but usable
 
 ## D-002 — MVP status
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-22
 **Status:** Accepted
 
 ForgeLab is classified as:
@@ -32,7 +32,7 @@ It must not be called MVP-complete until all five MVP gates pass on a real exter
 
 ## D-003 — Product Owner role
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-22
 **Status:** Accepted
 
 The Product Owner is approver and final usability tester.
@@ -43,7 +43,7 @@ Routine use must not require the Product Owner to act as repetitive QA, debugger
 
 ## D-004 — Canonical local baseline
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-22
 **Status:** Accepted
 
 The validated local ForgeLab baseline is:
@@ -59,7 +59,7 @@ This record documents the validated local source state.
 
 ## D-005 — GitHub repository role
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-22
 **Status:** Accepted
 
 The repository `pierluigiavvanzo-creator/forgelab` is established as the shared remote project/governance memory.
@@ -70,7 +70,7 @@ Until the local 168-file source baseline is explicitly synchronized and verified
 
 ## D-006 — Repository-first
 
-**Date:** 2026-09-22  
+**Date:** 2026-09-22
 **Status:** Accepted
 
 Before substantial custom development, evaluate mature reuse candidates when reuse could materially reduce time, cost or risk.

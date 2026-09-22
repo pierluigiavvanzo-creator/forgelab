@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "routes": {
+    "S0": {
+      "provider": null,
+      "model": "deterministic",
+      "max_retries": 0,
+      "max_call_cost": "0",
+      "human_review_required": false
+    },
+    "S1": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:7b",
+      "max_retries": 1,
+      "max_call_cost": "0",
+      "human_review_required": false
+    },
+    "S2": {
+      "provider": "ollama",
+      "model": "qwen2.5-coder:7b",
+      "max_retries": 1,
+      "max_call_cost": "0",
+      "human_review_required": false
+    },
+    "S3": {
+      "provider": "premium",
+      "model": "reasoning-default",
+      "max_retries": 1,
+      "max_call_cost": "1.00",
+      "human_review_required": true
+    },
+    "S4": {
+      "provider": "premium",
+      "model": "high-impact-default",
+      "max_retries": 0,
+      "max_call_cost": "2.00",
+      "human_review_required": true
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "roles": {
+    "ARCHITECT": {"allowed_tools": ["repo_read", "dependency_graph"], "allowed_secrets": []},
+    "PROJECT_MANAGER": {"allowed_tools": ["repo_read", "state_read"], "allowed_secrets": []},
+    "DEVELOPER": {"allowed_tools": ["repo_read", "repo_edit", "shell_bounded", "destructive"], "allowed_secrets": []},
+    "TESTER": {"allowed_tools": ["repo_read", "test_runner"], "allowed_secrets": []},
+    "REVIEWER": {"allowed_tools": ["repo_read", "git_diff", "static_analysis"], "allowed_secrets": []},
+    "SECURITY": {"allowed_tools": ["repo_read", "dependency_scan", "policy_check", "secret_tool", "network"], "allowed_secrets": []},
+    "DOCUMENTATION": {"allowed_tools": ["docs_read", "docs_edit"], "allowed_secrets": []},
+    "SUPPORT": {"allowed_tools": ["repo_read", "logs_read", "health_check"], "allowed_secrets": []}
+  }
+}

@@ -1,7 +1,7 @@
 # MANIFEST.md — ForgeLab
 
-**Version:** 1.0-MVP  
-**Date:** 2026-09-22  
+**Version:** 1.0-MVP
+**Date:** 2026-09-22
 **Status:** Pre-MVP / MVP validation active
 
 ## 1. Mission

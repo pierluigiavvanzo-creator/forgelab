@@ -1,0 +1,86 @@
+# ForgeLab canonical Git ignore policy
+# Established by M8.9 local source bootstrap.
+
+# Python caches / environments / coverage
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+
+# Node / frontend dependencies and generated build output
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+.vite/
+*.tsbuildinfo
+dashboard/next-env.d.ts
+dashboard/cloudflare-env.d.ts
+
+# Dashboard provider/runtime state
+dashboard/.sites-runtime/
+dashboard/.wrangler/
+
+# ForgeLab runtime / transient execution state
+.forgelab/runtime/
+.forgelab/run/
+.forgelab/runs/
+.forgelab/log/
+.forgelab/logs/
+.forgelab/cache/
+.forgelab/backup/
+.forgelab/backups/
+.forgelab/tmp/
+.forgelab/temp/
+.forgelab/workspace/
+.forgelab/workspaces/
+.forgelab/artifact/
+.forgelab/artifacts/
+.forgelab/demo-repositories/
+.forgelab/m8_8_acceptance_runs/
+.forgelab/*.stdout.txt
+.forgelab/*.stderr.txt
+.forgelab/*request*.json
+
+# Repair / local backups
+_repair_backup_*/
+
+# Logs and transient files
+*.log
+*.tmp
+*.bak
+*.swp
+logs/
+tmp/
+temp/
+
+# Local secrets / credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Local diagnostic/preflight artifacts accumulated during development
+FORGELAB_*DIAG*.txt
+FORGELAB_*DIAGNOSTIC*.txt
+FORGELAB_*PREFLIGHT*.txt
+FORGELAB_*FAILURE*.txt
+FORGELAB_*LOGS*.txt
+FORGELAB_*FRAGMENTS*.txt
+FORGELAB_*FAILED*.tsx
+FORGELAB_*FIXED*.tsx
+
+# Non-canonical launcher candidate snapshot
+Start-ForgeLab.production.candidate.ps1

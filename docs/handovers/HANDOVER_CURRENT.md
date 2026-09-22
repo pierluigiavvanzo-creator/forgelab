@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-09-22  
-**Checkpoint:** M8.9 technical acceptance complete / infrastructure freeze  
+**Checkpoint date:** 2026-09-22
+**Checkpoint:** M8.9 technical acceptance complete / infrastructure freeze
 **Status:** PASS tecnico locale; passaggio immediato a MVP product-facing
 
 ## 1. Mission

@@ -1,6 +1,6 @@
 # Local Source Baseline
 
-**Checkpoint:** M8.9 technical acceptance  
+**Checkpoint:** M8.9 technical acceptance
 **Date:** 2026-09-22
 
 ## Validated local source
