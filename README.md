@@ -1,197 +1,69 @@
-# ForgeLab M8.1
+# ForgeLab
 
-M8.1 repairs the portable distribution: canonical configuration and the
-Control Plane source are included, the dashboard can read local run evidence
-through a loopback-only authenticated API, and Windows users can validate or
-start the product with a single PowerShell command.
+ForgeLab is a governed multi-agent software-development control plane.
 
-```powershell
-.\bootstrap.ps1
-.\Start-ForgeLab.ps1
-```
+Its target workflow is:
 
-The first command verifies the complete package. The second starts the local
-API and dashboard; its ephemeral token is transferred in the browser URL
-fragment and removed by the dashboard after connection.
+`Objective -> project/repository context -> plan -> minimum necessary agents -> isolated implementation -> deterministic tests -> bounded repair -> independent review -> security -> READY_FOR_DECISION -> Product Owner approval -> exact reviewed promotion`
 
-ForgeLab is a control plane for auditable software work. M1 adds a real,
-single-agent isolated runner to the M0 contracts. It accepts a bounded change
-request, modifies only a temporary Git worktree, executes an allowlisted test
-command, captures a patch, and stops at the human promotion gate.
+## Current status
 
-M2 adds deterministic scope and secret review plus a human decision command.
-An approval applies the reviewed patch only when the target repository is still
-clean and at the reviewed commit, reruns tests, and rolls back on failure.
+**PRE-MVP / MVP validation active**
 
-M3 adds structured multi-agent orchestration. The direct baseline selects the
-minimum applicable roles, executes a dependency graph, stores one result per
-task, and uses a bounded diagnostic and repair loop when tests fail.
+The technical foundation has passed M8.9 local acceptance, including:
 
-M4 Core adds deterministic S0-S4 classification, provider-neutral model routes,
-budget reservation, bounded retry, token and cost accounting, and a comparable
-quality/cost benchmark harness. Live providers remain intentionally unconfigured.
+- 88 regression tests PASS;
+- API health PASS;
+- dashboard PASS;
+- bounded multi-file AI development;
+- bounded repair;
+- repository-context selection;
+- independent review/security;
+- explicit human promotion gate;
+- canonical local Git source baseline.
 
-M5 adds repository-backed project memory. Each orchestrated run records a hash
-manifest of canonical sources and a query-specific context bundle constrained by
-an explicit character budget.
+However, ForgeLab has **not yet passed a real product MVP test** on an external application with minimal Product Owner intervention.
 
-M6 adds enforced tool governance. Repository edits and tests pass through a
-role-aware gateway that applies scope, network, dependency, secret, and
-destructive-action policies and produces a redacted audit artifact.
+## Current priority
 
-M7 adds the private ForgeLab Control Plane for Product Owners. It exposes the
-run plan, changes, tests, risk, model usage, decision gate, evidence bundle, and
-project memory without requiring terminal access. Until the authenticated API
-milestone, the dashboard imports run artifacts locally and exports auditable
-`RunRequest.json` and `GateDecision.json` files.
+`FORGELAB_MVP_1_REAL_APPLICATION_TEST`
 
-M8 Core adds the measured scale boundary: evidence-backed KPI aggregation,
-tenant-isolated durable queue and cache, bounded parallel DAG execution, and an
-append-only usage ledger with enforceable run cost caps. The implementation is
-stdlib-only and keeps queue, cache, scheduler, and metering interfaces portable.
+The Product Owner should ideally be able to:
 
-Inspect current product KPIs from recorded runs:
+`Dashboard -> choose/register target project -> objective -> Run -> inspect result -> APPROVE / REJECT / REPAIR`
 
-```bash
-PYTHONPATH=src python -m forgelab metrics --runs .forgelab/runs
-```
+If normal use requires repeated PowerShell scripts, log transport or manual debugging, the MVP test is considered failed.
 
-## Run the verified smoke flow
+## Canonical local baseline
 
-```bash
-PYTHONPATH=src python -m forgelab smoke --output .forgelab/runs
-python -m unittest discover -s tests -v
-```
+The currently validated local control-plane source is **not yet fully synchronized to this GitHub repository**.
 
-The smoke command creates a complete synthetic run without calling an LLM or
-modifying a repository. It verifies the run state machine and emits:
+Local baseline:
 
-- `ExecutionPlan.json`
-- `AgentResult.json`
-- `TestEvidence.json`
-- `ReviewReport.json`
-- `SecurityReport.json`
-- `UsageReport.json`
-- `RunSummary.json`
-- `GateDecision.json`
+- root: `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
+- local branch: `main`
+- commit: `58d22eeca66c27871738c04c6d850c59efabf115`
+- tree: `63b6c91427edb19cd038cf557904451dfc08a947`
+- tracked canonical files: 168
+- manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3b`
 
-The `run` command adds a Git worktree execution path while the deterministic
-`smoke` command remains available for contract verification.
+This remote currently serves as the canonical **project/governance memory** until the local source is separately reviewed and synchronized.
 
-## Run an isolated change
+## Start here
 
-Create a request JSON:
+Read in this order:
 
-```json
-{
-  "repository": "/absolute/path/to/clean/git/repository",
-  "objective": "Fix calculator addition",
-  "change": {
-    "operation": "replace_text",
-    "path": "calculator.py",
-    "old": "return a - b",
-    "new": "return a + b"
-  },
-  "test_command": ["python", "-m", "unittest", "discover", "-v"],
-  "timeout_seconds": 60
-}
-```
+1. `MANIFEST.md`
+2. `AGENTS.md`
+3. `PROJECT_STATE.md`
+4. `ROADMAP.md`
+5. `DECISIONS.md`
+6. `docs/handovers/HANDOVER_CURRENT.md`
+7. `docs/audits/FORGELAB_PRODUCT_OUTCOME_AUDIT_2026-09-22.md`
+8. `docs/governance/REGOLE_OPERATIVE_COMUNI_PROGETTI.md`
 
-Then run:
+## Product rule
 
-```bash
-PYTHONPATH=src python -m forgelab run --request request.json --output .forgelab/runs
-```
+Green tests and sound architecture are necessary, but they do not prove product value.
 
-The source repository must be clean. M1 leaves it unchanged and writes the
-candidate change to `Changes.patch` beside the structured run reports.
-
-Review the run artifacts, then record one decision:
-
-```bash
-PYTHONPATH=src python -m forgelab decide \
-  --run-dir .forgelab/runs/run-123 \
-  --repository /absolute/path/to/repository \
-  --actor "Product Owner" \
-  --decision approve
-```
-
-`reject` closes the run without changing the repository. `repair` returns it to
-the repair state. `approve` applies the patch to the working tree only after all
-quality gates pass; M2 does not create a commit or push a branch.
-
-## Run the structured multi-agent baseline
-
-Use the same request shape as M1 and optionally add `risk`,
-`max_repair_attempts`, and `change.initial_new` for a controlled repair
-benchmark:
-
-```bash
-PYTHONPATH=src python -m forgelab orchestrate \
-  --request request.json \
-  --output .forgelab/runs
-```
-
-Every task writes `tasks/<task_id>/AgentResult.json`. The aggregate plan records
-the selected roles, dependency edges, limits, and selection reason.
-
-## Inspect a route without calling a model
-
-Create a task profile such as:
-
-```json
-{"implementation": true, "cross_component_count": 2}
-```
-
-Then run:
-
-```bash
-PYTHONPATH=src python -m forgelab route --profile profile.json
-```
-
-The command reports the S0-S4 class, provider slot, model alias, retry limit,
-maximum reserved call cost, and human-review requirement. It never calls a
-provider.
-
-## Build and select project memory
-
-```bash
-PYTHONPATH=src python -m forgelab memory-snapshot \
-  --root /path/to/project --output MemorySnapshot.json
-
-PYTHONPATH=src python -m forgelab memory-select \
-  --root /path/to/project --query "authentication decision" \
-  --max-chars 20000 --output ContextBundle.json
-```
-
-Canonical sources include root project rules and state, architecture, contracts,
-ADRs, current handover, and acceptance reports. Symlinks, oversized files, path
-escapes, and likely embedded secrets are rejected.
-
-## Current boundary
-
-Implemented: contracts, validation, transition rules, JSON artifact store,
-default policies, project memory, deterministic smoke run, isolated Git
-worktree, one exact-text edit operation, bounded Python test execution, patch
-capture, and integrity verification of the source repository.
-M2 also implements deterministic review, secret scanning, persistent human gate
-decisions, stale-base protection, post-promotion tests, and rollback.
-M3 implements PM, Developer, Tester, Reviewer, conditional Security and
-Documentation roles, and on-demand Support during repair.
-M4 Core implements provider adapters as a protocol, route configuration, usage
-ledger, budget enforcement, retry evidence, pricing validation, and benchmarks.
-M5 implements memory discovery, content hashes, deterministic manifests,
-relevance selection, mandatory context, and per-run memory artifacts.
-M6 implements role permissions, path scope enforcement, network default-deny,
-secret handles, dependency evidence, destructive gates, and tool audit.
-M7 implements the Product Owner dashboard, local evidence import, run-request
-preparation, gate-decision capture, evidence inspection, and project memory.
-M8 Core implements KPI measurement, tenant isolation, idempotent leased work,
-bounded retry, cache expiry, parallel dependency layers, and usage cost caps.
-
-Not yet implemented: natural-language planning, LLM provider integration,
-container/cloud sandbox, authenticated dashboard API, LLM-backed repair, commit/PR creation,
-remote promotion, distributed task queue, live provider adapters, or live
-quality/cost benchmarks. Production billing and horizontal workers remain
-deferred until demand metrics justify them. Semantic retrieval is also deferred until
-measured against the deterministic selector.
+Progress is measured by usable outcomes, reduced Product Owner effort and credible economic value.
