@@ -41,30 +41,30 @@ Routine use must not require the Product Owner to act as repetitive QA, debugger
 
 ---
 
-## D-004 — Canonical local baseline
+## D-004 — Canonical M8.9 baseline
 
 **Date:** 2026-09-22
 **Status:** Accepted
 
-The validated local ForgeLab baseline is:
+The validated ForgeLab M8.9 baseline is:
 
 - commit `58d22eeca66c27871738c04c6d850c59efabf115`
 - tree `63b6c91427edb19cd038cf557904451dfc08a947`
 - 168 tracked canonical files
-- manifest SHA-256 `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3b`
+- canonical manifest SHA-256 `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
 
-This record documents the validated local source state.
+This record documents the validated source state at M8.9 acceptance.
 
 ---
 
-## D-005 — GitHub repository role
+## D-005 — Initial GitHub repository role
 
 **Date:** 2026-09-22
-**Status:** Accepted
+**Status:** Superseded by D-007
 
-The repository `pierluigiavvanzo-creator/forgelab` is established as the shared remote project/governance memory.
+The repository `pierluigiavvanzo-creator/forgelab` was initially established as shared remote project/governance memory before the full validated source was synchronized.
 
-Until the local 168-file source baseline is explicitly synchronized and verified, GitHub must not be described as containing the complete validated ForgeLab implementation.
+This decision is preserved as historical context and is superseded by D-007 after successful source synchronization and local alignment.
 
 ---
 
@@ -82,3 +82,27 @@ Track candidates through:
 Discovery alone does not count as reuse.
 
 This rule must not become an excuse to delay MVP validation when the current system can already perform the required product test.
+
+---
+
+## D-007 — GitHub main is canonical shared source of truth
+
+**Date:** 2026-09-22
+**Status:** Accepted
+
+The validated M8.9 source baseline was published to `baseline/m8.9-local`, integrated with canonical governance on `integration/m8.9-code-plus-governance`, and merged through PR #2.
+
+PR #2 merge commit:
+
+`9560729bfc9f27422d92d20d8fb43db5886a1cba`
+
+The local ForgeLab `main` was then fast-forwarded to the same GitHub `main` commit and verified clean.
+
+Decision:
+
+- GitHub `pierluigiavvanzo-creator/forgelab` on `main` is the canonical shared source of truth for ForgeLab code and governance;
+- the local checkout tracks that history;
+- no force or rebase was used for synchronization;
+- future material changes continue to follow governed branch/review/approval discipline.
+
+This synchronization does not change product status: ForgeLab remains PRE-MVP until the real application MVP gates pass.
