@@ -41,9 +41,9 @@ Canonical branch:
 
 `main`
 
-Current main checkpoint after PR #15:
+Current main checkpoint after PR #16:
 
-`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
+`fdaf5a6e2b637ee44452f3d8e56ea4b78386d2bb`
 
 Local ForgeLab root:
 
@@ -297,46 +297,53 @@ Behavior:
 - overlapping/conflicting operations fail before write;
 - ToolGateway still performs one authoritative write per changed file.
 
-## 13. Latest real-run blocker after PR #15
+## 13. PR #16 — invalid Python repair blocker corrected
 
-Real child run:
+PR #16 was merged to main:
+
+`fdaf5a6e2b637ee44452f3d8e56ea4b78386d2bb`
+
+Behavior:
+
+- modified Python candidates are AST-parsed before ToolGateway write;
+- syntax failure is recoverable pre-write validation;
+- test-failure repair gets one bounded pre-write correction for format/reference/syntax failure;
+- only a syntactically valid repair increments the real repair counter;
+- repair budget, path scope and human gate remain unchanged.
+
+## 14. Latest real-run blocker after PR #16
+
+A subsequent Product Owner repair request from active run:
 
 `run-be067c4915d2`
 
-Observed evidence:
+failed before returning a completed child run with:
 
-- initial AI Developer candidate changed `quote_calculator.py` and `test_quote_calculator.py`;
-- test run 0 failed because `calculate_quote()` still accepted two positional arguments while the new test called it with six;
-- one Support diagnosis and one Developer repair were executed;
-- the repair produced invalid Python;
-- test run 1 failed at import with `IndentationError: unexpected indent`;
-- RunSummary ended `DIAGNOSING`, `tests: FAIL`, `repair_attempts: 1`;
-- no `Changes.patch` exists because review was never reached.
+`AIDeveloperReferenceError: AI Developer old_text must occur exactly once in quote_calculator.py; found 0`
 
-The current pre-write contract catches format and exact-source problems, but not Python syntax errors in the test-failure repair path.
+Canonical inspection shows that the first reference failure is caught, but its one correction still asks the model for another exact `old_text` fragment. If that correction also references stale candidate text, the second validation is terminal.
 
-## 14. Current proposal
+## 15. Current proposal
 
 Working branch:
 
-`mvp1-python-syntax-prewrite-repair`
+`mvp1-reference-error-full-file-fallback`
 
 Base:
 
-`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
+`fdaf5a6e2b637ee44452f3d8e56ea4b78386d2bb`
 
 Proposal:
 
-1. deterministically construct the post-replacement candidate text in memory;
-2. for each modified `.py` file, run Python AST parsing before ToolGateway write;
-3. classify syntax failure as recoverable pre-write validation;
-4. initial generation and semantic repair use the same syntax guard;
-5. the test-failure repair path gets exactly one pre-write correction for format/reference/syntax failure;
-6. only after a valid repair is written does the real repair counter increment;
-7. keep max repair attempts at one for MVP-1;
-8. preserve scope, exact-source matching, no fuzzy patching, deterministic tests, semantic review and human promotion gate.
+1. keep exactly one bounded pre-write correction;
+2. when the error is specifically `AIDeveloperReferenceError`, switch the correction contract to full-file mode rather than retrying the same stale-anchor contract;
+3. structured recovery schema `2.1` contains only `path`, complete `new_text`, and summary for the authorized subset;
+4. ForgeLab inserts the current complete file as deterministic `old_text`;
+5. normalize recovery back to the existing internal schema `2.0`;
+6. syntax-validate Python before write;
+7. preserve no fuzzy patching, immutable authorized scope, one ToolGateway write per file, repair budget, deterministic tests, semantic review and human gate.
 
-Regression coverage reproduces: failed initial candidate -> invalid Python repair -> one pre-write correction -> valid repair -> tests PASS while `repair_attempts` remains 1.
+Regression coverage includes both initial generation stale-reference recovery and failed-test repair stale-reference recovery.
 
 ## 11. Current MVP gate assessment
 
@@ -350,7 +357,7 @@ The Product Owner can initiate a real run from the dashboard and receive visible
 
 **FAIL / current blocker.**
 
-The timeout, authorized-subset and disjoint-same-file blockers are corrected by PR #13/#14/#15, but malformed Python repair output can still consume the only repair budget before review.
+The timeout, authorized-subset, disjoint-same-file and Python-syntax blockers are corrected by PR #13/#14/#15/#16, but a repeated stale source anchor can still terminate the one pre-write correction before tests/review.
 
 ### G3 — Real output
 
@@ -362,7 +369,7 @@ Three-treatment visible behavior has not yet been delivered.
 
 **Implementation corrected by PR #12; real-run validation pending.**
 
-Semantic review is authoritative and blocking on main, but real-run validation has not yet completed because the only repair candidate failed Python syntax before review.
+Semantic review is authoritative and blocking on main, and Python syntax is now guarded pre-write; real-run validation is still pending because repeated stale-reference recovery can terminate before review.
 
 ### G5 — Human control
 
@@ -417,7 +424,7 @@ Only fix blockers concretely exposed by MVP-1.
 
 Validate the branch:
 
-`mvp1-python-syntax-prewrite-repair`
+`mvp1-reference-error-full-file-fallback`
 
 If the proposal is sound, open/approve/merge its PR under the existing governed workflow.
 
@@ -425,8 +432,8 @@ Then:
 
 1. fast-forward local ForgeLab to the approved `main`;
 2. rerun the same Dental Quote Product Owner repair scenario once;
-3. allow Python syntax validation to reject malformed repair output before write;
-4. if needed, allow the one bounded pre-write correction without consuming another real repair;
+3. if an exact-source anchor is stale, use the single structured full-file pre-write recovery instead of another anchor retry;
+4. syntax-check Python before ToolGateway write;
 5. let deterministic tests and blocking semantic review complete;
 6. inspect `TestEvidence.json`, `ReviewReport.json` and `Changes.patch`;
 7. approve only if the patch genuinely implements the complete three-treatment objective;

@@ -376,6 +376,59 @@ def _ai_developer_response_schema(
     }
 
 
+def _ai_developer_full_file_response_schema(
+    expected_paths: tuple[str, ...],
+) -> dict[str, object]:
+    file_schema: dict[str, object] = {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "enum": list(expected_paths),
+            },
+            "new_text": {
+                "type": "string",
+            },
+            "summary": {
+                "type": "string",
+                "minLength": 1,
+            },
+        },
+        "required": [
+            "path",
+            "new_text",
+            "summary",
+        ],
+        "additionalProperties": False,
+    }
+
+    return {
+        "type": "object",
+        "properties": {
+            "schema_version": {
+                "type": "string",
+                "enum": ["2.1"],
+            },
+            "summary": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "files": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": len(expected_paths),
+                "items": file_schema,
+            },
+        },
+        "required": [
+            "schema_version",
+            "summary",
+            "files",
+        ],
+        "additionalProperties": False,
+    }
+
+
 class AIDeveloperFormatError(ValueError):
     """Recoverable structured-output contract error."""
 
@@ -902,6 +955,137 @@ def _compose_ai_developer_changes(
         })
 
     return normalized
+
+
+def _validate_ai_developer_full_file_patch(
+    response_text: str,
+    expected_paths: tuple[str, ...],
+    source_texts: dict[str, str],
+) -> dict[str, Any]:
+    payload = _extract_ai_developer_json(
+        response_text
+    )
+
+    required = {
+        "schema_version",
+        "summary",
+        "files",
+    }
+    missing = required - set(payload)
+
+    if missing:
+        raise AIDeveloperFormatError(
+            "AI Developer full-file recovery missing fields: "
+            + ", ".join(sorted(missing))
+        )
+
+    if payload["schema_version"] != "2.1":
+        raise AIDeveloperFormatError(
+            "AI Developer full-file recovery "
+            "schema_version must be 2.1"
+        )
+
+    summary = payload["summary"]
+    raw_files = payload["files"]
+
+    if (
+        not isinstance(summary, str)
+        or not summary.strip()
+    ):
+        raise AIDeveloperFormatError(
+            "AI Developer full-file recovery "
+            "summary must be non-empty"
+        )
+
+    if (
+        not isinstance(raw_files, list)
+        or not 1 <= len(raw_files) <= len(expected_paths)
+        or not all(
+            isinstance(item, dict)
+            for item in raw_files
+        )
+    ):
+        raise AIDeveloperFormatError(
+            "AI Developer full-file recovery files "
+            "must be a non-empty authorized subset"
+        )
+
+    normalized: dict[str, dict[str, str]] = {}
+
+    for item in raw_files:
+        item_required = {
+            "path",
+            "new_text",
+            "summary",
+        }
+        item_missing = item_required - set(item)
+
+        if item_missing:
+            raise AIDeveloperFormatError(
+                "AI Developer full-file entry missing fields: "
+                + ", ".join(sorted(item_missing))
+            )
+
+        path = item["path"]
+        new_text = item["new_text"]
+        item_summary = item["summary"]
+
+        if path not in expected_paths:
+            raise ValueError(
+                "AI Developer attempted path expansion"
+            )
+
+        if path in normalized:
+            raise AIDeveloperFormatError(
+                "AI Developer full-file recovery "
+                "contains duplicate paths"
+            )
+
+        if not isinstance(new_text, str):
+            raise AIDeveloperFormatError(
+                "AI Developer full-file new_text "
+                "must be a string"
+            )
+
+        if (
+            not isinstance(item_summary, str)
+            or not item_summary.strip()
+        ):
+            raise AIDeveloperFormatError(
+                "AI Developer full-file summary "
+                "must be non-empty"
+            )
+
+        if len(new_text) > 100_000:
+            raise ValueError(
+                "AI Developer full-file replacement "
+                "exceeds size limit"
+            )
+
+        current = source_texts[path]
+
+        if new_text == current:
+            raise ValueError(
+                "AI Developer proposed a no-op "
+                f"full-file replacement for {path}"
+            )
+
+        normalized[path] = {
+            "path": path,
+            "old_text": current,
+            "new_text": new_text,
+            "summary": item_summary.strip(),
+        }
+
+    return {
+        "schema_version": "2.0",
+        "summary": summary.strip(),
+        "changes": [
+            normalized[path]
+            for path in expected_paths
+            if path in normalized
+        ],
+    }
 
 
 def _validate_ai_developer_patch(
@@ -1663,6 +1847,41 @@ Rules:
 - do not create dependencies.
 """
 
+                reference_recovery = isinstance(
+                    prewrite_error,
+                    AIDeveloperReferenceError,
+                )
+
+                if reference_recovery:
+                    prewrite_repair_prompt += f"""
+
+REFERENCE RECOVERY MODE:
+Return COMPLETE replacement content for each file that must
+change. Do not return old_text snippets.
+
+Required recovery schema:
+{{
+  "schema_version": "2.1",
+  "summary": "<short overall recovery summary>",
+  "files": [
+    {{
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }}
+  ]
+}}
+
+The current complete authorized files above are authoritative.
+"""
+                    prewrite_response_format = (
+                        _ai_developer_full_file_response_schema(
+                            target_paths
+                        )
+                    )
+                else:
+                    prewrite_response_format = developer_schema
+
                 developer_response = ai_router.execute(
                     TaskClass.S2,
                     prewrite_repair_prompt,
@@ -1670,17 +1889,27 @@ Rules:
                     Role.DEVELOPER.value,
                     "Repair AI Developer pre-write validation once",
                     request.timeout_seconds,
-                    response_format=developer_schema,
+                    response_format=prewrite_response_format,
                 )
 
-                generated_patch = (
-                    _validate_ai_developer_patch(
-                        developer_response.text,
-                        target_paths,
-                        source_texts,
-                        require_all_paths=False,
+                if reference_recovery:
+                    generated_patch = (
+                        _validate_ai_developer_full_file_patch(
+                            developer_response.text,
+                            target_paths,
+                            source_texts,
+                        )
                     )
-                )
+                else:
+                    generated_patch = (
+                        _validate_ai_developer_patch(
+                            developer_response.text,
+                            target_paths,
+                            source_texts,
+                            require_all_paths=False,
+                        )
+                    )
+
                 _validate_ai_developer_candidate_syntax(
                     generated_patch,
                     source_texts,
@@ -2132,6 +2361,46 @@ Rules:
 - do not claim tests have run.
 """
 
+                    repair_reference_recovery = isinstance(
+                        repair_prewrite_error,
+                        AIDeveloperReferenceError,
+                    )
+
+                    if repair_reference_recovery:
+                        repair_prewrite_prompt += f"""
+
+REFERENCE RECOVERY MODE:
+Return COMPLETE replacement content for each file that must
+change. Do not return old_text snippets.
+
+Required recovery schema:
+{{
+  "schema_version": "2.1",
+  "summary": "<short overall recovery summary>",
+  "files": [
+    {{
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }}
+  ]
+}}
+
+The current complete authorized files above are authoritative.
+"""
+                        repair_response_format = (
+                            _ai_developer_full_file_response_schema(
+                                target_paths
+                            )
+                        )
+                    else:
+                        repair_response_format = (
+                            _ai_developer_response_schema(
+                                target_paths,
+                                require_all_paths=False,
+                            )
+                        )
+
                     repair_response = ai_router.execute(
                         TaskClass.S2,
                         repair_prewrite_prompt,
@@ -2139,22 +2408,27 @@ Rules:
                         Role.DEVELOPER.value,
                         "Correct repair pre-write validation once",
                         request.timeout_seconds,
-                        response_format=(
-                            _ai_developer_response_schema(
-                                target_paths,
-                                require_all_paths=False,
-                            )
-                        ),
+                        response_format=repair_response_format,
                     )
 
-                    repair_patch = (
-                        _validate_ai_developer_patch(
-                            repair_response.text,
-                            target_paths,
-                            repair_source_texts,
-                            require_all_paths=False,
+                    if repair_reference_recovery:
+                        repair_patch = (
+                            _validate_ai_developer_full_file_patch(
+                                repair_response.text,
+                                target_paths,
+                                repair_source_texts,
+                            )
                         )
-                    )
+                    else:
+                        repair_patch = (
+                            _validate_ai_developer_patch(
+                                repair_response.text,
+                                target_paths,
+                                repair_source_texts,
+                                require_all_paths=False,
+                            )
+                        )
+
                     _validate_ai_developer_candidate_syntax(
                         repair_patch,
                         repair_source_texts,
@@ -2656,6 +2930,46 @@ Rules:
 - do not modify dependencies or configuration.
 """
 
+                    semantic_reference_recovery = isinstance(
+                        semantic_prewrite_error,
+                        AIDeveloperReferenceError,
+                    )
+
+                    if semantic_reference_recovery:
+                        semantic_prewrite_prompt += f"""
+
+REFERENCE RECOVERY MODE:
+Return COMPLETE replacement content for each file that must
+change. Do not return old_text snippets.
+
+Required recovery schema:
+{{
+  "schema_version": "2.1",
+  "summary": "<short overall recovery summary>",
+  "files": [
+    {{
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }}
+  ]
+}}
+
+The current complete authorized files above are authoritative.
+"""
+                        semantic_response_format = (
+                            _ai_developer_full_file_response_schema(
+                                target_paths
+                            )
+                        )
+                    else:
+                        semantic_response_format = (
+                            _ai_developer_response_schema(
+                                target_paths,
+                                require_all_paths=False,
+                            )
+                        )
+
                     semantic_repair_response = (
                         ai_router.execute(
                             TaskClass.S2,
@@ -2670,23 +2984,28 @@ Rules:
                                 "pre-write validation once"
                             ),
                             request.timeout_seconds,
-                            response_format=(
-                                _ai_developer_response_schema(
-                                    target_paths,
-                                    require_all_paths=False,
-                                )
-                            ),
+                            response_format=semantic_response_format,
                         )
                     )
 
-                    semantic_repair_patch = (
-                        _validate_ai_developer_patch(
-                            semantic_repair_response.text,
-                            target_paths,
-                            semantic_repair_source_texts,
-                            require_all_paths=False,
+                    if semantic_reference_recovery:
+                        semantic_repair_patch = (
+                            _validate_ai_developer_full_file_patch(
+                                semantic_repair_response.text,
+                                target_paths,
+                                semantic_repair_source_texts,
+                            )
                         )
-                    )
+                    else:
+                        semantic_repair_patch = (
+                            _validate_ai_developer_patch(
+                                semantic_repair_response.text,
+                                target_paths,
+                                semantic_repair_source_texts,
+                                require_all_paths=False,
+                            )
+                        )
+
                     _validate_ai_developer_candidate_syntax(
                         semantic_repair_patch,
                         semantic_repair_source_texts,
