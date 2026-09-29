@@ -268,6 +268,11 @@ export default function Home() {
     setCreatingRun,
   ] = useState(false);
 
+  const [
+    runFormError,
+    setRunFormError,
+  ] = useState("");
+
   const [objective, setObjective] =
     useState(
       "Implementare il prossimo cambiamento con evidenze verificabili",
@@ -793,11 +798,60 @@ export default function Home() {
 
 
   const createRun = async () => {
-    if (!apiConnected) {
+    const failRunForm = (
+      message: string,
+    ) => {
+      setRunFormError(message);
       setNotice(
-        "Collega prima il runner locale.",
+        `Nuova run bloccata: ${message}`,
+      );
+    };
+
+    setRunFormError("");
+
+    if (!apiConnected) {
+      failRunForm(
+        "Runner locale non collegato.",
       );
       setApiSetup(true);
+      return;
+    }
+
+    if (repository.trim().length === 0) {
+      failRunForm(
+        "Repository locale mancante.",
+      );
+      return;
+    }
+
+    if (objective.trim().length < 8) {
+      failRunForm(
+        "Obiettivo troppo breve: usa almeno 8 caratteri.",
+      );
+      return;
+    }
+
+    if (targetPath.trim().length === 0) {
+      failRunForm(
+        "Indica almeno un file autorizzato.",
+      );
+      return;
+    }
+
+    if (
+      !aiDeveloperMode &&
+      oldText.length === 0
+    ) {
+      failRunForm(
+        "Modalita non-AI: inserisci il testo esistente da sostituire.",
+      );
+      return;
+    }
+
+    if (testCommand.trim().length === 0) {
+      failRunForm(
+        "Comando test mancante.",
+      );
       return;
     }
 
@@ -807,7 +861,7 @@ export default function Home() {
       parsedCommand =
         JSON.parse(testCommand);
     } catch {
-      setNotice(
+      failRunForm(
         "Comando test non valido: usa un array JSON di argomenti.",
       );
       return;
@@ -822,7 +876,7 @@ export default function Home() {
           item.length > 0,
       )
     ) {
-      setNotice(
+      failRunForm(
         "Comando test non valido.",
       );
       return;
@@ -839,7 +893,7 @@ export default function Home() {
         authorizedPaths.length < 1 ||
         authorizedPaths.length > 3
       ) {
-        setNotice(
+        failRunForm(
           "AI Developer richiede da 1 a 3 file autorizzati.",
         );
         return;
@@ -849,13 +903,13 @@ export default function Home() {
         new Set(authorizedPaths).size !==
         authorizedPaths.length
       ) {
-        setNotice(
+        failRunForm(
           "I file autorizzati devono essere univoci.",
         );
         return;
       }
     } else if (authorizedPaths.length !== 1) {
-      setNotice(
+      failRunForm(
         "La modalita non-AI richiede esattamente un file.",
       );
       return;
@@ -951,6 +1005,7 @@ export default function Home() {
         result.run_id,
       );
 
+      setRunFormError("");
       setNewRun(false);
 
       setNotice(
@@ -961,12 +1016,14 @@ export default function Home() {
       );
 
     } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "errore sconosciuto";
+
+      setRunFormError(message);
       setNotice(
-        `Nuova run fallita: ${
-          error instanceof Error
-            ? error.message
-            : "errore sconosciuto"
-        }`,
+        `Nuova run fallita: ${message}`,
       );
     } finally {
       setCreatingRun(false);
@@ -1043,6 +1100,19 @@ export default function Home() {
       );
     }
   }, []);
+
+
+  useEffect(() => {
+    setRunFormError("");
+  }, [
+    repository,
+    objective,
+    targetPath,
+    oldText,
+    testCommand,
+    aiDeveloperMode,
+    apiConnected,
+  ]);
 
 
   useEffect(() => {
@@ -2408,6 +2478,20 @@ export default function Home() {
             </div>
 
 
+            {
+              runFormError &&
+              <div
+                className="modal-note"
+                role="alert"
+              >
+                <ShieldAlert />
+                <span>
+                  {runFormError}
+                </span>
+              </div>
+            }
+
+
             <div className="modal-actions">
 
               <Button
@@ -2422,18 +2506,7 @@ export default function Home() {
               </Button>
 
               <Button
-                disabled={
-                  creatingRun ||
-                  !apiConnected ||
-                  repository.trim().length === 0 ||
-                  objective.trim().length < 8 ||
-                  targetPath.trim().length === 0 ||
-                  (
-                    !aiDeveloperMode &&
-                    oldText.length === 0
-                  ) ||
-                  testCommand.trim().length === 0
-                }
+                disabled={creatingRun}
                 onClick={() =>
                   void createRun()
                 }
@@ -2441,7 +2514,7 @@ export default function Home() {
               >
                 {
                   creatingRun
-                    ? "Esecuzione?"
+                    ? "Esecuzione..."
                     : "Avvia run"
                 }
 
