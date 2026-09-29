@@ -1,84 +1,120 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-09-22
+**Last updated:** 2026-09-29
 **Current phase:** PRE-MVP / real application validation
 **Current priority:** A — Product Critical
 
+## Canonical source
+
+Repository:
+
+`pierluigiavvanzo-creator/forgelab`
+
+Canonical shared truth:
+
+`main`
+
+Main checkpoint before the current semantic-review proposal:
+
+`ba8e0fee79676e3b65fc82d980d24989c1d22c90`
+
+Local root used for MVP validation:
+
+`C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
+
 ## Current product state
 
-ForgeLab has a technically validated control-plane foundation but has not yet proven its full user-facing MVP workflow on a real external application.
+ForgeLab has now demonstrated most of the real external-application workflow on the Dental Quote Calculator:
 
-### Validated technical capabilities
+`Dashboard -> objective -> bounded multi-file AI Developer -> isolated ToolGateway writes -> deterministic tests -> review/security -> evidence viewer -> Product Owner gate -> Product Owner repair child run`
 
-- canonical project-memory ingestion;
-- bounded read-only repository-context selection;
-- Planner;
-- AI Developer;
-- one to three authorized write paths;
-- structured patch generation;
-- isolated workspace / ToolGateway;
-- deterministic tests;
-- bounded Support/Developer repair;
-- independent Reviewer;
-- Security;
-- `READY_FOR_DECISION`;
-- explicit Product Owner gate;
-- exact reviewed promotion;
-- local promotion branch;
-- deterministic promotion retest;
-- local commit;
-- reviewed-diff equivalence.
+The project is still **PRE-MVP** because the real candidate has not yet satisfied the original Product Owner objective and has not been approved/promoted.
 
-### M8.9 validated baseline
+## Real MVP-1 target
 
-- local root at acceptance: `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
-- baseline commit: `58d22eeca66c27871738c04c6d850c59efabf115`
-- baseline tree: `63b6c91427edb19cd038cf557904451dfc08a947`
-- tracked canonical files: 168
-- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
-- working tree clean at acceptance
-- 88 regression tests PASS
-- API `/health` HTTP 200
-- dashboard `/` HTTP 200
-- protected API unauthenticated behavior HTTP 401
+Target repository:
 
-## Canonical synchronization status
+`C:\Users\NITRO\source\FORGELAB_MVP1_DENTAL_QUOTE`
 
-**COMPLETE**
+Original objective:
 
-The GitHub repository `pierluigiavvanzo-creator/forgelab` now contains the validated ForgeLab source plus canonical project/governance memory.
+> Add support for three treatments, automatic subtotals, percentage discount and final total. Validate inputs. Modify only necessary files. Add tests. Do not change dependencies or configuration unless necessary and explicitly justified.
 
-Synchronization evidence:
+Original decision-ready run observed:
 
-- baseline branch `baseline/m8.9-local` -> `58d22eeca66c27871738c04c6d850c59efabf115`;
-- integration branch `integration/m8.9-code-plus-governance`;
-- integration commit `8dfd9c81a9c8b1c17ef16833beaef7cc437c46a4`;
-- PR #2 merged into `main`;
-- PR #2 merge commit `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
-- local `main` fast-forwarded to the same GitHub `main` commit and verified clean;
-- no force push or rebase used.
+`run-2e19fed4860c`
 
-GitHub `main` is now the canonical shared source of truth. The local ForgeLab checkout tracks that canonical history.
+The candidate reached `READY_FOR_DECISION`, with tests PASS and zero provider cost, but Product Owner inspection correctly found that the implementation still supported only one treatment.
+
+No promotion was approved.
+
+## MVP-1 blockers discovered and corrected on main
+
+The real run exposed product blockers that were fixed narrowly, one at a time:
+
+- PR #5 — dashboard now surfaces run-form blockers instead of silently disabling `Avvia run`;
+- PR #6 — bounded Ollama output budget raised from 256 to 2048 for structured multi-file patches;
+- PR #7 — one bounded structured-output repair attempt;
+- PR #8 — AI Developer JSON Schema enforced through Ollama structured outputs;
+- PR #9 — sidebar navigation + read-only evidence viewer + allowlisted `Changes.patch`;
+- PR #10 — `Richiedi fix` now creates a bounded child run with Product Owner feedback instead of only recording a label;
+- PR #11 — one bounded pre-write correction when AI Developer `old_text` does not exactly match current authorized source.
+
+Main after PR #11:
+
+`ba8e0fee79676e3b65fc82d980d24989c1d22c90`
+
+## Current confirmed blocker
+
+**Semantic review is not authoritative.**
+
+The latest repair candidate again produced the same incomplete behavior: one treatment + discount rather than the requested three-treatment quote.
+
+Code inspection identified the reason:
+
+- `AIReview.json` is generated from the full objective and patch;
+- however its content is advisory only;
+- authoritative `ReviewReport.json` is produced by `review_patch()`;
+- current deterministic `review_patch()` checks only non-empty diff and authorized paths;
+- therefore semantic incompleteness can still reach `READY_FOR_DECISION`.
+
+This is a G3/G4 Product Critical blocker.
+
+## Current proposal under validation
+
+Branch:
+
+`mvp1-semantic-review-gate`
+
+Intent:
+
+- make AI semantic review structured and blocking;
+- require explicit requirement-by-requirement objective coverage;
+- treat missing/unverified required behavior as review FAIL;
+- combine deterministic scope review and semantic review into the authoritative `ReviewReport.json`;
+- when deterministic scope passes but semantic review fails, use the remaining bounded repair budget automatically;
+- perform repair -> deterministic retest -> semantic re-review;
+- reach `READY_FOR_DECISION` only when both deterministic and semantic review pass;
+- preserve explicit Product Owner promotion gate.
+
+The proposal does not change authorized paths, ToolGateway, provider cost, push/merge policy, or promotion semantics.
+
+## MVP gates current status
+
+- **G1 Usability:** materially demonstrated; dashboard can initiate real runs.
+- **G2 Autonomy:** improved but not yet accepted as final PASS while semantic repair behavior is being completed.
+- **G3 Real output:** FAIL / not yet proven for the full three-treatment objective.
+- **G4 Quality:** FAIL / current main can allow semantically incomplete work through deterministic scope review.
+- **G5 Human control:** PASS so far; no candidate has been promoted without explicit Product Owner approval.
 
 ## Infrastructure freeze
 
-Do not add infrastructure work unless the real MVP test demonstrates a concrete blocker.
+Still active.
 
-Deferred unless justified by MVP evidence:
-
-- advanced observability;
-- deployment;
-- multi-tenant;
-- billing;
-- scale optimization;
-- unrelated infrastructure hardening.
-
-## Current blocker
-
-No technical blocker is known.
-
-The missing evidence is a real end-to-end product run from dashboard to usable external-application change with low Product Owner effort.
+Do not add deployment, multi-tenant, billing, advanced observability, scaling, unrelated hardening, or provider expansion unless a real MVP gate proves it necessary.
 
 ## Single next action
 
-`FORGELAB_MVP_1_REAL_APPLICATION_TEST`
+Validate and, only after explicit Product Owner approval, merge the bounded semantic-review gate proposal.
+
+Then rerun the same Dental Quote Product Owner repair scenario and inspect the resulting `Changes.patch` before any promotion.
