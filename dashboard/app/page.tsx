@@ -55,6 +55,11 @@ type Gate =
 
 type Imported = Record<string, unknown>;
 
+type WorkspaceTab =
+  | "overview"
+  | "evidence"
+  | "memory";
+
 
 declare global {
   interface Document {
@@ -232,6 +237,14 @@ export default function Home() {
   const [gate, setGate] =
     useState<Gate>("pending");
 
+  const [activeTab, setActiveTab] =
+    useState<WorkspaceTab>("overview");
+
+  const [
+    selectedEvidence,
+    setSelectedEvidence,
+  ] = useState("Changes.patch");
+
   const [imported, setImported] =
     useState<Record<string, Imported>>({});
 
@@ -385,6 +398,48 @@ export default function Home() {
   const isLocalAi =
     usage?.runtime === "hybrid_local_ai"
     && llmCalls > 0;
+
+  const evidenceFiles = [
+    "Changes.patch",
+    "ExecutionPlan.json",
+    "RunSummary.json",
+    "TestEvidence.json",
+    "SecurityReport.json",
+    "UsageReport.json",
+    "ReviewReport.json",
+    ...(isLocalAi
+      ? [
+          "AIPlan.json",
+          ...(imported["AIDeveloperPatch.json"]
+            ? ["AIDeveloperPatch.json"]
+            : []),
+          "AIReview.json",
+          ...(imported["AIDiagnostics.json"]
+            ? ["AIDiagnostics.json"]
+            : []),
+        ]
+      : []),
+  ];
+
+  const selectedEvidenceValue =
+    imported[selectedEvidence];
+
+  const selectedEvidenceRecord =
+    asRecord(selectedEvidenceValue);
+
+  const selectedEvidenceText =
+    selectedEvidence === "Changes.patch"
+      ? String(
+          selectedEvidenceRecord?.text ??
+            "Patch non disponibile.",
+        )
+      : selectedEvidenceValue
+        ? JSON.stringify(
+            selectedEvidenceValue,
+            null,
+            2,
+          )
+        : "Artefatto non disponibile.";
 
   const localProvider =
     String(
@@ -1432,24 +1487,48 @@ export default function Home() {
             aria-label="Navigazione principale"
           >
             <a
-              className="nav-item active"
+              className={
+                `nav-item ${activeTab === "overview"
+                  ? "active"
+                  : ""}`
+              }
               href="#overview"
+              onClick={(event) => {
+                event.preventDefault();
+                setActiveTab("overview");
+              }}
             >
               <Gauge />
               Panoramica
             </a>
 
             <a
-              className="nav-item"
+              className={
+                `nav-item ${activeTab === "evidence"
+                  ? "active"
+                  : ""}`
+              }
               href="#evidence"
+              onClick={(event) => {
+                event.preventDefault();
+                setActiveTab("evidence");
+              }}
             >
               <Archive />
               Evidenze
             </a>
 
             <a
-              className="nav-item"
+              className={
+                `nav-item ${activeTab === "memory"
+                  ? "active"
+                  : ""}`
+              }
               href="#memory"
+              onClick={(event) => {
+                event.preventDefault();
+                setActiveTab("memory");
+              }}
             >
               <MemoryStick />
               Project Memory
@@ -1627,7 +1706,12 @@ export default function Home() {
 
 
           <Tabs
-            defaultValue="overview"
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(
+                value as WorkspaceTab,
+              )
+            }
             className="workspace-tabs"
           >
             <TabsList className="tabs-list">
@@ -2054,30 +2138,19 @@ export default function Home() {
                   </div>
 
                   {
-                    [
-                      "ExecutionPlan.json",
-                      "RunSummary.json",
-                      "TestEvidence.json",
-                      "SecurityReport.json",
-                      "UsageReport.json",
-                      "ReviewReport.json",
-                      ...(isLocalAi
-                        ? [
-                            "AIPlan.json",
-                            ...(imported["AIDeveloperPatch.json"]
-                              ? ["AIDeveloperPatch.json"]
-                              : []),
-                            "AIReview.json",
-                            ...(imported["AIDiagnostics.json"]
-                              ? ["AIDiagnostics.json"]
-                              : []),
-                          ]
-                        : []),
-                    ].map(
+                    evidenceFiles.map(
                       (file) => (
-                        <div
-                          className="evidence-row"
+                        <button
+                          type="button"
+                          className={
+                            `evidence-row evidence-row-button ${selectedEvidence === file
+                              ? "selected"
+                              : ""}`
+                          }
                           key={file}
+                          onClick={() =>
+                            setSelectedEvidence(file)
+                          }
                         >
                           <strong>
                             {file}
@@ -2100,11 +2173,29 @@ export default function Home() {
                                 : "?"
                             }
                           </span>
-                        </div>
+                        </button>
                       ),
                     )
                   }
 
+                </div>
+
+                <div
+                  className="evidence-detail"
+                  aria-live="polite"
+                >
+                  <div className="evidence-detail-head">
+                    <strong>
+                      {selectedEvidence}
+                    </strong>
+                    <span>
+                      Contenuto in sola lettura
+                    </span>
+                  </div>
+
+                  <pre>
+                    {selectedEvidenceText}
+                  </pre>
                 </div>
               </Panel>
             </TabsContent>
