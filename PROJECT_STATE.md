@@ -16,9 +16,9 @@ Canonical shared truth:
 
 Current canonical main checkpoint:
 
-`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
+`45fa433ef408f600ab6890ac43e170b327f1eec3`
 
-This includes merged PR #13: bounded wider timeout only on transient Ollama retry.
+This includes merged PR #14: authorized paths are maximum write scope, not mandatory edits.
 
 Local root used for MVP validation:
 
@@ -62,51 +62,44 @@ The real run exposed product blockers that were fixed narrowly, one at a time:
 - PR #10 — `Richiedi fix` now creates a bounded child run with Product Owner feedback instead of only recording a label;
 - PR #11 — one bounded pre-write correction when AI Developer `old_text` does not exactly match current authorized source;
 - PR #12 — semantic review is now structured, blocking, authoritative in `ReviewReport.json`, and can consume the remaining bounded repair budget before `READY_FOR_DECISION`;
-- PR #13 — transient Ollama retry keeps the first timeout unchanged and widens only the single retry (default 60 -> 180 seconds, cap 600).
+- PR #13 — transient Ollama retry keeps the first timeout unchanged and widens only the single retry (default 60 -> 180 seconds, cap 600);
+- PR #14 — authorized paths are now maximum write scope; a valid non-empty subset is allowed and a complete flat single-change response can be normalized deterministically.
 
-Main after PR #13:
+Main after PR #14:
 
-`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
+`45fa433ef408f600ab6890ac43e170b327f1eec3`
 
 ## Current confirmed blocker
 
-**Authorized paths are incorrectly treated as mandatory edits.**
+**Multiple independent edits to the same authorized file are rejected as duplicate paths.**
 
-The next real Dental Quote repair attempt passed the timeout blocker but failed with:
+The next real Dental Quote repair attempt passed the PR #14 contract blocker but failed with:
 
-`repair run execution failed: AIDeveloperFormatError: AI Developer multi-file patch missing fields: changes, schema_version`
+`repair run execution failed: ValueError: AI Developer multi-file patch contains duplicate paths`
 
-Canonical code inspection found:
-
-- the run authorizes two paths: `quote_calculator.py` and `test_quote_calculator.py`;
-- initial multi-file JSON Schema currently sets `minItems == len(authorized_paths)`;
-- the Developer prompt says to return exactly one change for every authorized path;
-- the deterministic validator defaults to `require_all_paths=True`;
-- therefore an otherwise complete single-file change inside an authorized two-file scope is rejected as malformed instead of being treated as a valid subset proposal.
-
-This confuses permission scope with mandatory edits.
+Canonical code inspection confirmed that the validator still assumes at most one structured change per file. That is too strict for a real file that may need separate edits to calculation logic and UI while remaining inside the same authorized path.
 
 ## Current proposal under validation
 
 Branch:
 
-`mvp1-authorized-scope-subset-normalization`
+`mvp1-disjoint-same-file-change-composition`
 
 Intent:
 
-- keep 1–3 authorized paths as the immutable maximum write scope;
-- allow the Developer to modify any non-empty subset actually required by the objective;
-- set the multi-file structured-output schema to `minItems=1`, `maxItems=len(authorized_paths)`;
-- deterministically normalize a complete flat single-change object into the existing `schema_version: 2.0 / changes:[...]` contract when it stays inside scope;
-- invent no missing change and perform no fuzzy patching;
-- keep exact `old_text`, path-expansion, no-op and size checks authoritative;
-- record actual changed artifacts separately from the larger authorized scope;
-- rely on the blocking semantic review from PR #12 to reject a subset that fails to implement required tests or behavior.
+- preserve the immutable 1–3 authorized path scope;
+- permit at most 4 structured operations per authorized path in subset mode;
+- require every `old_text` to occur exactly once in the same current source snapshot;
+- permit multiple operations on one file only when their original-source spans are disjoint;
+- reject overlapping/conflicting same-file operations before any write;
+- compose disjoint operations deterministically into one final replacement per file;
+- keep ToolGateway to one authoritative write per changed file;
+- keep no fuzzy patching, path expansion rejection, no-op/size checks, tests, semantic review and Product Owner promotion gate unchanged.
 
 ## MVP gates current status
 
 - **G1 Usability:** materially demonstrated; dashboard can initiate real runs.
-- **G2 Autonomy:** not yet PASS; the current multi-file contract still rejects valid in-scope subset proposals before the semantic repair path can operate.
+- **G2 Autonomy:** not yet PASS; the current validator still rejects valid disjoint same-file operations before tests and semantic review can complete.
 - **G3 Real output:** FAIL / not yet proven for the full three-treatment objective.
 - **G4 Quality:** semantic review is authoritative on main after PR #12; real-run validation is still pending because the current Developer contract failed before review.
 - **G5 Human control:** PASS so far; no candidate has been promoted without explicit Product Owner approval.
@@ -119,6 +112,6 @@ Do not add deployment, multi-tenant, billing, advanced observability, scaling, u
 
 ## Single next action
 
-Validate and, only after explicit Product Owner approval, merge the authorized-scope subset/normalization proposal.
+Validate and, only after explicit Product Owner approval, merge the disjoint same-file change composition proposal.
 
 Then rerun the same Dental Quote Product Owner repair scenario once. Inspect `ReviewReport.json` and `Changes.patch` before any promotion.

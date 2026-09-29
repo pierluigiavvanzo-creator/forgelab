@@ -342,6 +342,11 @@ def _ai_developer_response_schema(
         if require_all_paths
         else 1
     )
+    max_items = (
+        len(expected_paths)
+        if require_all_paths
+        else len(expected_paths) * 4
+    )
 
     return {
         "type": "object",
@@ -357,7 +362,7 @@ def _ai_developer_response_schema(
             "changes": {
                 "type": "array",
                 "minItems": min_items,
-                "maxItems": len(expected_paths),
+                "maxItems": max_items,
                 "items": change_schema,
             },
         },
@@ -794,6 +799,106 @@ def _validate_ai_developer_change(
     }
 
 
+def _compose_ai_developer_changes(
+    validated: list[dict[str, str]],
+    expected_paths: tuple[str, ...],
+    source_texts: dict[str, str],
+) -> list[dict[str, str]]:
+    grouped: dict[
+        str,
+        list[dict[str, str]],
+    ] = {
+        path: []
+        for path in expected_paths
+    }
+
+    for item in validated:
+        grouped[item["path"]].append(item)
+
+    normalized: list[dict[str, str]] = []
+
+    for path in expected_paths:
+        path_changes = grouped[path]
+
+        if not path_changes:
+            continue
+
+        if len(path_changes) > 4:
+            raise AIDeveloperFormatError(
+                "AI Developer may propose at most "
+                f"4 changes per authorized path; "
+                f"{path} has {len(path_changes)}"
+            )
+
+        if len(path_changes) == 1:
+            normalized.append(path_changes[0])
+            continue
+
+        source = source_texts[path]
+        spans: list[
+            tuple[int, int, dict[str, str]]
+        ] = []
+
+        for item in path_changes:
+            start = source.find(
+                item["old_text"]
+            )
+            end = start + len(
+                item["old_text"]
+            )
+            spans.append((
+                start,
+                end,
+                item,
+            ))
+
+        spans.sort(key=lambda entry: entry[0])
+
+        previous_end = -1
+
+        for start, end, _ in spans:
+            if start < previous_end:
+                raise AIDeveloperFormatError(
+                    "AI Developer changes overlap "
+                    f"in {path}"
+                )
+            previous_end = end
+
+        parts: list[str] = []
+        cursor = 0
+        summaries: list[str] = []
+
+        for start, end, item in spans:
+            parts.append(source[cursor:start])
+            parts.append(item["new_text"])
+            cursor = end
+            summaries.append(item["summary"])
+
+        parts.append(source[cursor:])
+        composed = "".join(parts)
+
+        if composed == source:
+            raise ValueError(
+                "AI Developer composed a no-op "
+                f"replacement for {path}"
+            )
+
+        if len(composed) > 100_000:
+            raise ValueError(
+                "AI Developer composed replacement "
+                "exceeds size limit"
+            )
+
+        normalized.append({
+            "path": path,
+            "old_text": source,
+            "new_text": composed,
+            "summary": "; ".join(summaries),
+        })
+
+    return normalized
+
+
 def _validate_ai_developer_patch(
     response_text: str,
     expected_paths: tuple[str, ...],
@@ -911,10 +1016,15 @@ def _validate_ai_developer_patch(
                 "AI Developer multi-file changes must contain "
                 "exactly one structured change per authorized path"
             )
-    elif not 1 <= len(raw_changes) <= len(expected_paths):
+    elif not (
+        1
+        <= len(raw_changes)
+        <= len(expected_paths) * 4
+    ):
         raise AIDeveloperFormatError(
-            "AI Developer repair must change one or more "
-            "already-authorized paths"
+            "AI Developer must propose between 1 and "
+            f"{len(expected_paths) * 4} bounded change "
+            "operations inside authorized paths"
         )
 
     if (
@@ -940,34 +1050,40 @@ def _validate_ai_developer_patch(
         for item in validated
     ]
 
-    if len(set(changed_paths)) != len(changed_paths):
-        raise ValueError(
-            "AI Developer multi-file patch "
-            "contains duplicate paths"
-        )
+    if require_all_paths:
+        if len(set(changed_paths)) != len(changed_paths):
+            raise ValueError(
+                "AI Developer multi-file patch "
+                "contains duplicate paths"
+            )
 
-    if (
-        require_all_paths
-        and set(changed_paths) != set(expected_paths)
-    ):
-        raise ValueError(
-            "AI Developer multi-file patch must "
-            "change every authorized path exactly once"
-        )
+        if set(changed_paths) != set(expected_paths):
+            raise ValueError(
+                "AI Developer multi-file patch must "
+                "change every authorized path exactly once"
+            )
 
-    by_path = {
-        item["path"]: item
-        for item in validated
-    }
+        by_path = {
+            item["path"]: item
+            for item in validated
+        }
+        normalized_changes = [
+            by_path[path]
+            for path in expected_paths
+        ]
+    else:
+        normalized_changes = (
+            _compose_ai_developer_changes(
+                validated,
+                expected_paths,
+                source_texts,
+            )
+        )
 
     return {
         "schema_version": "2.0",
         "summary": summary.strip(),
-        "changes": [
-            by_path[path]
-            for path in expected_paths
-            if path in by_path
-        ],
+        "changes": normalized_changes,
     }
 
 
@@ -1392,6 +1508,8 @@ Rules:
 - every path MUST be one of the authorized target paths.
 - authorized paths define the maximum write scope, not mandatory edits.
 - return one or more changes only for files that actually need modification.
+- multiple changes may target the same file only when their old_text regions are disjoint.
+- use at most 4 changes per authorized path.
 - old_text MUST occur exactly once in its corresponding file.
 - choose the smallest sufficient replacement for each file.
 - do not modify any other file.
@@ -1482,6 +1600,8 @@ Rules:
 - every path MUST be one of the authorized target paths.
 - authorized paths define the maximum write scope, not mandatory edits.
 - return one or more changes only for files that actually need modification.
+- multiple changes may target the same file only when their old_text regions are disjoint.
+- use at most 4 changes per authorized path.
 - old_text MUST be copied verbatim from the current complete authorized file shown above.
 - old_text MUST occur exactly once in its corresponding current file.
 - do not reference text introduced only by a prior candidate or prior repair.
@@ -2290,6 +2410,8 @@ UNVERIFIED required behavior identified by the Reviewer.
 Rules:
 - every path MUST stay inside the ORIGINAL authorized path set;
 - repair only the non-empty subset actually needed;
+- multiple changes may target the same file only when their old_text regions are disjoint;
+- use at most 4 changes per authorized path;
 - old_text MUST be copied verbatim from the current file;
 - old_text MUST occur exactly once;
 - do not weaken or delete valid tests merely to make them pass;
@@ -2372,6 +2494,8 @@ Rules:
 - this is the ONE bounded pre-write correction for this repair;
 - stay inside the original authorized path set;
 - repair only the non-empty subset actually needed;
+- multiple changes may target the same file only when their old_text regions are disjoint;
+- use at most 4 changes per authorized path;
 - old_text MUST be copied verbatim from the current file;
 - old_text MUST occur exactly once;
 - do not reference text from an earlier candidate state;

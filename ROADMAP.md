@@ -157,3 +157,30 @@ Required behavior:
 - blocking semantic review decides whether the subset actually satisfies the objective.
 
 Single next action: validate and, only with explicit Product Owner approval, merge that proposal; then repeat the same Dental Quote repair scenario once.
+
+
+## 2026-09-29 MVP-1 live blocker update — disjoint same-file operations
+
+PR #14 merged the authorized-scope subset/normalization correction.
+
+The next real Product Owner repair attempt then failed with:
+
+`ValueError: AI Developer multi-file patch contains duplicate paths`
+
+Root cause: the multi-file validator still assumes one structured change per file, even when separate edits to the same authorized file are independent.
+
+Current proposal branch:
+
+`mvp1-disjoint-same-file-change-composition`
+
+Required behavior:
+
+- subset mode remains inside the same authorized path set;
+- permit at most 4 operations per authorized path;
+- validate every `old_text` against the same current source snapshot;
+- reject overlapping original-source spans;
+- deterministically compose disjoint same-file operations into one final file replacement;
+- apply one ToolGateway write per changed file;
+- preserve deterministic tests, semantic review and explicit Product Owner gate.
+
+Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the same Dental Quote repair scenario once.
