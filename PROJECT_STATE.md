@@ -16,9 +16,9 @@ Canonical shared truth:
 
 Current canonical main checkpoint:
 
-`0d557c57ed991c1ab8cf90cd96dd47952fa564ce`
+`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
 
-This includes merged PR #12: blocking semantic review with bounded repair.
+This includes merged PR #13: bounded wider timeout only on transient Ollama retry.
 
 Local root used for MVP validation:
 
@@ -61,55 +61,54 @@ The real run exposed product blockers that were fixed narrowly, one at a time:
 - PR #9 — sidebar navigation + read-only evidence viewer + allowlisted `Changes.patch`;
 - PR #10 — `Richiedi fix` now creates a bounded child run with Product Owner feedback instead of only recording a label;
 - PR #11 — one bounded pre-write correction when AI Developer `old_text` does not exactly match current authorized source;
-- PR #12 — semantic review is now structured, blocking, authoritative in `ReviewReport.json`, and can consume the remaining bounded repair budget before `READY_FOR_DECISION`.
+- PR #12 — semantic review is now structured, blocking, authoritative in `ReviewReport.json`, and can consume the remaining bounded repair budget before `READY_FOR_DECISION`;
+- PR #13 — transient Ollama retry keeps the first timeout unchanged and widens only the single retry (default 60 -> 180 seconds, cap 600).
 
-Main after PR #12:
+Main after PR #13:
 
-`0d557c57ed991c1ab8cf90cd96dd47952fa564ce`
+`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
 
 ## Current confirmed blocker
 
-**Local Ollama retry timeout is too narrow for the richer semantic-review path.**
+**Authorized paths are incorrectly treated as mandatory edits.**
 
-The first Dental Quote repair attempt after PR #12 failed with:
+The next real Dental Quote repair attempt passed the timeout blocker but failed with:
 
-`repair run execution failed: ProviderTransientError: Ollama unavailable: timed out`
+`repair run execution failed: AIDeveloperFormatError: AI Developer multi-file patch missing fields: changes, schema_version`
 
-Canonical code inspection confirmed:
+Canonical code inspection found:
 
-- parent run timeout defaults to 60 seconds;
-- Product Owner child repair inherits that timeout unchanged;
-- S1 and S2 local Ollama routes each allow one retry;
-- both first attempt and retry currently use the same 60-second timeout;
-- therefore one transiently slow local generation gets at most two identical 60-second windows.
+- the run authorizes two paths: `quote_calculator.py` and `test_quote_calculator.py`;
+- initial multi-file JSON Schema currently sets `minItems == len(authorized_paths)`;
+- the Developer prompt says to return exactly one change for every authorized path;
+- the deterministic validator defaults to `require_all_paths=True`;
+- therefore an otherwise complete single-file change inside an authorized two-file scope is rejected as malformed instead of being treated as a valid subset proposal.
 
-This is a G2 Product Critical reliability blocker, not a patch-quality or scope failure.
+This confuses permission scope with mandatory edits.
 
 ## Current proposal under validation
 
 Branch:
 
-`mvp1-ollama-transient-timeout-retry`
+`mvp1-authorized-scope-subset-normalization`
 
 Intent:
 
-- preserve the first Ollama attempt at the existing requested timeout;
-- only after a transient Ollama failure, widen the retry timeout to 3x the original value, capped at 600 seconds;
-- keep the existing retry count unchanged;
-- leave non-Ollama providers unchanged;
-- do not change deterministic test timeouts;
-- do not change model, provider, cost, ToolGateway, semantic gate or Product Owner promotion rules.
-
-For the current default 60-second run, the bounded local sequence becomes:
-
-`60s first attempt -> transient timeout -> one 180s Ollama retry`
+- keep 1–3 authorized paths as the immutable maximum write scope;
+- allow the Developer to modify any non-empty subset actually required by the objective;
+- set the multi-file structured-output schema to `minItems=1`, `maxItems=len(authorized_paths)`;
+- deterministically normalize a complete flat single-change object into the existing `schema_version: 2.0 / changes:[...]` contract when it stays inside scope;
+- invent no missing change and perform no fuzzy patching;
+- keep exact `old_text`, path-expansion, no-op and size checks authoritative;
+- record actual changed artifacts separately from the larger authorized scope;
+- rely on the blocking semantic review from PR #12 to reject a subset that fails to implement required tests or behavior.
 
 ## MVP gates current status
 
 - **G1 Usability:** materially demonstrated; dashboard can initiate real runs.
-- **G2 Autonomy:** not yet PASS; local semantic-repair flow currently fails on a repeated 60-second Ollama timeout window.
+- **G2 Autonomy:** not yet PASS; the current multi-file contract still rejects valid in-scope subset proposals before the semantic repair path can operate.
 - **G3 Real output:** FAIL / not yet proven for the full three-treatment objective.
-- **G4 Quality:** semantic review blocker was corrected by PR #12; real-run validation is still pending because the Ollama timeout prevented completion.
+- **G4 Quality:** semantic review is authoritative on main after PR #12; real-run validation is still pending because the current Developer contract failed before review.
 - **G5 Human control:** PASS so far; no candidate has been promoted without explicit Product Owner approval.
 
 ## Infrastructure freeze
@@ -120,6 +119,6 @@ Do not add deployment, multi-tenant, billing, advanced observability, scaling, u
 
 ## Single next action
 
-Validate and, only after explicit Product Owner approval, merge the bounded Ollama retry-timeout proposal.
+Validate and, only after explicit Product Owner approval, merge the authorized-scope subset/normalization proposal.
 
-Then rerun the same Dental Quote Product Owner repair scenario. Inspect `ReviewReport.json` and `Changes.patch` before any promotion.
+Then rerun the same Dental Quote Product Owner repair scenario once. Inspect `ReviewReport.json` and `Changes.patch` before any promotion.
