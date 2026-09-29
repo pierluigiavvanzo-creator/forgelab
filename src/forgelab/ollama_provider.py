@@ -43,9 +43,10 @@ class OllamaProvider:
         model: str,
         prompt: str,
         timeout_seconds: int,
+        response_format: dict[str, object] | str | None = None,
     ) -> ProviderResponse:
 
-        payload = json.dumps({
+        request_payload: dict[str, object] = {
             "model": model,
             "prompt": prompt,
             "stream": False,
@@ -56,7 +57,14 @@ class OllamaProvider:
                 # multi-file AI Developer JSON patches.
                 "num_predict": 2048,
             },
-        }).encode("utf-8")
+        }
+
+        if response_format is not None:
+            request_payload["format"] = response_format
+
+        payload = json.dumps(
+            request_payload
+        ).encode("utf-8")
 
         request = Request(
             f"{self.endpoint}/api/generate",
