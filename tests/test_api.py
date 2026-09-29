@@ -41,6 +41,16 @@ class ApiTests(unittest.TestCase):
             encoding="utf-8",
         )
 
+        (self.run / "Changes.patch").write_text(
+            "diff --git a/a.py b/a.py\n"
+            "--- a/a.py\n"
+            "+++ b/a.py\n"
+            "@@ -1 +1 @@\n"
+            "-OLD\n"
+            "+NEW\n",
+            encoding="utf-8",
+        )
+
         self.server = make_server(
             self.root,
             TOKEN,
@@ -220,6 +230,16 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn(
             "private.txt",
             payload["artifacts"],
+        )
+
+        self.assertEqual(
+            payload["artifacts"]["Changes.patch"]["text"],
+            "diff --git a/a.py b/a.py\n"
+            "--- a/a.py\n"
+            "+++ b/a.py\n"
+            "@@ -1 +1 @@\n"
+            "-OLD\n"
+            "+NEW\n",
         )
 
     def test_approval_promotes_to_local_branch_without_touching_main(self):

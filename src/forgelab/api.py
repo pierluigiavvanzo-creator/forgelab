@@ -34,6 +34,9 @@ ARTIFACTS = (
     "AIDeveloperPatch.json",
     "PromotionResult.json",
 )
+TEXT_ARTIFACTS = (
+    "Changes.patch",
+)
 DECISIONS = {"approve": "APPROVE", "repair": "REPAIR", "reject": "REJECT"}
 
 
@@ -152,13 +155,24 @@ class ForgeLabApi:
             reverse=True,
         )
 
-    def artifacts(self, run_id: str) -> dict[str, dict[str, Any]]:
+    def artifacts(self, run_id: str) -> dict[str, Any]:
         directory = self.run_dir(run_id)
-        return {
+        artifacts: dict[str, Any] = {
             name: _read_json(directory / name)
             for name in ARTIFACTS
             if (directory / name).is_file()
         }
+
+        for name in TEXT_ARTIFACTS:
+            path = directory / name
+            if path.is_file():
+                artifacts[name] = {
+                    "text": path.read_text(
+                        encoding="utf-8",
+                    ),
+                }
+
+        return artifacts
 
     def create_run(self, payload: dict[str, Any]) -> dict[str, Any]:
         repository_text = _required_string(
