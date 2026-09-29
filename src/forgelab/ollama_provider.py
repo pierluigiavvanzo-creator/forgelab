@@ -52,7 +52,9 @@ class OllamaProvider:
             "options": {
                 "temperature": 0.1,
                 "num_ctx": 4096,
-                "num_predict": 256,
+                # Bounded but large enough for structured
+                # multi-file AI Developer JSON patches.
+                "num_predict": 2048,
             },
         }).encode("utf-8")
 
