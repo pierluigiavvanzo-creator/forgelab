@@ -242,6 +242,281 @@ class ApiTests(unittest.TestCase):
             "+NEW\n",
         )
 
+    def test_human_repair_creates_bounded_child_run(self):
+        repo = self.make_demo_repo()
+
+        (self.run / "ExecutionPlan.json").write_text(
+            json.dumps({
+                "run_id": "run-test123",
+                "objective": (
+                    "Add complete calculator behavior"
+                ),
+                "repository": str(repo.resolve()),
+                "selected_roles": [
+                    "PROJECT_MANAGER",
+                    "DEVELOPER",
+                    "TESTER",
+                    "REVIEWER",
+                ],
+                "max_repair_attempts": 1,
+                "test_command": [
+                    sys.executable,
+                    "-m",
+                    "unittest",
+                    "discover",
+                    "-v",
+                ],
+                "change_operation": "ai_generate",
+                "allowed_paths": [
+                    "calculator.py",
+                    "test_calculator.py",
+                ],
+                "timeout_seconds": 60,
+            }),
+            encoding="utf-8",
+        )
+
+        (self.run / "GateDecision.json").write_text(
+            json.dumps({
+                "gate_type": "G3_PROMOTE",
+                "actor": "SYSTEM",
+                "decision": "PENDING",
+                "scope": "Review candidate",
+                "timestamp": (
+                    "2026-09-29T00:00:00+00:00"
+                ),
+            }),
+            encoding="utf-8",
+        )
+
+        captured = {}
+
+        def fake_run(request, runs_root):
+            captured["request"] = request
+            child = runs_root / "run-child456"
+            child.mkdir()
+
+            (child / "RunSummary.json").write_text(
+                json.dumps({
+                    "run_id": "run-child456",
+                    "status": "READY_FOR_DECISION",
+                    "decision": "Human gate pending",
+                    "created_at": (
+                        "2026-09-29T00:01:00+00:00"
+                    ),
+                }),
+                encoding="utf-8",
+            )
+
+            return child
+
+        feedback = (
+            "The prior candidate is incomplete: "
+            "implement every original requirement."
+        )
+
+        with patch(
+            "forgelab.api.run_multi_agent",
+            side_effect=fake_run,
+        ):
+            with self.request(
+                "/v1/runs/run-test123/repairs",
+                "POST",
+                {
+                    "actor": "Product Owner",
+                    "feedback": feedback,
+                },
+            ) as response:
+                self.assertEqual(
+                    response.status,
+                    201,
+                )
+                payload = json.load(response)
+
+        self.assertEqual(
+            payload["run_id"],
+            "run-child456",
+        )
+        self.assertEqual(
+            payload["parent_run_id"],
+            "run-test123",
+        )
+        self.assertEqual(
+            payload["decision"],
+            "REPAIR",
+        )
+
+        request = captured["request"]
+
+        self.assertEqual(
+            request.repository,
+            repo.resolve(),
+        )
+        self.assertEqual(
+            request.allowed_paths,
+            (
+                "calculator.py",
+                "test_calculator.py",
+            ),
+        )
+        self.assertEqual(
+            request.operation,
+            "ai_generate",
+        )
+        self.assertEqual(
+            request.max_repair_attempts,
+            1,
+        )
+        self.assertIn(
+            feedback,
+            request.objective,
+        )
+
+        parent_gate = json.loads(
+            (self.run / "GateDecision.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_summary = json.loads(
+            (self.run / "RunSummary.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        parent_record = json.loads(
+            (
+                self.run /
+                "HumanRepairRequest.json"
+            ).read_text(
+                encoding="utf-8"
+            )
+        )
+        child_record = json.loads(
+            (
+                self.root /
+                "run-child456" /
+                "HumanRepairRequest.json"
+            ).read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            parent_gate["decision"],
+            "REPAIR",
+        )
+        self.assertEqual(
+            parent_summary["status"],
+            "REPAIRING",
+        )
+        self.assertEqual(
+            parent_record["child_run_id"],
+            "run-child456",
+        )
+        self.assertEqual(
+            child_record["parent_run_id"],
+            "run-test123",
+        )
+        self.assertEqual(
+            child_record["feedback"],
+            feedback,
+        )
+
+
+    def test_human_repair_accepts_already_recorded_repair_gate(self):
+        repo = self.make_demo_repo()
+
+        (self.run / "ExecutionPlan.json").write_text(
+            json.dumps({
+                "run_id": "run-test123",
+                "objective": "Fix complete behavior",
+                "repository": str(repo.resolve()),
+                "selected_roles": [
+                    "PROJECT_MANAGER",
+                    "DEVELOPER",
+                    "TESTER",
+                    "REVIEWER",
+                ],
+                "max_repair_attempts": 1,
+                "test_command": [
+                    sys.executable,
+                    "-m",
+                    "unittest",
+                    "discover",
+                    "-v",
+                ],
+                "change_operation": "ai_generate",
+                "allowed_paths": [
+                    "calculator.py",
+                ],
+                "timeout_seconds": 60,
+            }),
+            encoding="utf-8",
+        )
+
+        (self.run / "GateDecision.json").write_text(
+            json.dumps({
+                "gate_type": "G3_PROMOTE",
+                "actor": "Product Owner",
+                "decision": "REPAIR",
+                "scope": "Candidate patch not promoted",
+                "timestamp": (
+                    "2026-09-29T00:00:00+00:00"
+                ),
+            }),
+            encoding="utf-8",
+        )
+
+        summary = json.loads(
+            (self.run / "RunSummary.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        summary["status"] = "REPAIRING"
+        summary["decision"] = "REPAIR"
+        (self.run / "RunSummary.json").write_text(
+            json.dumps(summary),
+            encoding="utf-8",
+        )
+
+        def fake_run(request, runs_root):
+            child = runs_root / "run-child789"
+            child.mkdir()
+            (child / "RunSummary.json").write_text(
+                json.dumps({
+                    "run_id": "run-child789",
+                    "status": "READY_FOR_DECISION",
+                    "decision": "Human gate pending",
+                }),
+                encoding="utf-8",
+            )
+            return child
+
+        with patch(
+            "forgelab.api.run_multi_agent",
+            side_effect=fake_run,
+        ):
+            with self.request(
+                "/v1/runs/run-test123/repairs",
+                "POST",
+                {
+                    "actor": "Product Owner",
+                    "feedback": (
+                        "Complete all missing requirements."
+                    ),
+                },
+            ) as response:
+                payload = json.load(response)
+
+        self.assertEqual(
+            payload["run_id"],
+            "run-child789",
+        )
+        self.assertEqual(
+            payload["decision"],
+            "REPAIR",
+        )
+
+
     def test_approval_promotes_to_local_branch_without_touching_main(self):
         repo = self.make_demo_repo()
         request = RunRequest(
