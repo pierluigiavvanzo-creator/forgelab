@@ -184,19 +184,34 @@ class ModelRouter:
         if provider is None:
             raise RouterError(f"provider is not configured: {route.provider}")
         for attempt in range(1, route.max_retries + 2):
+            attempt_timeout_seconds = timeout_seconds
+
+            if (
+                route.provider == "ollama"
+                and attempt > 1
+            ):
+                attempt_timeout_seconds = min(
+                    600,
+                    max(
+                        timeout_seconds,
+                        timeout_seconds * 3,
+                    ),
+                )
+
             started = time.monotonic()
+
             try:
                 response = (
                     provider.invoke(
                         route.model,
                         prompt,
-                        timeout_seconds,
+                        attempt_timeout_seconds,
                     )
                     if response_format is None
                     else provider.invoke(
                         route.model,
                         prompt,
-                        timeout_seconds,
+                        attempt_timeout_seconds,
                         response_format,
                     )
                 )

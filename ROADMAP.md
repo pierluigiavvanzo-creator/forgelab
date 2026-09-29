@@ -108,3 +108,26 @@ For every real MVP run record:
 Primary economic KPI:
 
 `USER_TIME_SAVED_PER_SUCCESSFUL_RUN`
+
+
+## 2026-09-29 MVP-1 live blocker update
+
+PR #12 merged the blocking semantic-review gate.
+
+The next real Product Owner repair attempt failed before candidate completion with:
+
+`ProviderTransientError: Ollama unavailable: timed out`
+
+Current code gives local Ollama one retry, but both attempts use the same inherited 60-second timeout.
+
+Current proposal branch:
+
+`mvp1-ollama-transient-timeout-retry`
+
+Minimal intended behavior:
+
+`60s first local attempt -> transient timeout -> one 180s retry`
+
+No extra retry, no paid provider, no model change, no deterministic test-timeout change.
+
+Single next action: validate and, only with explicit Product Owner approval, merge that proposal; then repeat the same Dental Quote repair scenario.

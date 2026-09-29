@@ -16,6 +16,7 @@ class ScriptedProvider:
         self.outcomes = list(outcomes)
         self.calls = 0
         self.response_formats = []
+        self.timeouts = []
 
     def invoke(
         self,
@@ -27,6 +28,9 @@ class ScriptedProvider:
         self.response_formats.append(
             response_format
         )
+        self.timeouts.append(
+            timeout_seconds
+        )
         outcome = self.outcomes[self.calls]
         self.calls += 1
         if isinstance(outcome, Exception):
@@ -34,10 +38,16 @@ class ScriptedProvider:
         return outcome
 
 
-def routes(pricing=None, retries=1, max_cost="0.50"):
+def routes(
+    pricing=None,
+    retries=1,
+    max_cost="0.50",
+    provider_name="test",
+):
     return {
         task_class: ModelRoute(
-            task_class, None if task_class is TaskClass.S0 else "test",
+            task_class,
+            None if task_class is TaskClass.S0 else provider_name,
             "deterministic" if task_class is TaskClass.S0 else "model",
             0 if task_class is TaskClass.S0 else retries,
             Decimal("0") if task_class is TaskClass.S0 else Decimal(max_cost),
@@ -116,11 +126,113 @@ class ModelRouterTests(unittest.TestCase):
         )
 
     def test_transient_failure_retries_with_bounded_attempts(self):
-        provider = ScriptedProvider([ProviderTransientError("busy"), ProviderResponse("ok", 1, 1, actual_cost=Decimal("0.01"))])
+        provider = ScriptedProvider([
+            ProviderTransientError("busy"),
+            ProviderResponse(
+                "ok",
+                1,
+                1,
+                actual_cost=Decimal("0.01"),
+            ),
+        ])
         ledger = UsageLedger(Decimal("1"))
-        router = ModelRouter(routes(retries=1), {"test": provider}, ledger)
-        router.execute(TaskClass.S2, "prompt", "t2", "DEVELOPER", "local implementation")
-        self.assertEqual([record.outcome for record in ledger.records], ["RETRY", "SUCCESS"])
+        router = ModelRouter(
+            routes(retries=1),
+            {"test": provider},
+            ledger,
+        )
+        router.execute(
+            TaskClass.S2,
+            "prompt",
+            "t2",
+            "DEVELOPER",
+            "local implementation",
+        )
+        self.assertEqual(
+            [
+                record.outcome
+                for record in ledger.records
+            ],
+            ["RETRY", "SUCCESS"],
+        )
+        self.assertEqual(
+            provider.timeouts,
+            [60, 60],
+        )
+
+    def test_ollama_retry_uses_wider_bounded_timeout(self):
+        provider = ScriptedProvider([
+            ProviderTransientError("timed out"),
+            ProviderResponse(
+                "ok",
+                1,
+                1,
+                actual_cost=Decimal("0"),
+            ),
+        ])
+        ledger = UsageLedger(Decimal("1"))
+        router = ModelRouter(
+            routes(
+                retries=1,
+                provider_name="ollama",
+            ),
+            {"ollama": provider},
+            ledger,
+        )
+
+        router.execute(
+            TaskClass.S2,
+            "prompt",
+            "t-ollama-timeout",
+            "DEVELOPER",
+            "local structured repair",
+            timeout_seconds=60,
+        )
+
+        self.assertEqual(
+            provider.timeouts,
+            [60, 180],
+        )
+        self.assertEqual(
+            [
+                record.outcome
+                for record in ledger.records
+            ],
+            ["RETRY", "SUCCESS"],
+        )
+
+    def test_ollama_retry_timeout_is_capped(self):
+        provider = ScriptedProvider([
+            ProviderTransientError("timed out"),
+            ProviderResponse(
+                "ok",
+                1,
+                1,
+                actual_cost=Decimal("0"),
+            ),
+        ])
+        router = ModelRouter(
+            routes(
+                retries=1,
+                provider_name="ollama",
+            ),
+            {"ollama": provider},
+            UsageLedger(Decimal("1")),
+        )
+
+        router.execute(
+            TaskClass.S1,
+            "prompt",
+            "t-ollama-cap",
+            "REVIEWER",
+            "blocking semantic review",
+            timeout_seconds=300,
+        )
+
+        self.assertEqual(
+            provider.timeouts,
+            [300, 600],
+        )
 
     def test_permanent_failure_is_recorded_without_retry(self):
         provider = ScriptedProvider([ProviderPermanentError("invalid request")])

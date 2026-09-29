@@ -41,9 +41,9 @@ Canonical branch:
 
 `main`
 
-Main checkpoint after PR #11:
+Current main checkpoint after PR #12:
 
-`ba8e0fee79676e3b65fc82d980d24989c1d22c90`
+`0d557c57ed991c1ab8cf90cd96dd47952fa564ce`
 
 Local ForgeLab root:
 
@@ -238,57 +238,68 @@ The technical `old_text` blocker was passed, but the candidate was still semanti
 
 Exact child run ID was not captured in the chat evidence and must not be invented.
 
-## 9. Root cause of the current blocker
+## 9. PR #12 — semantic review blocker corrected
 
-Live canonical code inspection found:
+PR #12 was merged to main:
 
-- AI Reviewer receives the objective and diff;
-- `AIReview.json` is persisted;
-- but AI Reviewer output is advisory only;
-- authoritative `ReviewReport.json` is created by `review_patch()`;
-- `review_patch()` checks only:
-  - non-empty diff;
-  - changed paths stay inside allowed scope;
-  - at least one changed path exists;
-- semantic objective coverage does not affect `ReviewReport.status`;
-- therefore a semantically incomplete patch can reach `READY_FOR_DECISION`.
+`0d557c57ed991c1ab8cf90cd96dd47952fa564ce`
 
-This is the current concrete MVP blocker.
+It makes semantic objective coverage structured and blocking:
 
-## 10. Current proposal
+- Reviewer returns JSON Schema-constrained requirement coverage;
+- quantitative requirements such as `three`, `each`, `all`, validation and tests are explicitly reviewed;
+- MISSING/UNVERIFIED required behavior causes semantic FAIL;
+- authoritative `ReviewReport.json` combines deterministic scope review and semantic review;
+- if bounded repair budget remains, semantic FAIL triggers Developer repair -> deterministic retest -> semantic re-review;
+- `READY_FOR_DECISION` is allowed only after review PASS;
+- explicit Product Owner promotion gate remains unchanged.
+
+## 10. Latest real-run blocker after PR #12
+
+The next Product Owner repair attempt did not reach a new candidate. The UI returned:
+
+`repair run execution failed: ProviderTransientError: Ollama unavailable: timed out`
+
+Canonical code inspection confirmed:
+
+- run timeout defaults to 60 seconds;
+- the Product Owner child repair inherits the parent timeout;
+- local S1/S2 routes use Ollama and allow one retry;
+- the router currently passes the same 60-second timeout to both attempts.
+
+Therefore the current local failure sequence is:
+
+`60s attempt -> transient timeout -> 60s retry -> FAIL`
+
+This is not evidence that the semantic-review logic failed. The run stopped because the local model provider exhausted its two identical timeout windows.
+
+## 11. Current proposal
 
 Working branch:
 
-`mvp1-semantic-review-gate`
+`mvp1-ollama-transient-timeout-retry`
 
 Base:
 
-`ba8e0fee79676e3b65fc82d980d24989c1d22c90`
+`0d557c57ed991c1ab8cf90cd96dd47952fa564ce`
 
-Proposal intent:
+Proposal:
 
-1. make Reviewer output structured through Ollama JSON Schema;
-2. require a requirement-by-requirement objective coverage list;
-3. preserve quantitative obligations such as `three`, `each`, `all`, validation and tests;
-4. mark MISSING/UNVERIFIED requirements as semantic FAIL;
-5. combine deterministic scope review + semantic review into authoritative `ReviewReport.json`;
-6. prevent `READY_FOR_DECISION` when semantic review fails;
-7. if deterministic scope is valid and bounded repair budget remains:
-   - transition `REVIEW -> REPAIRING`;
-   - generate Developer repair from blocking semantic findings;
-   - keep original authorized paths immutable;
-   - deterministic retest;
-   - semantic re-review;
-8. reach Security / `READY_FOR_DECISION` only after both reviews PASS;
-9. preserve explicit Product Owner approval before promotion.
+1. first Ollama attempt keeps the original requested timeout;
+2. only after a transient Ollama failure, the existing retry uses 3x the original timeout, capped at 600 seconds;
+3. current 60-second default therefore becomes `60 -> 180` for the two bounded attempts;
+4. retry count remains exactly one;
+5. non-Ollama providers keep unchanged timeout behavior;
+6. deterministic test timeout remains unchanged;
+7. model, cost, routing class, structured output, ToolGateway, semantic gate and promotion rules remain unchanged.
 
-Regression coverage added on the proposal branch:
+Regression tests cover:
 
-- semantic review FAIL -> bounded Developer repair -> deterministic retest -> semantic re-review PASS -> `READY_FOR_DECISION`;
-- semantic review FAIL with zero repair budget -> run remains blocked at REVIEW and GateDecision becomes REPAIR;
-- existing Developer structured-output, exact-reference and scope guards remain.
+- generic transient provider remains `60 -> 60`;
+- Ollama transient retry becomes `60 -> 180`;
+- widened retry is capped at 600 seconds.
 
-No CI workflow was automatically available on the recent PRs, so local regression execution remains required after any approved merge.
+No automatic GitHub CI has been available on the recent PRs, so local regression execution remains required after an approved merge.
 
 ## 11. Current MVP gate assessment
 
@@ -300,9 +311,9 @@ The Product Owner can initiate a real run from the dashboard and receive visible
 
 ### G2 — Autonomy
 
-**Not yet final PASS.**
+**FAIL / current blocker.**
 
-Repair child runs now launch automatically, but semantic incompleteness must be detected/repaired without requiring the Product Owner to keep discovering the same missing requirement.
+The bounded child-run path now exists, but a transient local Ollama timeout currently exhausts two identical 60-second windows instead of recovering with a wider bounded retry window.
 
 ### G3 — Real output
 
@@ -312,9 +323,9 @@ Three-treatment visible behavior has not yet been delivered.
 
 ### G4 — Quality
 
-**FAIL / current blocker.**
+**Implementation corrected by PR #12; real-run validation pending.**
 
-Current `main` can let semantically incomplete work pass because semantic Reviewer output does not gate `ReviewReport`.
+Semantic review is now authoritative and blocking on main, but the first real validation attempt after PR #12 stopped at provider timeout before the semantic path could complete.
 
 ### G5 — Human control
 
@@ -369,16 +380,16 @@ Only fix blockers concretely exposed by MVP-1.
 
 Validate the branch:
 
-`mvp1-semantic-review-gate`
+`mvp1-ollama-transient-timeout-retry`
 
 If the proposal is sound, open/approve/merge its PR under the existing governed workflow.
 
 Then:
 
 1. fast-forward local ForgeLab to the approved `main`;
-2. rerun the same Dental Quote Product Owner repair scenario;
-3. let semantic review automatically block/repair missing objective coverage;
-4. inspect the new `Changes.patch`;
+2. rerun the same Dental Quote Product Owner repair scenario once;
+3. allow the existing Ollama retry to use the wider bounded timeout only if the first local call times out;
+4. inspect `ReviewReport.json` and `Changes.patch`;
 5. approve only if the patch genuinely implements the complete three-treatment objective;
 6. after approval, verify exact promotion/retest/commit and visible target-app behavior.
 
