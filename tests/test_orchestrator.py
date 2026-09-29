@@ -518,6 +518,136 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_ai_developer_repairs_invalid_multifile_format_once(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_multi_demo(root)
+
+            invalid_format = json.dumps({
+                "summary": "Missing required contract fields",
+            })
+
+            corrected_patch = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Fix addition and operation metadata",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a - b",
+                        "new_text": "return a + b",
+                        "summary": "Fix addition implementation",
+                    },
+                    {
+                        "path": "operation.py",
+                        "old_text": 'OPERATION = "subtract"',
+                        "new_text": 'OPERATION = "add"',
+                        "summary": "Align operation metadata",
+                    },
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    "Bounded multi-file plan",
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    invalid_format,
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    corrected_patch,
+                    50,
+                    30,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    "Independent semantic review",
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix calculator addition and align "
+                            "operation metadata"
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                        allowed_paths=(
+                            "calculator.py",
+                            "operation.py",
+                        ),
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            generated = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                generated["format_repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                generated["validated_change_count"],
+                2,
+            )
+            self.assertEqual(
+                usage["llm_calls"],
+                4,
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                4,
+            )
+
+            repair_prompt = invoke.call_args_list[2].args[1]
+            self.assertIn(
+                "ONE bounded format-repair attempt",
+                repair_prompt,
+            )
+            self.assertIn(
+                "missing fields: changes, schema_version",
+                repair_prompt,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_ai_developer_rejects_path_expansion(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -549,7 +679,7 @@ class MultiAgentTests(unittest.TestCase):
             with patch(
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
-            ):
+            ) as invoke:
                 with self.assertRaises(
                     ValueError
                 ):
@@ -564,6 +694,10 @@ class MultiAgentTests(unittest.TestCase):
                         root / "runs",
                     )
 
+            self.assertEqual(
+                len(invoke.call_args_list),
+                2,
+            )
             self.assertEqual(
                 git(
                     repo,
