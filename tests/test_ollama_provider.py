@@ -69,6 +69,41 @@ class OllamaProviderTests(unittest.TestCase):
         )
 
     @patch("forgelab.ollama_provider.urlopen")
+    def test_multifile_output_budget_is_bounded_and_sufficient(
+        self,
+        mocked,
+    ):
+        mocked.return_value = FakeResponse({
+            "response": "{\"schema_version\": \"2.0\"}",
+            "prompt_eval_count": 12,
+            "eval_count": 8,
+        })
+
+        OllamaProvider().invoke(
+            "qwen2.5-coder:7b",
+            "return structured multi-file JSON",
+            60,
+        )
+
+        request = mocked.call_args.args[0]
+        payload = json.loads(
+            request.data.decode("utf-8")
+        )
+
+        self.assertEqual(
+            payload["options"]["num_ctx"],
+            4096,
+        )
+        self.assertEqual(
+            payload["options"]["num_predict"],
+            2048,
+        )
+        self.assertEqual(
+            payload["options"]["temperature"],
+            0.1,
+        )
+
+    @patch("forgelab.ollama_provider.urlopen")
     def test_connection_failure_is_transient(
         self,
         mocked,
