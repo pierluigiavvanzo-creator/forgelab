@@ -1,35 +1,57 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-09-22
-**Checkpoint:** M8.9 source synchronization complete / infrastructure freeze
-**Status:** GitHub + local main aligned; next action is MVP-1
+**Checkpoint date:** 2026-09-29  
+**Checkpoint:** MVP-1 real Dental Quote validation / semantic-review blocker  
+**Status:** PRE-MVP; no Dental Quote candidate approved or promoted
 
-## 1. Mission
+## 1. Mission and operating contract
 
 ForgeLab is a governed multi-agent software-development control plane.
 
-Target outcome:
+Target workflow:
 
-> Receive a Product Owner objective, understand repository/context, plan, modify software in an isolated workspace, test, diagnose/repair in bounded loops, perform independent review/security, and present APPROVE / REJECT / REPAIR without routine manual debugging by the Product Owner.
+`OBJECTIVE -> PROJECT/REPO CONTEXT -> PLAN -> AGENT SELECTION -> ISOLATED IMPLEMENTATION -> DETERMINISTIC TEST -> BOUNDED REPAIR -> REVIEW -> SECURITY -> READY_FOR_DECISION -> APPROVE | REJECT | REPAIR -> EXACT REVIEWED PROMOTION -> VERIFIED OUTPUT`
 
 Guiding metric:
 
 `ECONOMIC VALUE × USABLE PRODUCT VALUE / USER TIME`
 
-Operating preferences:
+Product Owner contract:
 
-- normal ChatGPT chat + local PowerShell;
+- Product Owner is approver and final usability tester;
+- Product Owner is not routine QA, debugger, log transporter or retry orchestrator;
+- failures in that contract are product defects.
+
+Operating preference:
+
+- normal ChatGPT chat + Windows PowerShell;
 - no Work or Codex;
+- GitHub repository is source of truth;
+- local Ollama zero-spend path preferred;
 - bounded autonomy;
-- Product Owner involved only at material decision gates;
-- product before infrastructure;
-- avoid diagnostic/governance loops that do not increase usable value.
+- infrastructure freeze until MVP evidence requires a change.
 
-## 2. Local environment
+## 2. Canonical repository and local environment
 
-Validated local ForgeLab root:
+GitHub:
+
+`pierluigiavvanzo-creator/forgelab`
+
+Canonical branch:
+
+`main`
+
+Main checkpoint after PR #11:
+
+`ba8e0fee79676e3b65fc82d980d24989c1d22c90`
+
+Local ForgeLab root:
 
 `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
+
+Launcher:
+
+`Start-ForgeLab.ps1`
 
 Dashboard:
 
@@ -39,10 +61,6 @@ API:
 
 `http://127.0.0.1:8765`
 
-Launcher:
-
-`Start-ForgeLab.ps1`
-
 Local AI:
 
 - Ollama 0.34.2;
@@ -50,228 +68,318 @@ Local AI:
 - provider alias `ollama`;
 - provider cost EUR 0.
 
-## 3. Milestones already validated
-
-Do not repeat without concrete regression evidence:
+## 3. Historical foundation — do not repeat absent regression evidence
 
 - M8.5 — Human-approved local promotion — PASS
 - M8.5.1 — UTF-8/BOM Git patch handling — PASS
 - M8.6 — Bounded multi-file AI Developer — PASS
 - M8.7 — Bounded AI Developer repair — PASS
-- M8.7.1 — Windows-safe exact patch artifact persistence — PASS
-- M8.8 — Bounded repository context / project-memory injection — PASS
-- M8.9 — Canonical Git source / self-hosting readiness — TECHNICAL PASS
+- M8.7.1 — Windows-safe exact patch persistence — PASS
+- M8.8 — Bounded repository context/project-memory injection — PASS
+- M8.9 — Canonical Git source/self-hosting readiness — TECHNICAL PASS
 
-Validated flow:
+Historical M8.9 baseline:
 
-`objective`
-→ canonical project memory
-→ bounded read-only repository context
-→ Planner
-→ AI Developer
-→ authorized write paths
-→ structured patch
-→ isolated workspace / ToolGateway
-→ deterministic tests
-→ bounded repair
-→ independent Reviewer
-→ Security
-→ `READY_FOR_DECISION`
-→ explicit Product Owner gate
-→ exact reviewed promotion
-→ local promotion branch
-→ deterministic retest
-→ local commit
-→ reviewed-diff equivalence
-→ `DONE`
+- commit `58d22eeca66c27871738c04c6d850c59efabf115`;
+- tree `63b6c91427edb19cd038cf557904451dfc08a947`;
+- 168 tracked canonical files;
+- canonical manifest SHA-256 `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`;
+- 88 regression tests PASS at acceptance.
 
-## 4. M8.9 validated baseline
+## 4. MVP-1 target
 
-Historical validated M8.9 baseline:
+Target repository:
 
-- baseline commit: `58d22eeca66c27871738c04c6d850c59efabf115`
-- baseline tree: `63b6c91427edb19cd038cf557904451dfc08a947`
-- tracked canonical files: 168
-- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
-- worktree smoke: PASS
-- regression suite: 88 tests PASS, exit 0
-- API `/health`: HTTP 200
-- dashboard `/`: HTTP 200
-- protected unauthenticated API behavior: HTTP 401
+`C:\Users\NITRO\source\FORGELAB_MVP1_DENTAL_QUOTE`
 
-M8.9 separated canonical source from runtime/cache/log/backup/generated material and established Git discipline.
+Original objective:
 
-## 5. GitHub and local synchronization state
+> Add support for three treatments, automatic subtotals, percentage discount and final total. Validate inputs. Modify only necessary files. Add tests. Do not change dependencies or configuration unless necessary and explicitly justified.
 
-Repository:
+Authorized files:
 
-`pierluigiavvanzo-creator/forgelab`
+- `quote_calculator.py`
+- `test_quote_calculator.py`
 
-Synchronization is **COMPLETE**.
+Test command:
 
-Evidence:
+`["py","-3.11","-m","unittest","discover","-v"]`
 
-- exact M8.9 source baseline published to `baseline/m8.9-local` at `58d22eeca66c27871738c04c6d850c59efabf115`;
-- code + governance integrated on `integration/m8.9-code-plus-governance`;
-- integration commit `8dfd9c81a9c8b1c17ef16833beaef7cc437c46a4`;
-- PR #2 merged into GitHub `main`;
-- PR #2 merge commit `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
-- local `main` fast-forwarded to the same GitHub `main` commit and verified clean;
-- no force push or rebase used.
+Mode:
 
-Decision:
+- AI Developer;
+- risk Normal;
+- max repair attempts 1;
+- local Ollama / EUR 0.
 
-**GitHub `main` is now the canonical shared source of truth for ForgeLab code and project governance.**
+Original decision-ready run observed:
 
-The local checkout tracks the same canonical history.
+`run-2e19fed4860c`
 
-## 6. Product Owner decision — infrastructure freeze
+## 5. What the real MVP run proved
 
-Do not continue with broad infrastructure work before MVP evidence.
+The first real run eventually reached `READY_FOR_DECISION`.
 
-Freeze unless a real MVP failure proves it is required:
+Observed UI evidence:
 
-- additional hardening;
-- new validation harnesses;
-- advanced observability;
-- deployment;
-- scaling;
-- multi-tenant;
-- billing;
-- unrelated governance/refactor work.
+- Plan complete;
+- Execute complete;
+- Verify complete;
+- Test PASS;
+- Review displayed complete;
+- two authorized files changed;
+- provider Ollama / qwen2.5-coder:7b;
+- provider cost EUR 0;
+- source repository reported protected/unchanged during isolated execution;
+- explicit Product Owner gate remained pending;
+- evidence bundle became directly inspectable.
 
-## 7. Current product status
+No approval/promotion was performed.
 
-ForgeLab is:
+## 6. Why the first candidate was rejected by the Product Owner
 
-**PRE-MVP / TECHNICALLY CAPABLE**
+`Changes.patch` showed only:
 
-What is proven:
+- one treatment;
+- one price;
+- percentage discount;
+- subtotal;
+- final total;
+- discount tests.
 
-- substantial technical foundation;
-- isolation;
-- deterministic verification;
-- bounded repair;
-- review/security;
-- human approval/promotion controls;
-- canonical source synchronized between GitHub and local checkout.
+It did **not** implement:
 
-What is not yet proven:
+- exactly three treatments in one quote;
+- individual treatment names/prices for all three;
+- per-treatment subtotals;
+- combined subtotal across all three;
+- discount on the combined subtotal;
+- tests proving the complete three-treatment behavior.
 
-- a real external application changed successfully from the dashboard with minimal Product Owner intervention;
-- measurable user-time/cost savings;
-- repeatability across unrelated real repositories;
-- commercial willingness to pay.
+Therefore green tests were insufficient and the Product Owner correctly refused promotion.
 
-## 8. SINGLE NEXT ACTION
+## 7. Product blockers found through the real run
 
-### FORGELAB_MVP_1_REAL_APPLICATION_TEST
+### PR #5 — merged
 
-Classification:
+Run-form errors were hidden behind a silently disabled `Avvia run`.
 
-**A — Product Critical**
+Fix: clickable validation + inline errors.
 
-Goal:
+### PR #6 — merged
 
-Prove ForgeLab works as a product, not merely as a technically sound framework.
+AI Developer output was truncated/non-JSON at `num_predict=256`.
 
-Required Product Owner journey:
+Fix: bounded output budget `2048`.
 
-1. open dashboard;
-2. select/register a real target application;
-3. enter one feature objective;
-4. press Run;
-5. receive actual software change and evidence;
-6. choose APPROVE / REJECT / REPAIR;
-7. approve only if satisfied;
-8. verify the promoted application actually works.
+### PR #7 — merged
 
-Recommended test application:
+A structurally malformed AI Developer JSON response immediately killed the run.
 
-**Dental Quote Calculator** or another small external application with visible behavior.
+Fix: one bounded structured-output retry.
 
-Example feature objective:
+### PR #8 — merged
 
-> Add support for three treatments, automatic subtotals, percentage discount and final total. Validate inputs. Modify only necessary files. Add tests. Do not change dependencies/configuration unless necessary and explicitly justified.
+Prompt-only schema instructions remained unreliable.
 
-## 9. Five MVP gates
+Fix: Ollama native structured outputs using JSON Schema.
 
-MVP-1 passes only if all five pass:
+### PR #9 — merged
 
-1. **Usability** — run initiated from dashboard.
-2. **Autonomy** — no routine log-copy/manual debugging/retry orchestration.
-3. **Real output** — target application visibly changes.
-4. **Quality** — tests + review + security pass.
-5. **Human control** — nothing is promoted before explicit APPROVE.
+Sidebar `Evidenze` did not activate the central tab and the Product Owner could not inspect the exact reviewed patch/reports.
 
-## 10. Failure rule
+Fix:
 
-If MVP-1 fails:
+- controlled tab state;
+- read-only evidence viewer;
+- authenticated allowlisted exposure of `Changes.patch`.
 
-1. stop;
-2. identify the single blocking product gap;
-3. fix only that gap;
-4. rerun the same scenario.
+### PR #10 — merged
 
-Do not hide a failed product journey behind another broad infrastructure milestone.
+`Richiedi fix` only recorded `REPAIR`; it performed no corrective work and gave weak feedback.
 
-## 11. Preserve / do not regress
+Fix:
+
+- Product Owner feedback dialog;
+- bounded authenticated repair endpoint;
+- automatic child run;
+- same repository, authorized paths, tests, timeout and repair budget;
+- `HumanRepairRequest.json` parent/child audit evidence;
+- parent candidate never promoted.
+
+Main after PR #10:
+
+`20010917c83564cd76c01c6e86cc39ebea7911fa`
+
+### PR #11 — merged
+
+Real child repair failed pre-write:
+
+`AI Developer old_text must occur exactly once in quote_calculator.py; found 0`
+
+Fix:
+
+- classify only exact-source `old_text` mismatch as recoverable;
+- allow one bounded pre-write correction;
+- require literal current-source `old_text`;
+- preserve immediate failure for path expansion, no-op and size violations.
+
+Main after PR #11:
+
+`ba8e0fee79676e3b65fc82d980d24989c1d22c90`
+
+## 8. Latest observed result after PR #11
+
+The Product Owner repair path ran and produced another inspectable `Changes.patch`.
+
+The technical `old_text` blocker was passed, but the candidate was still semantically incomplete: it again implemented one treatment + discount rather than the requested three-treatment quote.
+
+**Do not approve this candidate.**
+
+Exact child run ID was not captured in the chat evidence and must not be invented.
+
+## 9. Root cause of the current blocker
+
+Live canonical code inspection found:
+
+- AI Reviewer receives the objective and diff;
+- `AIReview.json` is persisted;
+- but AI Reviewer output is advisory only;
+- authoritative `ReviewReport.json` is created by `review_patch()`;
+- `review_patch()` checks only:
+  - non-empty diff;
+  - changed paths stay inside allowed scope;
+  - at least one changed path exists;
+- semantic objective coverage does not affect `ReviewReport.status`;
+- therefore a semantically incomplete patch can reach `READY_FOR_DECISION`.
+
+This is the current concrete MVP blocker.
+
+## 10. Current proposal
+
+Working branch:
+
+`mvp1-semantic-review-gate`
+
+Base:
+
+`ba8e0fee79676e3b65fc82d980d24989c1d22c90`
+
+Proposal intent:
+
+1. make Reviewer output structured through Ollama JSON Schema;
+2. require a requirement-by-requirement objective coverage list;
+3. preserve quantitative obligations such as `three`, `each`, `all`, validation and tests;
+4. mark MISSING/UNVERIFIED requirements as semantic FAIL;
+5. combine deterministic scope review + semantic review into authoritative `ReviewReport.json`;
+6. prevent `READY_FOR_DECISION` when semantic review fails;
+7. if deterministic scope is valid and bounded repair budget remains:
+   - transition `REVIEW -> REPAIRING`;
+   - generate Developer repair from blocking semantic findings;
+   - keep original authorized paths immutable;
+   - deterministic retest;
+   - semantic re-review;
+8. reach Security / `READY_FOR_DECISION` only after both reviews PASS;
+9. preserve explicit Product Owner approval before promotion.
+
+Regression coverage added on the proposal branch:
+
+- semantic review FAIL -> bounded Developer repair -> deterministic retest -> semantic re-review PASS -> `READY_FOR_DECISION`;
+- semantic review FAIL with zero repair budget -> run remains blocked at REVIEW and GateDecision becomes REPAIR;
+- existing Developer structured-output, exact-reference and scope guards remain.
+
+No CI workflow was automatically available on the recent PRs, so local regression execution remains required after any approved merge.
+
+## 11. Current MVP gate assessment
+
+### G1 — Usability
+
+**Materially demonstrated.**
+
+The Product Owner can initiate a real run from the dashboard and receive visible validation errors.
+
+### G2 — Autonomy
+
+**Not yet final PASS.**
+
+Repair child runs now launch automatically, but semantic incompleteness must be detected/repaired without requiring the Product Owner to keep discovering the same missing requirement.
+
+### G3 — Real output
+
+**FAIL / not yet proven.**
+
+Three-treatment visible behavior has not yet been delivered.
+
+### G4 — Quality
+
+**FAIL / current blocker.**
+
+Current `main` can let semantically incomplete work pass because semantic Reviewer output does not gate `ReviewReport`.
+
+### G5 — Human control
+
+**PASS so far.**
+
+No Dental Quote candidate has been promoted. Explicit approval remains required.
+
+## 12. Preserve / do not regress
 
 Preserve:
 
-- GitHub `main` as canonical shared source truth;
-- local checkout aligned to canonical history;
+- GitHub `main` as canonical source of truth;
+- local checkout aligned by fast-forward only;
 - deterministic mode;
 - AI-assisted mode;
-- bounded multi-file scope;
-- bounded repair;
-- read-only context selection;
+- AI Developer 1–3 path limit;
+- read-only repository context;
 - canonical project memory;
 - ToolGateway authoritative writes;
+- isolated worktrees;
 - deterministic tests/retests;
-- evidence-backed diagnostics;
-- independent review;
-- security check;
-- explicit human promotion gate;
-- isolated worktree execution;
+- structured Ollama output;
+- bounded repair;
+- exact-source `old_text` validation;
+- no fuzzy patch application;
+- independent security review;
+- explicit Product Owner promotion gate;
 - exact reviewed-diff promotion;
-- UTF-8/BOM handling;
-- Windows LF/CRLF-safe patch persistence;
-- no direct-main execution writes;
-- no automatic push/merge/force;
-- stale/consumed approvals not reusable;
+- no automatic push;
+- no automatic merge;
+- no force/rebase;
+- stale approvals not reusable;
 - zero-cost local Ollama path.
 
-## 12. MVP measurement
+## 13. Infrastructure freeze
 
-For each real run measure:
+Still active.
 
-- Product Owner active minutes;
-- user touches;
-- elapsed time to usable result;
-- provider/model cost;
-- autonomous repair cycles;
-- manual developer time avoided;
-- defects after approval.
+Do not start:
 
-Primary economic KPI:
+- deployment;
+- advanced observability;
+- multi-tenancy;
+- billing;
+- scale optimization;
+- unrelated hardening/refactors;
+- paid-provider expansion.
 
-`USER_TIME_SAVED_PER_SUCCESSFUL_RUN`
+Only fix blockers concretely exposed by MVP-1.
 
-## 13. Bootstrap instruction for a new session
+## 14. Single next action
 
-Use GitHub `pierluigiavvanzo-creator/forgelab` as the source of truth and read, in order:
+Validate the branch:
 
-1. `MANIFEST.md`
-2. `AGENTS.md`
-3. `PROJECT_STATE.md`
-4. `ROADMAP.md`
-5. `DECISIONS.md`
-6. this handover
-7. relevant audit/baseline documents
+`mvp1-semantic-review-gate`
 
-Then execute only:
+If the proposal is sound, open/approve/merge its PR under the existing governed workflow.
 
-`FORGELAB_MVP_1_REAL_APPLICATION_TEST`
+Then:
 
-Do not reconstruct M8.5–M8.9 unless a concrete inconsistency is found.
+1. fast-forward local ForgeLab to the approved `main`;
+2. rerun the same Dental Quote Product Owner repair scenario;
+3. let semantic review automatically block/repair missing objective coverage;
+4. inspect the new `Changes.patch`;
+5. approve only if the patch genuinely implements the complete three-treatment objective;
+6. after approval, verify exact promotion/retest/commit and visible target-app behavior.
+
+Do not start MVP-2 until MVP-1 is actually PASS.
