@@ -374,6 +374,10 @@ class AIDeveloperFormatError(ValueError):
     """Recoverable structured-output contract error."""
 
 
+class AIDeveloperReferenceError(ValueError):
+    """Recoverable exact-source reference error before write."""
+
+
 def _extract_ai_developer_json(
     text: str,
 ) -> dict[str, Any]:
@@ -505,7 +509,7 @@ def _validate_ai_developer_change(
     )
 
     if match_count != 1:
-        raise ValueError(
+        raise AIDeveloperReferenceError(
             "AI Developer old_text must occur "
             f"exactly once in {path}; found {match_count}"
         )
@@ -992,6 +996,8 @@ Do not claim that tools or tests have already run.
     seen_repair_payloads: set[str] = set()
     ai_developer_artifact: dict[str, Any] | None = None
     format_repair_attempts = 0
+    reference_repair_attempts = 0
+    prewrite_repair_attempts = 0
     source_unchanged = False
     final_test_passed = False
     review_report: dict[str, Any] = {"status": "FAIL", "findings": []}
@@ -1130,17 +1136,32 @@ Rules:
                         source_texts,
                     )
                 )
-            except AIDeveloperFormatError as format_error:
-                format_repair_attempts = 1
+            except (
+                AIDeveloperFormatError,
+                AIDeveloperReferenceError,
+            ) as prewrite_error:
+                prewrite_repair_attempts = 1
+                format_repair_attempts = int(
+                    isinstance(
+                        prewrite_error,
+                        AIDeveloperFormatError,
+                    )
+                )
+                reference_repair_attempts = int(
+                    isinstance(
+                        prewrite_error,
+                        AIDeveloperReferenceError,
+                    )
+                )
 
-                format_repair_prompt = f"""
+                prewrite_repair_prompt = f"""
 You are the DEVELOPER agent in ForgeLab.
 
-Your prior response failed the required structured-output
-contract before any repository write occurred.
+Your prior response failed deterministic pre-write
+validation before any repository write occurred.
 
 Validation error:
-{format_error}
+{prewrite_error}
 
 Objective:
 {request.objective}
@@ -1158,10 +1179,12 @@ Required schema:
 {schema_instructions}
 
 Rules:
-- this is the ONE bounded format-repair attempt.
+- this is the ONE bounded pre-write repair attempt.
 - every path MUST be one of the authorized target paths.
 - when more than one path is authorized, return exactly one change for each path.
-- old_text MUST occur exactly once in its corresponding file.
+- old_text MUST be copied verbatim from the current complete authorized file shown above.
+- old_text MUST occur exactly once in its corresponding current file.
+- do not reference text introduced only by a prior candidate or prior repair.
 - choose the smallest sufficient replacement for each file.
 - do not modify any other file.
 - do not claim tests have run.
@@ -1170,10 +1193,10 @@ Rules:
 
                 developer_response = ai_router.execute(
                     TaskClass.S2,
-                    format_repair_prompt,
-                    "implement-format-repair",
+                    prewrite_repair_prompt,
+                    "implement-prewrite-repair",
                     Role.DEVELOPER.value,
-                    "Repair AI Developer structured output once",
+                    "Repair AI Developer pre-write validation once",
                     request.timeout_seconds,
                     response_format=developer_schema,
                 )
@@ -1206,8 +1229,12 @@ Rules:
                     len(generated_changes),
                 "applied_by":
                     "deterministic_tool_gateway",
+                "prewrite_repair_attempts":
+                    prewrite_repair_attempts,
                 "format_repair_attempts":
                     format_repair_attempts,
+                "reference_repair_attempts":
+                    reference_repair_attempts,
                 "repair_attempts": [],
                 "context_bundle_ref": "ContextBundle.json",
                 "context_selection_sha256": context_bundle["selection_sha256"],
