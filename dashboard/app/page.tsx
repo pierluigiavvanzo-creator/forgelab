@@ -286,6 +286,26 @@ export default function Home() {
     setRunFormError,
   ] = useState("");
 
+  const [
+    repairDialog,
+    setRepairDialog,
+  ] = useState(false);
+
+  const [
+    repairFeedback,
+    setRepairFeedback,
+  ] = useState("");
+
+  const [
+    repairError,
+    setRepairError,
+  ] = useState("");
+
+  const [
+    repairing,
+    setRepairing,
+  ] = useState(false);
+
   const [objective, setObjective] =
     useState(
       "Implementare il prossimo cambiamento con evidenze verificabili",
@@ -829,6 +849,109 @@ export default function Home() {
         );
       }
     })();
+  };
+
+
+  const requestRepair = async () => {
+    const feedback =
+      repairFeedback.trim();
+
+    setRepairError("");
+
+    if (!apiConnected) {
+      setRepairError(
+        "Runner locale non collegato.",
+      );
+      setApiSetup(true);
+      return;
+    }
+
+    if (feedback.length < 8) {
+      setRepairError(
+        "Descrivi il fix richiesto con almeno 8 caratteri.",
+      );
+      return;
+    }
+
+    setRepairing(true);
+    setNotice(
+      "Creazione della revisione corretta in corso...",
+    );
+
+    try {
+      const response = await fetch(
+        `${apiBase}/v1/runs/${encodeURIComponent(
+          runId,
+        )}/repairs`,
+        {
+          method: "POST",
+          headers: {
+            ...apiHeaders(),
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            actor: "Product Owner",
+            feedback,
+          }),
+        },
+      );
+
+      const payload =
+        await response.json() as {
+          error?: string;
+          run_id?: string;
+          parent_run_id?: string;
+          decision?: string;
+          status?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error ??
+            `API ${response.status}`,
+        );
+      }
+
+      const childRunId =
+        String(
+          payload.run_id ?? "",
+        );
+
+      if (!childRunId) {
+        throw new Error(
+          "La revisione non ha restituito una nuova run.",
+        );
+      }
+
+      await loadRunFromApi(
+        childRunId,
+      );
+
+      setRepairDialog(false);
+      setRepairFeedback("");
+      setRepairError("");
+      setActiveTab("overview");
+
+      setNotice(
+        `Fix completato in ${childRunId}: ${String(
+          payload.status ??
+            "stato disponibile",
+        )}. La run precedente non e stata promossa.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "errore sconosciuto";
+
+      setRepairError(message);
+      setNotice(
+        `Fix non completato: ${message}`,
+      );
+    } finally {
+      setRepairing(false);
+    }
   };
 
 
@@ -2063,9 +2186,10 @@ export default function Home() {
               >
                 <p className="decision-copy">
                   Approva esegue una promotion locale
-                  governata: branch dedicato, diff già
-                  verificato, test deterministici e commit
-                  locale. Nessun push o merge automatico.
+                  governata. Richiedi fix apre un feedback
+                  del Product Owner e crea automaticamente
+                  una nuova run bounded con lo stesso scope.
+                  Nessun push o merge automatico.
                 </p>
 
                 <div className="decision-actions">
@@ -2080,9 +2204,10 @@ export default function Home() {
                   </Button>
 
                   <Button
-                    onClick={() =>
-                      decide("repair")
-                    }
+                    onClick={() => {
+                      setRepairError("");
+                      setRepairDialog(true);
+                    }}
                     variant="outline"
                     className="repair"
                   >
@@ -2249,6 +2374,107 @@ export default function Home() {
           </Tabs>
         </div>
       </div>
+
+
+      {
+        repairDialog &&
+        <div
+          className="modal-backdrop"
+          onMouseDown={() =>
+            !repairing &&
+            setRepairDialog(false)
+          }
+        >
+          <section
+            className="run-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="repair-title"
+            onMouseDown={
+              (event) =>
+                event.stopPropagation()
+            }
+          >
+            <div className="modal-icon">
+              <RefreshCcw />
+            </div>
+
+            <p className="kicker">
+              PRODUCT OWNER REPAIR
+            </p>
+
+            <h2 id="repair-title">
+              Descrivi il fix richiesto
+            </h2>
+
+            <p>
+              ForgeLab manterra repository,
+              file autorizzati, test e governance
+              della run corrente e generera una
+              nuova proposta verificata.
+            </p>
+
+            <label htmlFor="repair-feedback">
+              Feedback
+            </label>
+
+            <textarea
+              id="repair-feedback"
+              value={repairFeedback}
+              onChange={
+                (event) =>
+                  setRepairFeedback(
+                    event.target.value,
+                  )
+              }
+              rows={7}
+              placeholder="Indica cosa manca o cosa deve essere corretto nella proposta corrente."
+            />
+
+            {
+              repairError &&
+              <div
+                className="modal-note"
+                role="alert"
+              >
+                <ShieldAlert />
+                <span>
+                  {repairError}
+                </span>
+              </div>
+            }
+
+            <div className="modal-actions">
+              <Button
+                variant="ghost"
+                disabled={repairing}
+                onClick={() =>
+                  setRepairDialog(false)
+                }
+                className="cancel"
+              >
+                Annulla
+              </Button>
+
+              <Button
+                disabled={repairing}
+                onClick={() =>
+                  void requestRepair()
+                }
+                className="primary-button"
+              >
+                {
+                  repairing
+                    ? "Correzione..."
+                    : "Avvia fix"
+                }
+
+                <ArrowRight />
+              </Button>
+            </div>
+          </section>
+        </div>
+      }
 
 
       {
