@@ -285,6 +285,10 @@ def _read_ai_developer_targets(
 
 
 
+class AIDeveloperFormatError(ValueError):
+    """Recoverable structured-output contract error."""
+
+
 def _extract_ai_developer_json(
     text: str,
 ) -> dict[str, Any]:
@@ -333,7 +337,7 @@ def _extract_ai_developer_json(
         if isinstance(payload, dict):
             return payload
 
-    raise ValueError(
+    raise AIDeveloperFormatError(
         "AI Developer did not return "
         "a valid JSON object"
     )
@@ -355,7 +359,7 @@ def _validate_ai_developer_change(
     missing = required - set(payload)
 
     if missing:
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer change missing fields: "
             + ", ".join(sorted(missing))
         )
@@ -376,13 +380,13 @@ def _validate_ai_developer_change(
         not isinstance(old_text, str)
         or not old_text
     ):
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer old_text must "
             "be non-empty"
         )
 
     if not isinstance(new_text, str):
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer new_text must "
             "be a string"
         )
@@ -391,7 +395,7 @@ def _validate_ai_developer_change(
         not isinstance(summary, str)
         or not summary.strip()
     ):
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer summary must "
             "be non-empty"
         )
@@ -453,13 +457,13 @@ def _validate_ai_developer_patch(
         missing = required - set(payload)
 
         if missing:
-            raise ValueError(
+            raise AIDeveloperFormatError(
                 "AI Developer patch missing fields: "
                 + ", ".join(sorted(missing))
             )
 
         if payload["schema_version"] != "1.0":
-            raise ValueError(
+            raise AIDeveloperFormatError(
                 "AI Developer single-file schema_version "
                 "must be 1.0"
             )
@@ -484,13 +488,13 @@ def _validate_ai_developer_patch(
     missing = required - set(payload)
 
     if missing:
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer multi-file patch missing fields: "
             + ", ".join(sorted(missing))
         )
 
     if payload["schema_version"] != "2.0":
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer multi-file schema_version "
             "must be 2.0"
         )
@@ -505,19 +509,19 @@ def _validate_ai_developer_patch(
             for item in raw_changes
         )
     ):
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer multi-file changes must be "
             "a structured change list"
         )
 
     if require_all_paths:
         if len(raw_changes) != len(expected_paths):
-            raise ValueError(
+            raise AIDeveloperFormatError(
                 "AI Developer multi-file changes must contain "
                 "exactly one structured change per authorized path"
             )
     elif not 1 <= len(raw_changes) <= len(expected_paths):
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer repair must change one or more "
             "already-authorized paths"
         )
@@ -526,7 +530,7 @@ def _validate_ai_developer_patch(
         not isinstance(summary, str)
         or not summary.strip()
     ):
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer multi-file summary "
             "must be non-empty"
         )
@@ -902,6 +906,7 @@ Do not claim that tools or tests have already run.
     seen_hypotheses: set[str] = set()
     seen_repair_payloads: set[str] = set()
     ai_developer_artifact: dict[str, Any] | None = None
+    format_repair_attempts = 0
     source_unchanged = False
     final_test_passed = False
     review_report: dict[str, Any] = {"status": "FAIL", "findings": []}
@@ -1025,13 +1030,68 @@ Rules:
                 TaskClass.S2
             )
 
-            generated_patch = (
-                _validate_ai_developer_patch(
-                    developer_response.text,
-                    target_paths,
-                    source_texts,
+            try:
+                generated_patch = (
+                    _validate_ai_developer_patch(
+                        developer_response.text,
+                        target_paths,
+                        source_texts,
+                    )
                 )
-            )
+            except AIDeveloperFormatError as format_error:
+                format_repair_attempts = 1
+
+                format_repair_prompt = f"""
+You are the DEVELOPER agent in ForgeLab.
+
+Your prior response failed the required structured-output
+contract before any repository write occurred.
+
+Validation error:
+{format_error}
+
+Objective:
+{request.objective}
+
+Authorized target paths:
+{authorized_list}
+
+Current complete authorized files:
+{files_context}
+
+Return ONLY one corrected JSON object.
+No Markdown. No prose outside JSON.
+
+Required schema:
+{schema_instructions}
+
+Rules:
+- this is the ONE bounded format-repair attempt.
+- every path MUST be one of the authorized target paths.
+- when more than one path is authorized, return exactly one change for each path.
+- old_text MUST occur exactly once in its corresponding file.
+- choose the smallest sufficient replacement for each file.
+- do not modify any other file.
+- do not claim tests have run.
+- do not create dependencies.
+"""
+
+                developer_response = ai_router.execute(
+                    TaskClass.S2,
+                    format_repair_prompt,
+                    "implement-format-repair",
+                    Role.DEVELOPER.value,
+                    "Repair AI Developer structured output once",
+                    request.timeout_seconds,
+                )
+
+                generated_patch = (
+                    _validate_ai_developer_patch(
+                        developer_response.text,
+                        target_paths,
+                        source_texts,
+                    )
+                )
 
             generated_changes = (
                 _ai_patch_changes(
@@ -1053,6 +1113,8 @@ Rules:
                     len(generated_changes),
                 "applied_by":
                     "deterministic_tool_gateway",
+                "format_repair_attempts":
+                    format_repair_attempts,
                 "repair_attempts": [],
                 "context_bundle_ref": "ContextBundle.json",
                 "context_selection_sha256": context_bundle["selection_sha256"],
