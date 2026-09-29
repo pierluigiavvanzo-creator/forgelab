@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import os
 from dataclasses import dataclass
@@ -381,6 +382,10 @@ class AIDeveloperFormatError(ValueError):
 
 class AIDeveloperReferenceError(ValueError):
     """Recoverable exact-source reference error before write."""
+
+
+class AIDeveloperSyntaxError(ValueError):
+    """Recoverable Python syntax error before repository write."""
 
 
 def _extract_ai_developer_json(
@@ -1102,6 +1107,41 @@ def _ai_patch_changes(
     }]
 
 
+def _validate_ai_developer_candidate_syntax(
+    payload: dict[str, Any],
+    source_texts: dict[str, str],
+) -> None:
+    for change in _ai_patch_changes(payload):
+        path = change["path"]
+
+        if not path.lower().endswith(".py"):
+            continue
+
+        source = source_texts[path]
+        candidate = source.replace(
+            change["old_text"],
+            change["new_text"],
+            1,
+        )
+
+        try:
+            ast.parse(
+                candidate.lstrip("\ufeff"),
+                filename=path,
+            )
+        except SyntaxError as error:
+            location = (
+                f"line {error.lineno}"
+                if error.lineno is not None
+                else "unknown line"
+            )
+            raise AIDeveloperSyntaxError(
+                "AI Developer Python candidate "
+                f"does not parse in {path} at "
+                f"{location}: {error.msg}"
+            ) from error
+
+
 class TaskGraphError(ValueError):
     pass
 
@@ -1415,6 +1455,7 @@ Do not claim that tools or tests have already run.
     ai_developer_artifact: dict[str, Any] | None = None
     format_repair_attempts = 0
     reference_repair_attempts = 0
+    syntax_repair_attempts = 0
     prewrite_repair_attempts = 0
     semantic_review_history: list[dict[str, Any]] = []
     source_unchanged = False
@@ -1553,9 +1594,14 @@ Rules:
                         require_all_paths=False,
                     )
                 )
+                _validate_ai_developer_candidate_syntax(
+                    generated_patch,
+                    source_texts,
+                )
             except (
                 AIDeveloperFormatError,
                 AIDeveloperReferenceError,
+                AIDeveloperSyntaxError,
             ) as prewrite_error:
                 prewrite_repair_attempts = 1
                 format_repair_attempts = int(
@@ -1568,6 +1614,12 @@ Rules:
                     isinstance(
                         prewrite_error,
                         AIDeveloperReferenceError,
+                    )
+                )
+                syntax_repair_attempts = int(
+                    isinstance(
+                        prewrite_error,
+                        AIDeveloperSyntaxError,
                     )
                 )
 
@@ -1629,6 +1681,10 @@ Rules:
                         require_all_paths=False,
                     )
                 )
+                _validate_ai_developer_candidate_syntax(
+                    generated_patch,
+                    source_texts,
+                )
 
             generated_changes = (
                 _ai_patch_changes(
@@ -1656,6 +1712,8 @@ Rules:
                     format_repair_attempts,
                 "reference_repair_attempts":
                     reference_repair_attempts,
+                "syntax_repair_attempts":
+                    syntax_repair_attempts,
                 "repair_attempts": [],
                 "context_bundle_ref": "ContextBundle.json",
                 "context_selection_sha256": context_bundle["selection_sha256"],
@@ -2005,14 +2063,102 @@ Rules:
                     TaskClass.S2
                 )
 
-                repair_patch = (
-                    _validate_ai_developer_patch(
-                        repair_response.text,
-                        target_paths,
-                        repair_source_texts,
-                        require_all_paths=False,
+                repair_prewrite_attempts = 0
+
+                try:
+                    repair_patch = (
+                        _validate_ai_developer_patch(
+                            repair_response.text,
+                            target_paths,
+                            repair_source_texts,
+                            require_all_paths=False,
+                        )
                     )
-                )
+                    _validate_ai_developer_candidate_syntax(
+                        repair_patch,
+                        repair_source_texts,
+                    )
+                except (
+                    AIDeveloperFormatError,
+                    AIDeveloperReferenceError,
+                    AIDeveloperSyntaxError,
+                ) as repair_prewrite_error:
+                    repair_prewrite_attempts = 1
+
+                    repair_prewrite_prompt = f"""
+You are the DEVELOPER agent in ForgeLab.
+
+Your prior test-failure repair candidate failed deterministic
+pre-write validation before any repair write occurred.
+
+Validation error:
+{repair_prewrite_error}
+
+Objective:
+{request.objective}
+
+Original authorized paths (scope is immutable):
+{repair_authorized_list}
+
+Support hypothesis for {ev_id}:
+{hypothesis}
+
+Failed test stdout:
+{test.stdout[-2500:]}
+
+Failed test stderr:
+{test.stderr[-2500:]}
+
+Current complete authorized files AFTER the failed candidate:
+{repair_files_context}
+
+Return ONLY one corrected JSON object.
+No Markdown. No prose outside JSON.
+
+Required schema:
+{repair_schema}
+
+Rules:
+- this is the ONE bounded pre-write correction for this repair candidate.
+- every path MUST remain inside the ORIGINAL authorized path set.
+- repair only the non-empty subset actually needed.
+- multiple changes may target the same file only when their old_text regions are disjoint.
+- use at most 4 changes per authorized path.
+- old_text MUST be copied verbatim from the current corresponding file.
+- old_text MUST occur exactly once.
+- preserve valid Python syntax in every modified .py file.
+- do not weaken tests merely to make them pass.
+- do not modify dependencies or configuration.
+- do not claim tests have run.
+"""
+
+                    repair_response = ai_router.execute(
+                        TaskClass.S2,
+                        repair_prewrite_prompt,
+                        f"{repair_id}-prewrite",
+                        Role.DEVELOPER.value,
+                        "Correct repair pre-write validation once",
+                        request.timeout_seconds,
+                        response_format=(
+                            _ai_developer_response_schema(
+                                target_paths,
+                                require_all_paths=False,
+                            )
+                        ),
+                    )
+
+                    repair_patch = (
+                        _validate_ai_developer_patch(
+                            repair_response.text,
+                            target_paths,
+                            repair_source_texts,
+                            require_all_paths=False,
+                        )
+                    )
+                    _validate_ai_developer_candidate_syntax(
+                        repair_patch,
+                        repair_source_texts,
+                    )
 
                 repair_payload_key = json.dumps(
                     repair_patch,
@@ -2078,6 +2224,8 @@ Rules:
                     "model": repair_route.model,
                     "changed_paths": repair_changed_paths,
                     "patch": repair_patch,
+                    "prewrite_correction_attempts":
+                        repair_prewrite_attempts,
                     "applied_by": "deterministic_tool_gateway",
                 })
 
@@ -2461,9 +2609,14 @@ Return ONLY the required structured JSON object.
                             require_all_paths=False,
                         )
                     )
+                    _validate_ai_developer_candidate_syntax(
+                        semantic_repair_patch,
+                        semantic_repair_source_texts,
+                    )
                 except (
                     AIDeveloperFormatError,
                     AIDeveloperReferenceError,
+                    AIDeveloperSyntaxError,
                 ) as semantic_prewrite_error:
                     semantic_prewrite_attempts = 1
 
@@ -2533,6 +2686,10 @@ Rules:
                             semantic_repair_source_texts,
                             require_all_paths=False,
                         )
+                    )
+                    _validate_ai_developer_candidate_syntax(
+                        semantic_repair_patch,
+                        semantic_repair_source_texts,
                     )
 
                 semantic_repair_payload_key = (

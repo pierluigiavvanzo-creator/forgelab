@@ -41,9 +41,9 @@ Canonical branch:
 
 `main`
 
-Current main checkpoint after PR #14:
+Current main checkpoint after PR #15:
 
-`45fa433ef408f600ab6890ac43e170b327f1eec3`
+`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
 
 Local ForgeLab root:
 
@@ -283,36 +283,60 @@ Behavior:
 - actual changed artifacts are recorded separately from the broader allowed scope;
 - exact-source, path, no-op, size, semantic-review and promotion controls remain active.
 
-## 12. Latest real-run blocker after PR #14
+## 12. PR #15 — disjoint same-file operation blocker corrected
 
-The next Product Owner repair attempt progressed beyond the PR #14 format blocker but returned:
+PR #15 was merged to main:
 
-`repair run execution failed: ValueError: AI Developer multi-file patch contains duplicate paths`
+`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
 
-Canonical inspection confirmed that subset mode still assumes at most one structured change per file. A real Dental Quote implementation may legitimately require separate disjoint edits to calculation logic and UI inside `quote_calculator.py`.
+Behavior:
 
-## 13. Current proposal
+- subset mode permits at most four operations per authorized path;
+- every `old_text` is validated against the same current source snapshot;
+- disjoint operations on one file are composed deterministically;
+- overlapping/conflicting operations fail before write;
+- ToolGateway still performs one authoritative write per changed file.
+
+## 13. Latest real-run blocker after PR #15
+
+Real child run:
+
+`run-be067c4915d2`
+
+Observed evidence:
+
+- initial AI Developer candidate changed `quote_calculator.py` and `test_quote_calculator.py`;
+- test run 0 failed because `calculate_quote()` still accepted two positional arguments while the new test called it with six;
+- one Support diagnosis and one Developer repair were executed;
+- the repair produced invalid Python;
+- test run 1 failed at import with `IndentationError: unexpected indent`;
+- RunSummary ended `DIAGNOSING`, `tests: FAIL`, `repair_attempts: 1`;
+- no `Changes.patch` exists because review was never reached.
+
+The current pre-write contract catches format and exact-source problems, but not Python syntax errors in the test-failure repair path.
+
+## 14. Current proposal
 
 Working branch:
 
-`mvp1-disjoint-same-file-change-composition`
+`mvp1-python-syntax-prewrite-repair`
 
 Base:
 
-`45fa433ef408f600ab6890ac43e170b327f1eec3`
+`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
 
 Proposal:
 
-1. keep the same immutable 1–3 authorized path scope;
-2. permit at most 4 operations per authorized path in subset mode;
-3. validate every `old_text` exactly against the same current source snapshot;
-4. allow multiple operations on one file only when their original-source spans are disjoint;
-5. reject overlapping/conflicting spans before any write;
-6. deterministically compose disjoint operations into one final replacement per file;
-7. use one ToolGateway write per changed file;
-8. preserve no fuzzy patching, path expansion rejection, no-op/size limits, deterministic tests, semantic review and Product Owner gate.
+1. deterministically construct the post-replacement candidate text in memory;
+2. for each modified `.py` file, run Python AST parsing before ToolGateway write;
+3. classify syntax failure as recoverable pre-write validation;
+4. initial generation and semantic repair use the same syntax guard;
+5. the test-failure repair path gets exactly one pre-write correction for format/reference/syntax failure;
+6. only after a valid repair is written does the real repair counter increment;
+7. keep max repair attempts at one for MVP-1;
+8. preserve scope, exact-source matching, no fuzzy patching, deterministic tests, semantic review and human promotion gate.
 
-Regression coverage includes both the live-safe case (two disjoint operations on the same file) and the unsafe case (overlapping same-file operations remain blocked).
+Regression coverage reproduces: failed initial candidate -> invalid Python repair -> one pre-write correction -> valid repair -> tests PASS while `repair_attempts` remains 1.
 
 ## 11. Current MVP gate assessment
 
@@ -326,7 +350,7 @@ The Product Owner can initiate a real run from the dashboard and receive visible
 
 **FAIL / current blocker.**
 
-The timeout and authorized-subset blockers are corrected by PR #13/#14, but valid disjoint same-file operations are still rejected as duplicate paths before tests and semantic review can complete.
+The timeout, authorized-subset and disjoint-same-file blockers are corrected by PR #13/#14/#15, but malformed Python repair output can still consume the only repair budget before review.
 
 ### G3 — Real output
 
@@ -338,7 +362,7 @@ Three-treatment visible behavior has not yet been delivered.
 
 **Implementation corrected by PR #12; real-run validation pending.**
 
-Semantic review is authoritative and blocking on main, but real-run validation has not yet completed because duplicate-path rejection stopped the Developer before review.
+Semantic review is authoritative and blocking on main, but real-run validation has not yet completed because the only repair candidate failed Python syntax before review.
 
 ### G5 — Human control
 
@@ -393,7 +417,7 @@ Only fix blockers concretely exposed by MVP-1.
 
 Validate the branch:
 
-`mvp1-disjoint-same-file-change-composition`
+`mvp1-python-syntax-prewrite-repair`
 
 If the proposal is sound, open/approve/merge its PR under the existing governed workflow.
 
@@ -401,10 +425,11 @@ Then:
 
 1. fast-forward local ForgeLab to the approved `main`;
 2. rerun the same Dental Quote Product Owner repair scenario once;
-3. allow bounded disjoint same-file operations to be composed deterministically;
-4. let deterministic tests and blocking semantic review complete;
-5. inspect `ReviewReport.json` and `Changes.patch`;
-6. approve only if the patch genuinely implements the complete three-treatment objective;
-7. after approval, verify exact promotion/retest/commit and visible target-app behavior.
+3. allow Python syntax validation to reject malformed repair output before write;
+4. if needed, allow the one bounded pre-write correction without consuming another real repair;
+5. let deterministic tests and blocking semantic review complete;
+6. inspect `TestEvidence.json`, `ReviewReport.json` and `Changes.patch`;
+7. approve only if the patch genuinely implements the complete three-treatment objective;
+8. after approval, verify exact promotion/retest/commit and visible target-app behavior.
 
 Do not start MVP-2 until MVP-1 is actually PASS.
