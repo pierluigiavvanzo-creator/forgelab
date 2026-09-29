@@ -33,6 +33,7 @@ ARTIFACTS = (
     "AIReview.json",
     "AIDeveloperPatch.json",
     "PromotionResult.json",
+    "HumanRepairRequest.json",
 )
 TEXT_ARTIFACTS = (
     "Changes.patch",
@@ -467,6 +468,334 @@ class ForgeLabApi:
             ),
         }
 
+    def request_repair(
+        self,
+        run_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        feedback = _required_string(
+            payload,
+            "feedback",
+            minimum=8,
+            maximum=4000,
+        ).strip()
+
+        actor = " ".join(
+            str(
+                payload.get(
+                    "actor",
+                    "",
+                )
+            ).split()
+        )
+
+        if not actor or len(actor) > 120:
+            raise ApiError(
+                "actor must be a non-empty "
+                "string up to 120 characters"
+            )
+
+        directory = self.run_dir(run_id)
+        plan = _read_json(
+            directory /
+            "ExecutionPlan.json"
+        )
+        gate = _read_json(
+            directory /
+            "GateDecision.json"
+        )
+
+        gate_decision = str(
+            gate.get(
+                "decision",
+                "",
+            )
+        ).upper()
+
+        if gate_decision not in {
+            "PENDING",
+            "REPAIR",
+        }:
+            raise ApiError(
+                "human repair is allowed only "
+                "for a pending or repair-requested run"
+            )
+
+        operation = str(
+            plan.get(
+                "change_operation",
+                "",
+            )
+        )
+
+        if operation != "ai_generate":
+            raise ApiError(
+                "human repair currently requires "
+                "an ai_generate run"
+            )
+
+        repository_text = plan.get(
+            "repository"
+        )
+
+        if (
+            not isinstance(
+                repository_text,
+                str,
+            )
+            or not repository_text
+        ):
+            raise ApiError(
+                "run execution plan has no repository"
+            )
+
+        repository = Path(
+            repository_text
+        ).resolve()
+
+        if (
+            not repository.is_dir()
+            or not (
+                repository /
+                ".git"
+            ).exists()
+        ):
+            raise ApiError(
+                "repair repository is unavailable"
+            )
+
+        raw_paths = plan.get(
+            "allowed_paths"
+        )
+
+        if (
+            not isinstance(
+                raw_paths,
+                list,
+            )
+            or not 1 <= len(raw_paths) <= 3
+            or not all(
+                isinstance(
+                    item,
+                    str,
+                )
+                and item.strip()
+                for item in raw_paths
+            )
+        ):
+            raise ApiError(
+                "run execution plan has invalid "
+                "repair path scope"
+            )
+
+        allowed_paths = tuple(
+            item.strip()
+            for item in raw_paths
+        )
+
+        if (
+            len(
+                set(
+                    allowed_paths
+                )
+            )
+            != len(
+                allowed_paths
+            )
+        ):
+            raise ApiError(
+                "repair path scope must be unique"
+            )
+
+        test_command = plan.get(
+            "test_command"
+        )
+
+        if (
+            not isinstance(
+                test_command,
+                list,
+            )
+            or not test_command
+            or not all(
+                isinstance(
+                    item,
+                    str,
+                )
+                and item
+                for item in test_command
+            )
+        ):
+            raise ApiError(
+                "run execution plan has invalid "
+                "test command"
+            )
+
+        original_objective = str(
+            plan.get(
+                "objective",
+                "",
+            )
+        ).strip()
+
+        if not original_objective:
+            raise ApiError(
+                "run execution plan has no objective"
+            )
+
+        selected_roles = {
+            str(item)
+            for item in (
+                plan.get(
+                    "selected_roles",
+                    []
+                )
+                if isinstance(
+                    plan.get(
+                        "selected_roles",
+                        []
+                    ),
+                    list,
+                )
+                else []
+            )
+        }
+
+        risk = (
+            "high"
+            if "SECURITY" in selected_roles
+            else "normal"
+        )
+
+        repaired_objective = (
+            original_objective
+            + "\n\n"
+            + "Product Owner repair feedback:\n"
+            + feedback
+            + "\n\n"
+            + "Repair instruction: address the feedback "
+            + "while preserving the original objective, "
+            + "authorized path scope, dependencies, "
+            + "configuration, tests, and governance."
+        )
+
+        request = MultiAgentRequest(
+            repository=repository,
+            objective=repaired_objective,
+            target_path=allowed_paths[0],
+            old_text="",
+            new_text="",
+            test_command=list(
+                test_command
+            ),
+            timeout_seconds=int(
+                plan.get(
+                    "timeout_seconds",
+                    60,
+                )
+            ),
+            risk=risk,
+            max_repair_attempts=int(
+                plan.get(
+                    "max_repair_attempts",
+                    1,
+                )
+            ),
+            ai_mode=True,
+            operation="ai_generate",
+            allowed_paths=allowed_paths,
+        )
+
+        try:
+            child_dir = run_multi_agent(
+                request,
+                self.runs_root,
+            )
+        except Exception as error:
+            raise ApiError(
+                "repair run execution failed: "
+                f"{type(error).__name__}: {error}"
+            ) from error
+
+        child_summary = _read_json(
+            child_dir /
+            "RunSummary.json"
+        )
+
+        if gate_decision == "PENDING":
+            try:
+                decide(
+                    directory,
+                    repository,
+                    actor,
+                    "repair",
+                )
+            except PromotionError as error:
+                current_gate = _read_json(
+                    directory /
+                    "GateDecision.json"
+                )
+
+                if (
+                    str(
+                        current_gate.get(
+                            "decision",
+                            "",
+                        )
+                    ).upper()
+                    != "REPAIR"
+                ):
+                    raise ApiError(
+                        str(error)
+                    ) from error
+
+        now = datetime.now(
+            timezone.utc
+        ).isoformat()
+
+        repair_record = {
+            "actor": actor,
+            "parent_run_id": run_id,
+            "child_run_id": child_dir.name,
+            "feedback": feedback,
+            "original_objective": (
+                original_objective
+            ),
+            "allowed_paths": list(
+                allowed_paths
+            ),
+            "timestamp": now,
+        }
+
+        for repair_dir in (
+            directory,
+            child_dir,
+        ):
+            (
+                repair_dir /
+                "HumanRepairRequest.json"
+            ).write_text(
+                json.dumps(
+                    repair_record,
+                    indent=2,
+                    sort_keys=True,
+                ) + "\n",
+                encoding="utf-8",
+            )
+
+        return {
+            "run_id": child_dir.name,
+            "parent_run_id": run_id,
+            "decision": "REPAIR",
+            "status": child_summary.get(
+                "status"
+            ),
+            "promotion_executed": False,
+            "artifacts_url": (
+                f"/v1/runs/{child_dir.name}/artifacts"
+            ),
+        }
+
     def stage_decision(
         self,
         run_id: str,
@@ -795,6 +1124,27 @@ def make_handler(
                     self._send(
                         HTTPStatus.CREATED,
                         created,
+                    )
+                    return
+
+                repair_match = re.fullmatch(
+                    r"/v1/runs/([^/]+)/repairs",
+                    path,
+                )
+
+                if repair_match:
+                    payload = self._json_body(
+                        8192
+                    )
+
+                    repaired = api.request_repair(
+                        repair_match.group(1),
+                        payload,
+                    )
+
+                    self._send(
+                        HTTPStatus.CREATED,
+                        repaired,
                     )
                     return
 
