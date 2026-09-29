@@ -284,6 +284,91 @@ def _read_ai_developer_targets(
     return sources
 
 
+def _ai_developer_response_schema(
+    expected_paths: tuple[str, ...],
+    *,
+    require_all_paths: bool = True,
+) -> dict[str, object]:
+    change_schema: dict[str, object] = {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "enum": list(expected_paths),
+            },
+            "old_text": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "new_text": {
+                "type": "string",
+            },
+            "summary": {
+                "type": "string",
+                "minLength": 1,
+            },
+        },
+        "required": [
+            "path",
+            "old_text",
+            "new_text",
+            "summary",
+        ],
+        "additionalProperties": False,
+    }
+
+    if len(expected_paths) == 1:
+        return {
+            "type": "object",
+            "properties": {
+                "schema_version": {
+                    "type": "string",
+                    "enum": ["1.0"],
+                },
+                **change_schema["properties"],
+            },
+            "required": [
+                "schema_version",
+                "path",
+                "old_text",
+                "new_text",
+                "summary",
+            ],
+            "additionalProperties": False,
+        }
+
+    min_items = (
+        len(expected_paths)
+        if require_all_paths
+        else 1
+    )
+
+    return {
+        "type": "object",
+        "properties": {
+            "schema_version": {
+                "type": "string",
+                "enum": ["2.0"],
+            },
+            "summary": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "changes": {
+                "type": "array",
+                "minItems": min_items,
+                "maxItems": len(expected_paths),
+                "items": change_schema,
+            },
+        },
+        "required": [
+            "schema_version",
+            "summary",
+            "changes",
+        ],
+        "additionalProperties": False,
+    }
+
 
 class AIDeveloperFormatError(ValueError):
     """Recoverable structured-output contract error."""
@@ -1011,6 +1096,12 @@ Rules:
 - do not create dependencies.
 """
 
+            developer_schema = (
+                _ai_developer_response_schema(
+                    target_paths,
+                )
+            )
+
             developer_response = (
                 ai_router.execute(
                     TaskClass.S2,
@@ -1023,6 +1114,7 @@ Rules:
                         else "Generate bounded single-file patch"
                     ),
                     request.timeout_seconds,
+                    response_format=developer_schema,
                 )
             )
 
@@ -1083,6 +1175,7 @@ Rules:
                     Role.DEVELOPER.value,
                     "Repair AI Developer structured output once",
                     request.timeout_seconds,
+                    response_format=developer_schema,
                 )
 
                 generated_patch = (
@@ -1447,6 +1540,12 @@ Rules:
                     Role.DEVELOPER.value,
                     "Generate bounded AI repair",
                     request.timeout_seconds,
+                    response_format=(
+                        _ai_developer_response_schema(
+                            target_paths,
+                            require_all_paths=False,
+                        )
+                    ),
                 )
 
                 repair_route = ai_router.route(
