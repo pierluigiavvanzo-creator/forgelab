@@ -184,3 +184,30 @@ Required behavior:
 - preserve deterministic tests, semantic review and explicit Product Owner gate.
 
 Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the same Dental Quote repair scenario once.
+
+
+## 2026-09-29 MVP-1 live blocker update — invalid Python repair consumes budget
+
+PR #15 merged bounded disjoint same-file operation composition.
+
+Real child run:
+
+`run-be067c4915d2`
+
+The initial candidate reached deterministic tests but failed because the generated implementation still exposed the wrong function signature. The single bounded repair then produced syntactically invalid Python; the second test run stopped at import with `IndentationError`.
+
+Root cause: ForgeLab validates structured format, scope and exact-source references before write, but does not validate Python syntax before a test-failure repair consumes the repair budget.
+
+Current proposal branch:
+
+`mvp1-python-syntax-prewrite-repair`
+
+Required behavior:
+
+- build the final candidate text in memory;
+- for modified `.py` files, parse it deterministically before ToolGateway write;
+- on syntax failure, permit exactly one pre-write correction for that repair candidate;
+- do not increment the real repair count until a syntactically valid candidate is written;
+- preserve max repair attempts, immutable path scope, no fuzzy patching, deterministic tests, semantic review and explicit Product Owner gate.
+
+Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the same Dental Quote repair scenario once.
