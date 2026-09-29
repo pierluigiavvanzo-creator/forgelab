@@ -41,9 +41,9 @@ Canonical branch:
 
 `main`
 
-Current main checkpoint after PR #12:
+Current main checkpoint after PR #13:
 
-`0d557c57ed991c1ab8cf90cd96dd47952fa564ce`
+`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
 
 Local ForgeLab root:
 
@@ -254,52 +254,58 @@ It makes semantic objective coverage structured and blocking:
 - `READY_FOR_DECISION` is allowed only after review PASS;
 - explicit Product Owner promotion gate remains unchanged.
 
-## 10. Latest real-run blocker after PR #12
+## 10. PR #13 — transient Ollama timeout blocker corrected
 
-The next Product Owner repair attempt did not reach a new candidate. The UI returned:
+PR #13 was merged to main:
 
-`repair run execution failed: ProviderTransientError: Ollama unavailable: timed out`
+`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
 
-Canonical code inspection confirmed:
+Behavior:
 
-- run timeout defaults to 60 seconds;
-- the Product Owner child repair inherits the parent timeout;
-- local S1/S2 routes use Ollama and allow one retry;
-- the router currently passes the same 60-second timeout to both attempts.
+- first Ollama attempt preserves the run timeout;
+- only the existing transient retry widens to 3x that timeout;
+- default sequence is `60 -> 180`;
+- cap is 600 seconds;
+- retry count remains one;
+- non-Ollama providers and deterministic test timeout are unchanged.
 
-Therefore the current local failure sequence is:
+## 11. Latest real-run blocker after PR #13
 
-`60s attempt -> transient timeout -> 60s retry -> FAIL`
+The next Product Owner repair attempt progressed beyond the timeout issue but returned:
 
-This is not evidence that the semantic-review logic failed. The run stopped because the local model provider exhausted its two identical timeout windows.
+`repair run execution failed: AIDeveloperFormatError: AI Developer multi-file patch missing fields: changes, schema_version`
 
-## 11. Current proposal
+Canonical inspection found that initial multi-file generation currently treats all authorized paths as mandatory edits:
+
+- two paths are authorized for Dental Quote;
+- JSON Schema initial `minItems` equals the number of authorized paths;
+- prompt requires exactly one change per authorized path;
+- initial deterministic validation uses `require_all_paths=True`.
+
+That contract is unnecessarily strict. Authorization should bound where the model may write; it should not require every allowed file to change.
+
+## 12. Current proposal
 
 Working branch:
 
-`mvp1-ollama-transient-timeout-retry`
+`mvp1-authorized-scope-subset-normalization`
 
 Base:
 
-`0d557c57ed991c1ab8cf90cd96dd47952fa564ce`
+`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
 
 Proposal:
 
-1. first Ollama attempt keeps the original requested timeout;
-2. only after a transient Ollama failure, the existing retry uses 3x the original timeout, capped at 600 seconds;
-3. current 60-second default therefore becomes `60 -> 180` for the two bounded attempts;
-4. retry count remains exactly one;
-5. non-Ollama providers keep unchanged timeout behavior;
-6. deterministic test timeout remains unchanged;
-7. model, cost, routing class, structured output, ToolGateway, semantic gate and promotion rules remain unchanged.
+1. preserve the same immutable 1–3 authorized path scope;
+2. initial AI Developer may modify a non-empty subset of authorized paths;
+3. multi-file JSON Schema uses `minItems=1`, `maxItems=len(authorized_paths)`;
+4. if Ollama returns a complete flat single-change object within multi-file scope, normalize it deterministically to `schema_version: 2.0` with one `changes[]` entry;
+5. do not invent a second change;
+6. path expansion, exact-source `old_text`, no-op and size controls remain authoritative;
+7. AgentResult/evidence record actual changed files, while ExecutionPlan retains the broader authorized scope;
+8. semantic review from PR #12 remains the blocking authority for whether the resulting subset fully satisfies the Product Owner objective.
 
-Regression tests cover:
-
-- generic transient provider remains `60 -> 60`;
-- Ollama transient retry becomes `60 -> 180`;
-- widened retry is capped at 600 seconds.
-
-No automatic GitHub CI has been available on the recent PRs, so local regression execution remains required after an approved merge.
+Regression coverage reproduces the exact live shape: two authorized paths, one complete flat change, normalized and validated without scope expansion.
 
 ## 11. Current MVP gate assessment
 
@@ -313,7 +319,7 @@ The Product Owner can initiate a real run from the dashboard and receive visible
 
 **FAIL / current blocker.**
 
-The bounded child-run path now exists, but a transient local Ollama timeout currently exhausts two identical 60-second windows instead of recovering with a wider bounded retry window.
+The timeout path is corrected by PR #13, but the initial multi-file contract still confuses authorized scope with mandatory edits and can stop the child run before semantic review/repair.
 
 ### G3 — Real output
 
@@ -325,7 +331,7 @@ Three-treatment visible behavior has not yet been delivered.
 
 **Implementation corrected by PR #12; real-run validation pending.**
 
-Semantic review is now authoritative and blocking on main, but the first real validation attempt after PR #12 stopped at provider timeout before the semantic path could complete.
+Semantic review is authoritative and blocking on main, but real-run validation has not yet completed because the current Developer multi-file contract failed before review.
 
 ### G5 — Human control
 
@@ -380,7 +386,7 @@ Only fix blockers concretely exposed by MVP-1.
 
 Validate the branch:
 
-`mvp1-ollama-transient-timeout-retry`
+`mvp1-authorized-scope-subset-normalization`
 
 If the proposal is sound, open/approve/merge its PR under the existing governed workflow.
 
@@ -388,9 +394,10 @@ Then:
 
 1. fast-forward local ForgeLab to the approved `main`;
 2. rerun the same Dental Quote Product Owner repair scenario once;
-3. allow the existing Ollama retry to use the wider bounded timeout only if the first local call times out;
-4. inspect `ReviewReport.json` and `Changes.patch`;
-5. approve only if the patch genuinely implements the complete three-treatment objective;
-6. after approval, verify exact promotion/retest/commit and visible target-app behavior.
+3. allow the Developer to use only the authorized subset it actually needs;
+4. let blocking semantic review require any missing objective coverage/tests and consume the bounded repair budget if necessary;
+5. inspect `ReviewReport.json` and `Changes.patch`;
+6. approve only if the patch genuinely implements the complete three-treatment objective;
+7. after approval, verify exact promotion/retest/commit and visible target-app behavior.
 
 Do not start MVP-2 until MVP-1 is actually PASS.

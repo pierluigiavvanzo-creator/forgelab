@@ -848,6 +848,36 @@ def _validate_ai_developer_patch(
 
     missing = required - set(payload)
 
+    flat_change_required = {
+        "path",
+        "old_text",
+        "new_text",
+        "summary",
+    }
+
+    if (
+        missing
+        and not require_all_paths
+        and flat_change_required <= set(payload)
+    ):
+        normalized_change = (
+            _validate_ai_developer_change(
+                payload,
+                expected_paths,
+                source_texts,
+            )
+        )
+
+        return {
+            "schema_version": "2.0",
+            "summary": normalized_change[
+                "summary"
+            ],
+            "changes": [
+                normalized_change
+            ],
+        }
+
     if missing:
         raise AIDeveloperFormatError(
             "AI Developer multi-file patch missing fields: "
@@ -1319,24 +1349,17 @@ Do not claim that tools or tests have already run.
 }}
 """
             else:
-                change_examples = ",\n".join(
-                    (
-                        "    {\n"
-                        f'      "path": "{path}",\n'
-                        '      "old_text": "<exact existing contiguous text>",\n'
-                        '      "new_text": "<replacement text>",\n'
-                        '      "summary": "<short per-file summary>"\n'
-                        "    }"
-                    )
-                    for path in target_paths
-                )
-
                 schema_instructions = (
                     "{\n"
                     '  "schema_version": "2.0",\n'
                     '  "summary": "<short overall implementation summary>",\n'
                     '  "changes": [\n'
-                    f"{change_examples}\n"
+                    "    {\n"
+                    '      "path": "<one authorized path that actually needs modification>",\n'
+                    '      "old_text": "<exact existing contiguous text>",\n'
+                    '      "new_text": "<replacement text>",\n'
+                    '      "summary": "<short per-file summary>"\n'
+                    "    }\n"
                     "  ]\n"
                     "}"
                 )
@@ -1367,7 +1390,8 @@ Required schema:
 
 Rules:
 - every path MUST be one of the authorized target paths.
-- when more than one path is authorized, return exactly one change for each path.
+- authorized paths define the maximum write scope, not mandatory edits.
+- return one or more changes only for files that actually need modification.
 - old_text MUST occur exactly once in its corresponding file.
 - choose the smallest sufficient replacement for each file.
 - do not modify any other file.
@@ -1378,6 +1402,7 @@ Rules:
             developer_schema = (
                 _ai_developer_response_schema(
                     target_paths,
+                    require_all_paths=False,
                 )
             )
 
@@ -1407,6 +1432,7 @@ Rules:
                         developer_response.text,
                         target_paths,
                         source_texts,
+                        require_all_paths=False,
                     )
                 )
             except (
@@ -1454,7 +1480,8 @@ Required schema:
 Rules:
 - this is the ONE bounded pre-write repair attempt.
 - every path MUST be one of the authorized target paths.
-- when more than one path is authorized, return exactly one change for each path.
+- authorized paths define the maximum write scope, not mandatory edits.
+- return one or more changes only for files that actually need modification.
 - old_text MUST be copied verbatim from the current complete authorized file shown above.
 - old_text MUST occur exactly once in its corresponding current file.
 - do not reference text introduced only by a prior candidate or prior repair.
@@ -1479,6 +1506,7 @@ Rules:
                         developer_response.text,
                         target_paths,
                         source_texts,
+                        require_all_paths=False,
                     )
                 )
 
@@ -1568,6 +1596,10 @@ Rules:
             )
 
         authorized_paths = set(target_paths)
+        implementation_changed_paths = [
+            item[0]
+            for item in implementation_changes
+        ]
 
         for (
             implementation_path,
@@ -1593,8 +1625,9 @@ Rules:
             "exit_status":
                 0,
             "summary":
-                "Changed authorized path set "
-                f"{list(target_paths)} inside isolated workspace",
+                "Changed authorized path subset "
+                f"{implementation_changed_paths} "
+                "inside isolated workspace",
             "artifact_ref":
                 (
                     "AIDeveloperPatch.json"
@@ -1612,7 +1645,7 @@ Rules:
                 implementation_summary,
                 ["ev-implementation"],
                 "Run tests",
-                changed=list(target_paths),
+                changed=implementation_changed_paths,
             )
         )
         machine.transition(RunStatus.TESTING)
