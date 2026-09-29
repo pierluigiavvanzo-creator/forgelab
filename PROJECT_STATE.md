@@ -16,9 +16,9 @@ Canonical shared truth:
 
 Current canonical main checkpoint:
 
-`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
+`fdaf5a6e2b637ee44452f3d8e56ea4b78386d2bb`
 
-This includes merged PR #15: bounded disjoint same-file AI changes are composed deterministically before ToolGateway write.
+This includes merged PR #16: modified Python candidates are syntax-validated before ToolGateway write, with one bounded pre-write correction for malformed repair output.
 
 Local root used for MVP validation:
 
@@ -66,49 +66,42 @@ The real run exposed product blockers that were fixed narrowly, one at a time:
 - PR #14 — authorized paths are now maximum write scope; a valid non-empty subset is allowed and a complete flat single-change response can be normalized deterministically;
 - PR #15 — up to four disjoint operations per authorized path can be composed deterministically into one ToolGateway write per file; overlapping operations remain blocked.
 
-Main after PR #15:
+Main after PR #16:
 
-`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
+`fdaf5a6e2b637ee44452f3d8e56ea4b78386d2bb`
 
 ## Current confirmed blocker
 
-**A syntactically invalid Python repair can consume the only repair budget.**
+**The single pre-write correction can still fail when Ollama repeats a stale `old_text` reference.**
 
-Real child run:
+After PR #16, a new Product Owner repair request from active run `run-be067c4915d2` failed before returning a completed child run with:
 
-`run-be067c4915d2`
+`AIDeveloperReferenceError: AI Developer old_text must occur exactly once in quote_calculator.py; found 0`
 
-Observed sequence:
-
-- initial candidate changed both authorized Dental Quote files;
-- deterministic tests failed because the generated function still accepted two positional arguments while the new test called it with six;
-- Support/Developer used the one allowed repair attempt;
-- the repair candidate introduced invalid Python, including malformed indentation;
-- the second deterministic test stopped at import with `IndentationError: unexpected indent`;
-- run ended `DIAGNOSING`, tests FAIL, repair attempts 1;
-- no `Changes.patch` was produced because the candidate never reached the review phase.
+Canonical inspection confirms that the first stale-reference error is caught, but the one correction still uses the same fragment-based `old_text/new_text` contract. If Ollama again returns stale text, the second validation is terminal and the API surfaces the exception.
 
 ## Current proposal under validation
 
 Branch:
 
-`mvp1-python-syntax-prewrite-repair`
+`mvp1-reference-error-full-file-fallback`
 
 Intent:
 
-- validate the final in-memory candidate for every modified `.py` file with Python AST parsing before ToolGateway write;
-- treat Python syntax failure as recoverable pre-write validation, not as a consumed functional repair;
-- initial generation and semantic-repair paths also receive the same syntax guard;
-- for test-failure repair, allow exactly one bounded pre-write correction when format, exact-source reference, or Python syntax validation fails;
-- only a syntactically valid repair candidate is written and increments the real repair counter;
-- keep max repair attempts, authorized paths, no fuzzy patching, deterministic tests, semantic review and Product Owner gate unchanged.
+- preserve exactly one pre-write correction;
+- when the validation failure is specifically `AIDeveloperReferenceError`, change the correction contract instead of retrying the same anchor contract;
+- request complete replacement content only for the authorized files that actually need modification;
+- use a dedicated structured schema `2.1` with `path + new_text + summary`, no model-provided `old_text`;
+- deterministically normalize the response back to the internal schema 2.0 by using the current complete file as authoritative `old_text`;
+- validate Python syntax before write;
+- preserve immutable scope, no fuzzy matching, one ToolGateway write per file, repair budget, deterministic tests, semantic review and Product Owner gate.
 
 ## MVP gates current status
 
 - **G1 Usability:** materially demonstrated; dashboard can initiate real runs.
-- **G2 Autonomy:** not yet PASS; a malformed Python repair can currently exhaust the single repair budget and return debugging work to the Product Owner.
+- **G2 Autonomy:** not yet PASS; repeated stale source anchors can still escape the single pre-write correction and return retry/debugging work to the Product Owner.
 - **G3 Real output:** FAIL / not yet proven for the full three-treatment objective.
-- **G4 Quality:** semantic review is authoritative on main after PR #12; real-run validation is still pending because the repair candidate failed Python syntax before review.
+- **G4 Quality:** syntax validation is now pre-write after PR #16, but real-run validation is still pending because stale-reference recovery can terminate before tests/review.
 - **G5 Human control:** PASS so far; no candidate has been promoted without explicit Product Owner approval.
 
 ## Infrastructure freeze
@@ -119,6 +112,6 @@ Do not add deployment, multi-tenant, billing, advanced observability, scaling, u
 
 ## Single next action
 
-Validate and, only after explicit Product Owner approval, merge the Python syntax pre-write repair proposal.
+Validate and, only after explicit Product Owner approval, merge the stale-reference full-file recovery proposal.
 
 Then rerun the same Dental Quote Product Owner repair scenario once. Inspect `TestEvidence.json`, `ReviewReport.json` and `Changes.patch` before any promotion.
