@@ -559,6 +559,238 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_ai_developer_composes_disjoint_same_file_changes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            same_file_patch = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Document and fix calculator",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": "def add(a, b):\n",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    \"\"\"Add two numbers.\"\"\"\n"
+                        ),
+                        "summary": "Document add",
+                    },
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a - b",
+                        "new_text": "return a + b",
+                        "summary": "Fix addition",
+                    },
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    "Bounded multi-file plan",
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    same_file_patch,
+                    40,
+                    25,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix addition and document the function; "
+                            "tests need no edit"
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                        allowed_paths=(
+                            "calculator.py",
+                            "test_calculator.py",
+                        ),
+                    ),
+                    root / "runs",
+                )
+
+            generated = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            implement = json.loads(
+                (
+                    run_dir /
+                    "tasks" /
+                    "implement" /
+                    "AgentResult.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                generated["validated_change_count"],
+                1,
+            )
+            self.assertEqual(
+                len(generated["changes"]),
+                1,
+            )
+            self.assertEqual(
+                generated["changes"][0]["path"],
+                "calculator.py",
+            )
+            self.assertIn(
+                "\"\"\"Add two numbers.\"\"\"",
+                generated["changes"][0]["new_text"],
+            )
+            self.assertIn(
+                "return a + b",
+                generated["changes"][0]["new_text"],
+            )
+            self.assertEqual(
+                implement["changed_artifacts"],
+                ["calculator.py"],
+            )
+            self.assertEqual(
+                review["changed_paths"],
+                ["calculator.py"],
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                3,
+            )
+
+            developer_format = (
+                invoke.call_args_list[1].args[3]
+            )
+            self.assertEqual(
+                developer_format["properties"]["changes"]
+                ["minItems"],
+                1,
+            )
+            self.assertEqual(
+                developer_format["properties"]["changes"]
+                ["maxItems"],
+                8,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
+    def test_ai_developer_rejects_overlapping_same_file_changes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            overlapping_patch = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Conflicting calculator edits",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": (
+                            "def add(a, b):\n"
+                            "    return a - b"
+                        ),
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    return a + b"
+                        ),
+                        "summary": "Replace whole function body",
+                    },
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a - b",
+                        "new_text": "return a + b",
+                        "summary": "Replace nested return",
+                    },
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    "Bounded multi-file plan",
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    overlapping_patch,
+                    40,
+                    25,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    overlapping_patch,
+                    40,
+                    25,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                with self.assertRaises(ValueError):
+                    run_multi_agent(
+                        request(
+                            repo,
+                            objective="Fix addition",
+                            operation="ai_generate",
+                            old_text="",
+                            new_text="",
+                            max_repair_attempts=0,
+                            allowed_paths=(
+                                "calculator.py",
+                                "test_calculator.py",
+                            ),
+                        ),
+                        root / "runs",
+                    )
+
+            self.assertEqual(
+                len(invoke.call_args_list),
+                3,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                "return a - b",
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
+            )
+
+
     def test_ai_developer_multifile_scope_normalizes_flat_single_change(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -696,7 +928,7 @@ class MultiAgentTests(unittest.TestCase):
             self.assertEqual(
                 developer_format["properties"]["changes"]
                 ["maxItems"],
-                2,
+                8,
             )
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
@@ -856,7 +1088,7 @@ class MultiAgentTests(unittest.TestCase):
             )
             self.assertEqual(
                 changes_format["maxItems"],
-                2,
+                8,
             )
             self.assertEqual(
                 set(
@@ -1872,7 +2104,7 @@ class MultiAgentTests(unittest.TestCase):
             self.assertEqual(
                 repair_format["properties"]["changes"]
                 ["maxItems"],
-                2,
+                8,
             )
             self.assertEqual(
                 set(
