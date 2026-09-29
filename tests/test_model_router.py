@@ -15,8 +15,18 @@ class ScriptedProvider:
     def __init__(self, outcomes):
         self.outcomes = list(outcomes)
         self.calls = 0
+        self.response_formats = []
 
-    def invoke(self, model, prompt, timeout_seconds):
+    def invoke(
+        self,
+        model,
+        prompt,
+        timeout_seconds,
+        response_format=None,
+    ):
+        self.response_formats.append(
+            response_format
+        )
         outcome = self.outcomes[self.calls]
         self.calls += 1
         if isinstance(outcome, Exception):
@@ -68,6 +78,42 @@ class ModelRouterTests(unittest.TestCase):
         router = ModelRouter(routes(), {"test": provider}, ledger)
         router.execute(TaskClass.S1, "prompt", "t1", "PM", "provider cost")
         self.assertEqual(ledger.spent, Decimal("0.03"))
+
+    def test_structured_response_format_is_forwarded(self):
+        provider = ScriptedProvider([
+            ProviderResponse(
+                "{\"value\": 1}",
+                1,
+                1,
+                actual_cost=Decimal("0"),
+            )
+        ])
+        router = ModelRouter(
+            routes(),
+            {"test": provider},
+            UsageLedger(Decimal("1")),
+        )
+        schema = {
+            "type": "object",
+            "properties": {
+                "value": {"type": "integer"},
+            },
+            "required": ["value"],
+        }
+
+        router.execute(
+            TaskClass.S2,
+            "prompt",
+            "t-format",
+            "DEVELOPER",
+            "structured implementation",
+            response_format=schema,
+        )
+
+        self.assertEqual(
+            provider.response_formats,
+            [schema],
+        )
 
     def test_transient_failure_retries_with_bounded_attempts(self):
         provider = ScriptedProvider([ProviderTransientError("busy"), ProviderResponse("ok", 1, 1, actual_cost=Decimal("0.01"))])

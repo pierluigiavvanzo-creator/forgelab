@@ -633,6 +633,48 @@ class MultiAgentTests(unittest.TestCase):
                 4,
             )
 
+            developer_format = (
+                invoke.call_args_list[1].args[3]
+            )
+            retry_format = (
+                invoke.call_args_list[2].args[3]
+            )
+
+            self.assertEqual(
+                developer_format,
+                retry_format,
+            )
+            self.assertEqual(
+                set(developer_format["required"]),
+                {
+                    "schema_version",
+                    "summary",
+                    "changes",
+                },
+            )
+
+            changes_format = (
+                developer_format["properties"]["changes"]
+            )
+            self.assertEqual(
+                changes_format["minItems"],
+                2,
+            )
+            self.assertEqual(
+                changes_format["maxItems"],
+                2,
+            )
+            self.assertEqual(
+                set(
+                    changes_format["items"]
+                    ["properties"]["path"]["enum"]
+                ),
+                {
+                    "calculator.py",
+                    "operation.py",
+                },
+            )
+
             repair_prompt = invoke.call_args_list[2].args[1]
             self.assertIn(
                 "ONE bounded format-repair attempt",
@@ -1125,7 +1167,7 @@ class MultiAgentTests(unittest.TestCase):
             with patch(
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
-            ):
+            ) as invoke:
                 run_dir = run_multi_agent(
                     request(
                         repo,
@@ -1178,6 +1220,39 @@ class MultiAgentTests(unittest.TestCase):
             self.assertEqual(
                 summary["changes"],
                 ["calculator.py", "operation.py"],
+            )
+
+            initial_format = (
+                invoke.call_args_list[1].args[3]
+            )
+            repair_format = (
+                invoke.call_args_list[3].args[3]
+            )
+
+            self.assertEqual(
+                initial_format["properties"]["changes"]
+                ["minItems"],
+                2,
+            )
+            self.assertEqual(
+                repair_format["properties"]["changes"]
+                ["minItems"],
+                1,
+            )
+            self.assertEqual(
+                repair_format["properties"]["changes"]
+                ["maxItems"],
+                2,
+            )
+            self.assertEqual(
+                set(
+                    repair_format["properties"]["changes"]
+                    ["items"]["properties"]["path"]["enum"]
+                ),
+                {
+                    "calculator.py",
+                    "operation.py",
+                },
             )
             self.assertEqual(git(repo, "status", "--porcelain"), "")
 

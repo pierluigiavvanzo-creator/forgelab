@@ -82,7 +82,13 @@ class ProviderResponse:
 
 
 class ModelProvider(Protocol):
-    def invoke(self, model: str, prompt: str, timeout_seconds: int) -> ProviderResponse: ...
+    def invoke(
+        self,
+        model: str,
+        prompt: str,
+        timeout_seconds: int,
+        response_format: dict[str, object] | str | None = None,
+    ) -> ProviderResponse: ...
 
 
 @dataclass(frozen=True)
@@ -167,7 +173,8 @@ class ModelRouter:
         return self.routes[task_class]
 
     def execute(self, task_class: TaskClass, prompt: str, task_id: str, agent_role: str,
-                routing_reason: str, timeout_seconds: int = 60) -> ProviderResponse:
+                routing_reason: str, timeout_seconds: int = 60,
+                response_format: dict[str, object] | str | None = None) -> ProviderResponse:
         route = self.route(task_class)
         if task_class is TaskClass.S0 or route.provider is None:
             raise RouterError("S0 deterministic work must not call an LLM provider")
@@ -179,7 +186,20 @@ class ModelRouter:
         for attempt in range(1, route.max_retries + 2):
             started = time.monotonic()
             try:
-                response = provider.invoke(route.model, prompt, timeout_seconds)
+                response = (
+                    provider.invoke(
+                        route.model,
+                        prompt,
+                        timeout_seconds,
+                    )
+                    if response_format is None
+                    else provider.invoke(
+                        route.model,
+                        prompt,
+                        timeout_seconds,
+                        response_format,
+                    )
+                )
                 cost = _cost(response, route.pricing)
                 latency = int((time.monotonic() - started) * 1000)
                 if cost > route.max_call_cost or cost > self.ledger.remaining:

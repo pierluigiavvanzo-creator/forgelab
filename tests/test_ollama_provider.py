@@ -104,6 +104,45 @@ class OllamaProviderTests(unittest.TestCase):
         )
 
     @patch("forgelab.ollama_provider.urlopen")
+    def test_structured_output_schema_is_sent_to_generate(
+        self,
+        mocked,
+    ):
+        mocked.return_value = FakeResponse({
+            "response": "{\"schema_version\": \"2.0\"}",
+            "prompt_eval_count": 12,
+            "eval_count": 8,
+        })
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "schema_version": {
+                    "type": "string",
+                    "enum": ["2.0"],
+                },
+            },
+            "required": ["schema_version"],
+        }
+
+        OllamaProvider().invoke(
+            "qwen2.5-coder:7b",
+            "return structured JSON",
+            60,
+            schema,
+        )
+
+        request = mocked.call_args.args[0]
+        payload = json.loads(
+            request.data.decode("utf-8")
+        )
+
+        self.assertEqual(
+            payload["format"],
+            schema,
+        )
+
+    @patch("forgelab.ollama_provider.urlopen")
     def test_connection_failure_is_transient(
         self,
         mocked,
