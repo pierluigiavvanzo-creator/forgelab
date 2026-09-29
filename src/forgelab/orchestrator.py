@@ -432,6 +432,278 @@ def _extract_ai_developer_json(
     )
 
 
+def _ai_review_response_schema() -> dict[str, object]:
+    requirement_schema: dict[str, object] = {
+        "type": "object",
+        "properties": {
+            "requirement": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "status": {
+                "type": "string",
+                "enum": [
+                    "SATISFIED",
+                    "MISSING",
+                    "UNVERIFIED",
+                ],
+            },
+            "evidence": {
+                "type": "string",
+                "minLength": 1,
+            },
+        },
+        "required": [
+            "requirement",
+            "status",
+            "evidence",
+        ],
+        "additionalProperties": False,
+    }
+
+    finding_schema: dict[str, object] = {
+        "type": "object",
+        "properties": {
+            "severity": {
+                "type": "string",
+                "enum": [
+                    "BLOCKER",
+                    "WARN",
+                    "INFO",
+                ],
+            },
+            "category": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "description": {
+                "type": "string",
+                "minLength": 1,
+            },
+        },
+        "required": [
+            "severity",
+            "category",
+            "description",
+        ],
+        "additionalProperties": False,
+    }
+
+    return {
+        "type": "object",
+        "properties": {
+            "schema_version": {
+                "type": "string",
+                "enum": ["1.0"],
+            },
+            "status": {
+                "type": "string",
+                "enum": ["PASS", "FAIL"],
+            },
+            "summary": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "requirements": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 40,
+                "items": requirement_schema,
+            },
+            "findings": {
+                "type": "array",
+                "maxItems": 40,
+                "items": finding_schema,
+            },
+        },
+        "required": [
+            "schema_version",
+            "status",
+            "summary",
+            "requirements",
+            "findings",
+        ],
+        "additionalProperties": False,
+    }
+
+
+def _validate_ai_review(
+    response_text: str,
+) -> dict[str, Any]:
+    payload = _extract_ai_developer_json(
+        response_text
+    )
+
+    required = {
+        "schema_version",
+        "status",
+        "summary",
+        "requirements",
+        "findings",
+    }
+
+    missing = required - set(payload)
+
+    if missing:
+        raise ValueError(
+            "AI Reviewer missing fields: "
+            + ", ".join(sorted(missing))
+        )
+
+    if payload["schema_version"] != "1.0":
+        raise ValueError(
+            "AI Reviewer schema_version must be 1.0"
+        )
+
+    if payload["status"] not in {
+        "PASS",
+        "FAIL",
+    }:
+        raise ValueError(
+            "AI Reviewer status must be PASS or FAIL"
+        )
+
+    summary = payload["summary"]
+
+    if (
+        not isinstance(summary, str)
+        or not summary.strip()
+    ):
+        raise ValueError(
+            "AI Reviewer summary must be non-empty"
+        )
+
+    raw_requirements = payload["requirements"]
+
+    if (
+        not isinstance(raw_requirements, list)
+        or not raw_requirements
+        or not all(
+            isinstance(item, dict)
+            for item in raw_requirements
+        )
+    ):
+        raise ValueError(
+            "AI Reviewer requirements must be "
+            "a non-empty structured list"
+        )
+
+    requirements: list[dict[str, str]] = []
+
+    for item in raw_requirements:
+        requirement = item.get("requirement")
+        status = item.get("status")
+        evidence = item.get("evidence")
+
+        if (
+            not isinstance(requirement, str)
+            or not requirement.strip()
+            or status not in {
+                "SATISFIED",
+                "MISSING",
+                "UNVERIFIED",
+            }
+            or not isinstance(evidence, str)
+            or not evidence.strip()
+        ):
+            raise ValueError(
+                "AI Reviewer requirement entry is invalid"
+            )
+
+        requirements.append({
+            "requirement": requirement.strip(),
+            "status": str(status),
+            "evidence": evidence.strip(),
+        })
+
+    raw_findings = payload["findings"]
+
+    if (
+        not isinstance(raw_findings, list)
+        or not all(
+            isinstance(item, dict)
+            for item in raw_findings
+        )
+    ):
+        raise ValueError(
+            "AI Reviewer findings must be "
+            "a structured list"
+        )
+
+    findings: list[dict[str, str]] = []
+
+    for item in raw_findings:
+        severity = item.get("severity")
+        category = item.get("category")
+        description = item.get("description")
+
+        if (
+            severity not in {
+                "BLOCKER",
+                "WARN",
+                "INFO",
+            }
+            or not isinstance(category, str)
+            or not category.strip()
+            or not isinstance(description, str)
+            or not description.strip()
+        ):
+            raise ValueError(
+                "AI Reviewer finding entry is invalid"
+            )
+
+        findings.append({
+            "severity": str(severity),
+            "category": category.strip(),
+            "description": description.strip(),
+        })
+
+    missing_requirements = [
+        item
+        for item in requirements
+        if item["status"] != "SATISFIED"
+    ]
+
+    blocker_findings = [
+        item
+        for item in findings
+        if item["severity"] == "BLOCKER"
+    ]
+
+    status = (
+        "FAIL"
+        if (
+            payload["status"] == "FAIL"
+            or missing_requirements
+            or blocker_findings
+        )
+        else "PASS"
+    )
+
+    if (
+        status == "FAIL"
+        and not findings
+    ):
+        findings = [
+            {
+                "severity": "BLOCKER",
+                "category": "objective_coverage",
+                "description": (
+                    "One or more explicit objective "
+                    "requirements are missing or unverified"
+                ),
+            }
+        ]
+
+    return {
+        "schema_version": "1.0",
+        "status": status,
+        "summary": summary.strip(),
+        "requirements": requirements,
+        "findings": findings,
+    }
+
+
 def _validate_ai_developer_change(
     payload: dict[str, Any],
     expected_paths: tuple[str, ...],
@@ -998,6 +1270,7 @@ Do not claim that tools or tests have already run.
     format_repair_attempts = 0
     reference_repair_attempts = 0
     prewrite_repair_attempts = 0
+    semantic_review_history: list[dict[str, Any]] = []
     source_unchanged = False
     final_test_passed = False
     review_report: dict[str, Any] = {"status": "FAIL", "findings": []}
@@ -1666,18 +1939,61 @@ Rules:
             machine.transition(RunStatus.TESTING)
 
         if final_test_passed:
-            machine.transition(RunStatus.SMOKE_TEST)
-            diff = workspace.diff()
-            store.write_text("Changes.patch", diff)
-            evidence.append({"evidence_id": "ev-diff", "check_type": "scope", "command_or_tool": "git diff", "exit_status": 0, "summary": "Patch captured", "artifact_ref": "Changes.patch"})
-            machine.transition(RunStatus.REVIEW)
-            review_report = review_patch(diff, set(target_paths))
+            review_round = 0
 
-            if ai_router is not None:
-                review_prompt = f"""
+            while final_test_passed:
+                machine.transition(
+                    RunStatus.SMOKE_TEST
+                )
+
+                diff = workspace.diff()
+
+                store.write_text(
+                    "Changes.patch",
+                    diff,
+                )
+
+                diff_evidence_id = (
+                    f"ev-diff-{review_round}"
+                )
+
+                evidence.append({
+                    "evidence_id":
+                        diff_evidence_id,
+                    "check_type":
+                        "scope",
+                    "command_or_tool":
+                        "git diff",
+                    "exit_status":
+                        0,
+                    "summary":
+                        "Patch captured",
+                    "artifact_ref":
+                        "Changes.patch",
+                })
+
+                machine.transition(
+                    RunStatus.REVIEW
+                )
+
+                deterministic_review = (
+                    review_patch(
+                        diff,
+                        set(target_paths),
+                    )
+                )
+
+                semantic_review: (
+                    dict[str, Any] | None
+                ) = None
+
+                if ai_router is not None:
+                    review_prompt = f"""
 You are the REVIEWER agent in ForgeLab.
 
-Review this already-generated patch semantically.
+Review this already-generated patch against the full
+Product Owner objective. This review is a blocking quality
+gate, not advisory prose.
 
 Objective:
 {request.objective}
@@ -1688,46 +2004,643 @@ Allowed targets:
 Patch:
 {diff[-8000:]}
 
-The deterministic test and policy engines remain authoritative.
-Identify inconsistencies, missing acceptance concerns, or
-unexpected semantic risk. Do not approve promotion.
+Latest deterministic test evidence:
+stdout:
+{test.stdout[-2500:]}
+
+stderr:
+{test.stderr[-2500:]}
+
+Instructions:
+- decompose the objective into EVERY explicit obligation;
+- include one requirements[] entry for each obligation;
+- preserve quantitative requirements such as exact counts,
+  "three", "each", "all", percentages, validation, and tests;
+- mark SATISFIED only when the patch contains direct evidence;
+- a passing test suite does NOT satisfy an objective requirement
+  that the tests do not cover;
+- mark missing or insufficiently evidenced behavior as MISSING
+  or UNVERIFIED and set overall status FAIL;
+- use BLOCKER findings for missing required behavior;
+- do not approve promotion.
+
+Return ONLY the required JSON object.
 """
 
-                ai_review = ai_router.execute(
-                    TaskClass.S1,
-                    review_prompt,
-                    "review",
-                    Role.REVIEWER.value,
-                    "Independent AI semantic review",
+                    ai_review_response = (
+                        ai_router.execute(
+                            TaskClass.S1,
+                            review_prompt,
+                            f"review-{review_round}",
+                            Role.REVIEWER.value,
+                            "Blocking AI semantic review",
+                            request.timeout_seconds,
+                            response_format=(
+                                _ai_review_response_schema()
+                            ),
+                        )
+                    )
+
+                    review_route = (
+                        ai_router.route(
+                            TaskClass.S1
+                        )
+                    )
+
+                    semantic_review = (
+                        _validate_ai_review(
+                            ai_review_response.text
+                        )
+                    )
+
+                    semantic_review_history.append({
+                        "round":
+                            review_round,
+                        **semantic_review,
+                    })
+
+                    store.write_optional_json(
+                        "AIReview.json",
+                        {
+                            "role":
+                                Role.REVIEWER.value,
+                            "provider":
+                                review_route.provider,
+                            "model":
+                                review_route.model,
+                            **semantic_review,
+                            "attempts":
+                                semantic_review_history,
+                        },
+                    )
+
+                combined_findings = list(
+                    deterministic_review[
+                        "findings"
+                    ]
+                )
+
+                if semantic_review is not None:
+                    combined_findings.extend(
+                        semantic_review[
+                            "findings"
+                        ]
+                    )
+
+                semantic_status = (
+                    semantic_review["status"]
+                    if semantic_review is not None
+                    else "NOT_RUN"
+                )
+
+                review_status = (
+                    "PASS"
+                    if (
+                        deterministic_review[
+                            "status"
+                        ] == "PASS"
+                        and (
+                            semantic_review is None
+                            or semantic_status
+                            == "PASS"
+                        )
+                    )
+                    else "FAIL"
+                )
+
+                review_report = {
+                    "status":
+                        review_status,
+                    "changed_paths":
+                        deterministic_review[
+                            "changed_paths"
+                        ],
+                    "findings":
+                        combined_findings,
+                    "deterministic_status":
+                        deterministic_review[
+                            "status"
+                        ],
+                    "semantic_status":
+                        semantic_status,
+                    "semantic_requirements":
+                        (
+                            semantic_review[
+                                "requirements"
+                            ]
+                            if semantic_review
+                            is not None
+                            else []
+                        ),
+                    "semantic_summary":
+                        (
+                            semantic_review[
+                                "summary"
+                            ]
+                            if semantic_review
+                            is not None
+                            else ""
+                        ),
+                    "review_round":
+                        review_round,
+                }
+
+                if review_status == "PASS":
+                    results.append(
+                        _result(
+                            store,
+                            "review",
+                            ResultStatus.PASS,
+                            (
+                                "Deterministic and semantic "
+                                "review passed"
+                                if semantic_review
+                                is not None
+                                else (
+                                    "Independent deterministic "
+                                    "review completed"
+                                )
+                            ),
+                            [diff_evidence_id],
+                            "Run security policy",
+                            combined_findings,
+                        )
+                    )
+                    break
+
+                semantic_repair_available = (
+                    semantic_review is not None
+                    and semantic_status == "FAIL"
+                    and deterministic_review[
+                        "status"
+                    ] == "PASS"
+                    and request.operation
+                    == "ai_generate"
+                    and repair_attempts
+                    < request.max_repair_attempts
+                )
+
+                if not semantic_repair_available:
+                    results.append(
+                        _result(
+                            store,
+                            "review",
+                            ResultStatus.FAIL,
+                            (
+                                "Semantic objective coverage "
+                                "review failed"
+                                if semantic_review
+                                is not None
+                                else (
+                                    "Independent deterministic "
+                                    "review failed"
+                                )
+                            ),
+                            [diff_evidence_id],
+                            "Human repair required",
+                            combined_findings,
+                        )
+                    )
+                    break
+
+                machine.transition(
+                    RunStatus.REPAIRING
+                )
+
+                semantic_repair_source_texts = (
+                    _read_ai_developer_targets(
+                        workspace.path,  # type: ignore[arg-type]
+                        target_paths,
+                    )
+                )
+
+                semantic_repair_files = (
+                    "\n\n".join(
+                        (
+                            f"--- BEGIN FILE {path} ---\n"
+                            f"{semantic_repair_source_texts[path]}\n"
+                            f"--- END FILE {path} ---"
+                        )
+                        for path in target_paths
+                    )
+                )
+
+                semantic_repair_id = (
+                    f"review-repair-"
+                    f"{repair_attempts + 1}"
+                )
+
+                semantic_repair_prompt = f"""
+You are the DEVELOPER agent in ForgeLab.
+
+The candidate passed deterministic tests but FAILED the
+independent semantic objective-coverage review.
+
+Original objective:
+{request.objective}
+
+Original authorized paths (scope is immutable):
+{chr(10).join(f"- {path}" for path in target_paths)}
+
+Blocking semantic review:
+{json.dumps(semantic_review, indent=2, ensure_ascii=False)}
+
+Current complete authorized files AFTER the candidate:
+{semantic_repair_files}
+
+Current full candidate diff:
+{diff[-8000:]}
+
+Generate the smallest repair that resolves every MISSING or
+UNVERIFIED required behavior identified by the Reviewer.
+
+Rules:
+- every path MUST stay inside the ORIGINAL authorized path set;
+- repair only the non-empty subset actually needed;
+- old_text MUST be copied verbatim from the current file;
+- old_text MUST occur exactly once;
+- do not weaken or delete valid tests merely to make them pass;
+- add or strengthen tests when the review identifies missing
+  required behavior or missing objective coverage;
+- do not modify dependencies or configuration unless the
+  original objective explicitly requires it;
+- do not claim tests have run.
+
+Return ONLY the required structured JSON object.
+"""
+
+                semantic_repair_response = (
+                    ai_router.execute(
+                        TaskClass.S2,
+                        semantic_repair_prompt,
+                        semantic_repair_id,
+                        Role.DEVELOPER.value,
+                        (
+                            "Repair blocking semantic "
+                            "review findings"
+                        ),
+                        request.timeout_seconds,
+                        response_format=(
+                            _ai_developer_response_schema(
+                                target_paths,
+                                require_all_paths=False,
+                            )
+                        ),
+                    )
+                )
+
+                semantic_repair_route = (
+                    ai_router.route(
+                        TaskClass.S2
+                    )
+                )
+
+                semantic_prewrite_attempts = 0
+
+                try:
+                    semantic_repair_patch = (
+                        _validate_ai_developer_patch(
+                            semantic_repair_response.text,
+                            target_paths,
+                            semantic_repair_source_texts,
+                            require_all_paths=False,
+                        )
+                    )
+                except (
+                    AIDeveloperFormatError,
+                    AIDeveloperReferenceError,
+                ) as semantic_prewrite_error:
+                    semantic_prewrite_attempts = 1
+
+                    semantic_prewrite_prompt = f"""
+You are the DEVELOPER agent in ForgeLab.
+
+Your semantic-review repair failed deterministic pre-write
+validation before any repository write occurred.
+
+Validation error:
+{semantic_prewrite_error}
+
+Original objective:
+{request.objective}
+
+Blocking semantic review:
+{json.dumps(semantic_review, indent=2, ensure_ascii=False)}
+
+Original authorized paths:
+{chr(10).join(f"- {path}" for path in target_paths)}
+
+Current complete authorized files:
+{semantic_repair_files}
+
+Return ONLY one corrected structured JSON object.
+
+Rules:
+- this is the ONE bounded pre-write correction for this repair;
+- stay inside the original authorized path set;
+- repair only the non-empty subset actually needed;
+- old_text MUST be copied verbatim from the current file;
+- old_text MUST occur exactly once;
+- do not reference text from an earlier candidate state;
+- do not weaken tests;
+- do not modify dependencies or configuration.
+"""
+
+                    semantic_repair_response = (
+                        ai_router.execute(
+                            TaskClass.S2,
+                            semantic_prewrite_prompt,
+                            (
+                                f"{semantic_repair_id}"
+                                "-prewrite"
+                            ),
+                            Role.DEVELOPER.value,
+                            (
+                                "Correct semantic repair "
+                                "pre-write validation once"
+                            ),
+                            request.timeout_seconds,
+                            response_format=(
+                                _ai_developer_response_schema(
+                                    target_paths,
+                                    require_all_paths=False,
+                                )
+                            ),
+                        )
+                    )
+
+                    semantic_repair_patch = (
+                        _validate_ai_developer_patch(
+                            semantic_repair_response.text,
+                            target_paths,
+                            semantic_repair_source_texts,
+                            require_all_paths=False,
+                        )
+                    )
+
+                semantic_repair_payload_key = (
+                    json.dumps(
+                        semantic_repair_patch,
+                        sort_keys=True,
+                        ensure_ascii=False,
+                    )
+                )
+
+                if (
+                    semantic_repair_payload_key
+                    in seen_repair_payloads
+                ):
+                    raise ValueError(
+                        "AI Developer repeated an identical "
+                        "semantic repair payload without "
+                        "new evidence"
+                    )
+
+                seen_repair_payloads.add(
+                    semantic_repair_payload_key
+                )
+
+                semantic_repair_changes = (
+                    _ai_patch_changes(
+                        semantic_repair_patch
+                    )
+                )
+
+                semantic_changed_paths = [
+                    item["path"]
+                    for item in semantic_repair_changes
+                ]
+
+                task_defs.append(
+                    _task(
+                        run_id,
+                        semantic_repair_id,
+                        Role.DEVELOPER,
+                        (
+                            "Repair blocking semantic "
+                            "review findings"
+                        ),
+                        target_paths,
+                        ["repo_edit"],
+                        ["review"],
+                    )
+                )
+
+                validate_task_graph(
+                    task_defs
+                )
+
+                for semantic_change in (
+                    semantic_repair_changes
+                ):
+                    gateway.edit_text(
+                        Role.DEVELOPER,
+                        workspace.path,  # type: ignore[arg-type]
+                        authorized_paths,
+                        semantic_change["path"],
+                        semantic_change["old_text"],
+                        semantic_change["new_text"],
+                    )
+
+                _result(
+                    store,
+                    semantic_repair_id,
+                    ResultStatus.PASS,
+                    (
+                        "Bounded semantic-review repair "
+                        "applied through ToolGateway"
+                    ),
+                    [diff_evidence_id],
+                    "Rerun deterministic tests",
+                    changed=semantic_changed_paths,
+                )
+
+                if ai_developer_artifact is None:
+                    raise RuntimeError(
+                        "AI Developer artifact missing "
+                        "before semantic repair"
+                    )
+
+                ai_developer_artifact[
+                    "repair_attempts"
+                ].append({
+                    "attempt":
+                        repair_attempts + 1,
+                    "cause":
+                        "semantic_review",
+                    "review_round":
+                        review_round,
+                    "review_evidence_ref":
+                        "AIReview.json",
+                    "developer_task_id":
+                        semantic_repair_id,
+                    "provider":
+                        semantic_repair_route.provider,
+                    "model":
+                        semantic_repair_route.model,
+                    "changed_paths":
+                        semantic_changed_paths,
+                    "patch":
+                        semantic_repair_patch,
+                    "prewrite_repair_attempts":
+                        semantic_prewrite_attempts,
+                    "applied_by":
+                        "deterministic_tool_gateway",
+                })
+
+                store.write_optional_json(
+                    "AIDeveloperPatch.json",
+                    ai_developer_artifact,
+                )
+
+                repair_attempts += 1
+
+                machine.transition(
+                    RunStatus.TESTING
+                )
+
+                test = gateway.run_test(
+                    Role.TESTER,
+                    workspace.path,  # type: ignore[arg-type]
+                    request.test_command,
                     request.timeout_seconds,
                 )
 
-                review_route = ai_router.route(
-                    TaskClass.S1
+                semantic_test_evidence_id = (
+                    f"ev-test-{repair_attempts}"
                 )
 
-                store.write_optional_json(
-                    "AIReview.json",
-                    {
-                        "role": Role.REVIEWER.value,
-                        "provider": review_route.provider,
-                        "model": review_route.model,
-                        "text": ai_review.text,
-                    },
+                evidence.append({
+                    "evidence_id":
+                        semantic_test_evidence_id,
+                    "check_type":
+                        "tests",
+                    "command_or_tool":
+                        request.test_command,
+                    "exit_status":
+                        test.exit_status,
+                    "summary":
+                        (
+                            "Tests passed"
+                            if test.exit_status == 0
+                            else "Tests failed"
+                        ),
+                    "stdout":
+                        test.stdout[-4000:],
+                    "stderr":
+                        test.stderr[-4000:],
+                    "repair_attempt":
+                        repair_attempts,
+                    "repair_cause":
+                        "semantic_review",
+                })
+
+                if test.exit_status != 0:
+                    final_test_passed = False
+
+                    results.append(
+                        _result(
+                            store,
+                            "test",
+                            ResultStatus.FAIL,
+                            (
+                                "Tests failed after "
+                                "semantic-review repair"
+                            ),
+                            [
+                                semantic_test_evidence_id
+                            ],
+                            "Human repair required",
+                        )
+                    )
+
+                    machine.transition(
+                        RunStatus.DIAGNOSING
+                    )
+                    break
+
+                results.append(
+                    _result(
+                        store,
+                        "test",
+                        ResultStatus.PASS,
+                        (
+                            "Acceptance tests passed after "
+                            "semantic-review repair"
+                        ),
+                        [
+                            semantic_test_evidence_id
+                        ],
+                        "Re-run semantic review",
+                    )
                 )
 
-            reviewer_status = ResultStatus.PASS if review_report["status"] == "PASS" else ResultStatus.FAIL
-            results.append(_result(store, "review", reviewer_status, "Independent deterministic review completed", ["ev-diff"], "Run security policy", review_report["findings"]))
-            if review_report["status"] == "PASS":
-                machine.transition(RunStatus.SECURITY_CHECK)
-                security_report = security_review_patch(diff)
+                review_round += 1
+
+            if (
+                final_test_passed
+                and review_report["status"] == "PASS"
+            ):
+                machine.transition(
+                    RunStatus.SECURITY_CHECK
+                )
+
+                security_report = (
+                    security_review_patch(
+                        diff
+                    )
+                )
+
                 if Role.SECURITY in roles:
-                    sec_status = ResultStatus.PASS if security_report["status"] == "PASS" else ResultStatus.FAIL
-                    results.append(_result(store, "security", sec_status, "Security review completed", ["ev-diff"], "Proceed to gate", security_report["findings"]))
+                    sec_status = (
+                        ResultStatus.PASS
+                        if security_report[
+                            "status"
+                        ] == "PASS"
+                        else ResultStatus.FAIL
+                    )
+
+                    results.append(
+                        _result(
+                            store,
+                            "security",
+                            sec_status,
+                            "Security review completed",
+                            [
+                                f"ev-diff-{review_round}"
+                            ],
+                            "Proceed to gate",
+                            security_report[
+                                "findings"
+                            ],
+                        )
+                    )
+
                 if Role.DOCUMENTATION in roles:
-                    results.append(_result(store, "documentation", ResultStatus.PASS, "Documentation change is internally consistent", ["ev-diff"], "Proceed to gate"))
-                if security_report["status"] == "PASS":
-                    machine.transition(RunStatus.READY_FOR_DECISION)
+                    results.append(
+                        _result(
+                            store,
+                            "documentation",
+                            ResultStatus.PASS,
+                            (
+                                "Documentation change is "
+                                "internally consistent"
+                            ),
+                            [
+                                f"ev-diff-{review_round}"
+                            ],
+                            "Proceed to gate",
+                        )
+                    )
+
+                if (
+                    security_report[
+                        "status"
+                    ] == "PASS"
+                ):
+                    machine.transition(
+                        RunStatus.READY_FOR_DECISION
+                    )
     finally:
         source_unchanged = workspace.verify_source_unchanged() if workspace.base_head else False
         workspace.close()
