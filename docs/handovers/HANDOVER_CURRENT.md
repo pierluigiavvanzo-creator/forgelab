@@ -41,9 +41,9 @@ Canonical branch:
 
 `main`
 
-Current main checkpoint after PR #13:
+Current main checkpoint after PR #14:
 
-`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
+`45fa433ef408f600ab6890ac43e170b327f1eec3`
 
 Local ForgeLab root:
 
@@ -269,43 +269,50 @@ Behavior:
 - retry count remains one;
 - non-Ollama providers and deterministic test timeout are unchanged.
 
-## 11. Latest real-run blocker after PR #13
+## 11. PR #14 — authorized scope subset blocker corrected
 
-The next Product Owner repair attempt progressed beyond the timeout issue but returned:
+PR #14 was merged to main:
 
-`repair run execution failed: AIDeveloperFormatError: AI Developer multi-file patch missing fields: changes, schema_version`
+`45fa433ef408f600ab6890ac43e170b327f1eec3`
 
-Canonical inspection found that initial multi-file generation currently treats all authorized paths as mandatory edits:
+Behavior:
 
-- two paths are authorized for Dental Quote;
-- JSON Schema initial `minItems` equals the number of authorized paths;
-- prompt requires exactly one change per authorized path;
-- initial deterministic validation uses `require_all_paths=True`.
+- authorized paths are maximum write scope rather than mandatory edits;
+- initial AI Developer may modify a non-empty authorized subset;
+- a complete flat single-change response in multi-file scope can be normalized deterministically;
+- actual changed artifacts are recorded separately from the broader allowed scope;
+- exact-source, path, no-op, size, semantic-review and promotion controls remain active.
 
-That contract is unnecessarily strict. Authorization should bound where the model may write; it should not require every allowed file to change.
+## 12. Latest real-run blocker after PR #14
 
-## 12. Current proposal
+The next Product Owner repair attempt progressed beyond the PR #14 format blocker but returned:
+
+`repair run execution failed: ValueError: AI Developer multi-file patch contains duplicate paths`
+
+Canonical inspection confirmed that subset mode still assumes at most one structured change per file. A real Dental Quote implementation may legitimately require separate disjoint edits to calculation logic and UI inside `quote_calculator.py`.
+
+## 13. Current proposal
 
 Working branch:
 
-`mvp1-authorized-scope-subset-normalization`
+`mvp1-disjoint-same-file-change-composition`
 
 Base:
 
-`82ffb781f0791e133f2faa6a1c6bd14f5226a742`
+`45fa433ef408f600ab6890ac43e170b327f1eec3`
 
 Proposal:
 
-1. preserve the same immutable 1–3 authorized path scope;
-2. initial AI Developer may modify a non-empty subset of authorized paths;
-3. multi-file JSON Schema uses `minItems=1`, `maxItems=len(authorized_paths)`;
-4. if Ollama returns a complete flat single-change object within multi-file scope, normalize it deterministically to `schema_version: 2.0` with one `changes[]` entry;
-5. do not invent a second change;
-6. path expansion, exact-source `old_text`, no-op and size controls remain authoritative;
-7. AgentResult/evidence record actual changed files, while ExecutionPlan retains the broader authorized scope;
-8. semantic review from PR #12 remains the blocking authority for whether the resulting subset fully satisfies the Product Owner objective.
+1. keep the same immutable 1–3 authorized path scope;
+2. permit at most 4 operations per authorized path in subset mode;
+3. validate every `old_text` exactly against the same current source snapshot;
+4. allow multiple operations on one file only when their original-source spans are disjoint;
+5. reject overlapping/conflicting spans before any write;
+6. deterministically compose disjoint operations into one final replacement per file;
+7. use one ToolGateway write per changed file;
+8. preserve no fuzzy patching, path expansion rejection, no-op/size limits, deterministic tests, semantic review and Product Owner gate.
 
-Regression coverage reproduces the exact live shape: two authorized paths, one complete flat change, normalized and validated without scope expansion.
+Regression coverage includes both the live-safe case (two disjoint operations on the same file) and the unsafe case (overlapping same-file operations remain blocked).
 
 ## 11. Current MVP gate assessment
 
@@ -319,7 +326,7 @@ The Product Owner can initiate a real run from the dashboard and receive visible
 
 **FAIL / current blocker.**
 
-The timeout path is corrected by PR #13, but the initial multi-file contract still confuses authorized scope with mandatory edits and can stop the child run before semantic review/repair.
+The timeout and authorized-subset blockers are corrected by PR #13/#14, but valid disjoint same-file operations are still rejected as duplicate paths before tests and semantic review can complete.
 
 ### G3 — Real output
 
@@ -331,7 +338,7 @@ Three-treatment visible behavior has not yet been delivered.
 
 **Implementation corrected by PR #12; real-run validation pending.**
 
-Semantic review is authoritative and blocking on main, but real-run validation has not yet completed because the current Developer multi-file contract failed before review.
+Semantic review is authoritative and blocking on main, but real-run validation has not yet completed because duplicate-path rejection stopped the Developer before review.
 
 ### G5 — Human control
 
@@ -386,7 +393,7 @@ Only fix blockers concretely exposed by MVP-1.
 
 Validate the branch:
 
-`mvp1-authorized-scope-subset-normalization`
+`mvp1-disjoint-same-file-change-composition`
 
 If the proposal is sound, open/approve/merge its PR under the existing governed workflow.
 
@@ -394,8 +401,8 @@ Then:
 
 1. fast-forward local ForgeLab to the approved `main`;
 2. rerun the same Dental Quote Product Owner repair scenario once;
-3. allow the Developer to use only the authorized subset it actually needs;
-4. let blocking semantic review require any missing objective coverage/tests and consume the bounded repair budget if necessary;
+3. allow bounded disjoint same-file operations to be composed deterministically;
+4. let deterministic tests and blocking semantic review complete;
 5. inspect `ReviewReport.json` and `Changes.patch`;
 6. approve only if the patch genuinely implements the complete three-treatment objective;
 7. after approval, verify exact promotion/retest/commit and visible target-app behavior.
