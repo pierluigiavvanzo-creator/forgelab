@@ -82,6 +82,47 @@ def request(repo: Path, **overrides) -> MultiAgentRequest:
     return MultiAgentRequest(**values)
 
 
+def semantic_review_pass() -> str:
+    return json.dumps({
+        "schema_version": "1.0",
+        "status": "PASS",
+        "summary": "All explicit objective requirements are evidenced.",
+        "requirements": [
+            {
+                "requirement": "Requested objective is implemented",
+                "status": "SATISFIED",
+                "evidence": "Patch and tests provide direct evidence",
+            },
+        ],
+        "findings": [],
+    })
+
+
+def semantic_review_fail(
+    requirement: str,
+    description: str,
+) -> str:
+    return json.dumps({
+        "schema_version": "1.0",
+        "status": "FAIL",
+        "summary": "The candidate misses required behavior.",
+        "requirements": [
+            {
+                "requirement": requirement,
+                "status": "MISSING",
+                "evidence": description,
+            },
+        ],
+        "findings": [
+            {
+                "severity": "BLOCKER",
+                "category": "objective_coverage",
+                "description": description,
+            },
+        ],
+    })
+
+
 def add_m88_context(repo: Path, marker: str = "M88_SHARED_CONTEXT_MARKER") -> None:
     (repo / "AGENTS.md").write_text(
         f"# Rules\n{marker}\nRead context; do not expand write scope.\n",
@@ -182,7 +223,7 @@ class MultiAgentTests(unittest.TestCase):
             scripted = [
                 ProviderResponse("Bounded plan", 10, 5, actual_cost=Decimal("0")),
                 ProviderResponse(developer_patch, 30, 20, actual_cost=Decimal("0")),
-                ProviderResponse("Independent semantic review", 12, 6, actual_cost=Decimal("0")),
+                ProviderResponse(semantic_review_pass(), 12, 6, actual_cost=Decimal("0")),
             ]
 
             with patch(
@@ -323,7 +364,7 @@ class MultiAgentTests(unittest.TestCase):
                     actual_cost=Decimal("0"),
                 ),
                 ProviderResponse(
-                    "Semantic review",
+                    semantic_review_pass(),
                     12,
                     6,
                     actual_cost=Decimal("0"),
@@ -418,7 +459,7 @@ class MultiAgentTests(unittest.TestCase):
                     actual_cost=Decimal("0"),
                 ),
                 ProviderResponse(
-                    "Independent semantic review",
+                    semantic_review_pass(),
                     12,
                     6,
                     actual_cost=Decimal("0"),
@@ -566,7 +607,7 @@ class MultiAgentTests(unittest.TestCase):
                     actual_cost=Decimal("0"),
                 ),
                 ProviderResponse(
-                    "Independent semantic review",
+                    semantic_review_pass(),
                     12,
                     6,
                     actual_cost=Decimal("0"),
@@ -761,7 +802,7 @@ class MultiAgentTests(unittest.TestCase):
                     actual_cost=Decimal("0"),
                 ),
                 ProviderResponse(
-                    "Independent semantic review",
+                    semantic_review_pass(),
                     12,
                     6,
                     actual_cost=Decimal("0"),
@@ -852,6 +893,281 @@ class MultiAgentTests(unittest.TestCase):
                 "do not reference text introduced only by "
                 "a prior candidate",
                 retry_prompt,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
+    def test_semantic_review_failure_uses_bounded_repair_and_rereview(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            initial_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": "return a + b",
+                "summary": "Fix addition only",
+            })
+
+            semantic_repair = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": (
+                    "def add(a, b):\n"
+                    "    return a + b\n"
+                ),
+                "new_text": (
+                    "def add(a, b):\n"
+                    "    if a is None or b is None:\n"
+                    "        raise ValueError(\"inputs are required\")\n"
+                    "    return a + b\n"
+                ),
+                "summary": "Add the missing input validation",
+            })
+
+            scripted = [
+                ProviderResponse(
+                    "Bounded plan",
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_fail(
+                        "Reject None inputs",
+                        (
+                            "The patch fixes addition but does not "
+                            "implement the required None validation."
+                        ),
+                    ),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_repair,
+                    45,
+                    30,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix addition and reject None inputs."
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            ai_review = json.loads(
+                (run_dir / "AIReview.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                summary["repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                review["status"],
+                "PASS",
+            )
+            self.assertEqual(
+                review["semantic_status"],
+                "PASS",
+            )
+            self.assertEqual(
+                review["review_round"],
+                1,
+            )
+            self.assertEqual(
+                len(ai_review["attempts"]),
+                2,
+            )
+            self.assertEqual(
+                ai_review["attempts"][0]["status"],
+                "FAIL",
+            )
+            self.assertEqual(
+                ai_review["attempts"][1]["status"],
+                "PASS",
+            )
+            self.assertEqual(
+                developer["repair_attempts"][0]["cause"],
+                "semantic_review",
+            )
+            self.assertEqual(
+                [
+                    item["exit_status"]
+                    for item in evidence["evidence"]
+                    if item["check_type"] == "tests"
+                ],
+                [0, 0],
+            )
+            self.assertEqual(
+                usage["llm_calls"],
+                5,
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                5,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
+    def test_semantic_review_failure_blocks_gate_when_repair_budget_is_zero(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            initial_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": "return a + b",
+                "summary": "Fix addition only",
+            })
+
+            scripted = [
+                ProviderResponse(
+                    "Bounded plan",
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_fail(
+                        "Reject None inputs",
+                        (
+                            "Required None validation is absent "
+                            "from both implementation and tests."
+                        ),
+                    ),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix addition and reject None inputs."
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            gate = json.loads(
+                (run_dir / "GateDecision.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "REVIEW",
+            )
+            self.assertEqual(
+                review["status"],
+                "FAIL",
+            )
+            self.assertEqual(
+                review["semantic_status"],
+                "FAIL",
+            )
+            self.assertEqual(
+                gate["decision"],
+                "REPAIR",
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                3,
             )
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
@@ -957,7 +1273,7 @@ class MultiAgentTests(unittest.TestCase):
                     actual_cost=Decimal("0"),
                 ),
                 ProviderResponse(
-                    "Independent semantic review",
+                    semantic_review_pass(),
                     12,
                     6,
                     actual_cost=Decimal("0"),
@@ -1202,7 +1518,7 @@ class MultiAgentTests(unittest.TestCase):
                     actual_cost=Decimal("0"),
                 ),
                 ProviderResponse(repair_patch, 30, 20, actual_cost=Decimal("0")),
-                ProviderResponse("Independent semantic review", 12, 6, actual_cost=Decimal("0")),
+                ProviderResponse(semantic_review_pass(), 12, 6, actual_cost=Decimal("0")),
             ]
 
             with patch(
@@ -1330,7 +1646,7 @@ class MultiAgentTests(unittest.TestCase):
                     actual_cost=Decimal("0"),
                 ),
                 ProviderResponse(repair_patch, 35, 20, actual_cost=Decimal("0")),
-                ProviderResponse("Independent semantic review", 12, 6, actual_cost=Decimal("0")),
+                ProviderResponse(semantic_review_pass(), 12, 6, actual_cost=Decimal("0")),
             ]
 
             with patch(
