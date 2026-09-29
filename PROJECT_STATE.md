@@ -16,9 +16,9 @@ Canonical shared truth:
 
 Current canonical main checkpoint:
 
-`45fa433ef408f600ab6890ac43e170b327f1eec3`
+`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
 
-This includes merged PR #14: authorized paths are maximum write scope, not mandatory edits.
+This includes merged PR #15: bounded disjoint same-file AI changes are composed deterministically before ToolGateway write.
 
 Local root used for MVP validation:
 
@@ -63,45 +63,52 @@ The real run exposed product blockers that were fixed narrowly, one at a time:
 - PR #11 — one bounded pre-write correction when AI Developer `old_text` does not exactly match current authorized source;
 - PR #12 — semantic review is now structured, blocking, authoritative in `ReviewReport.json`, and can consume the remaining bounded repair budget before `READY_FOR_DECISION`;
 - PR #13 — transient Ollama retry keeps the first timeout unchanged and widens only the single retry (default 60 -> 180 seconds, cap 600);
-- PR #14 — authorized paths are now maximum write scope; a valid non-empty subset is allowed and a complete flat single-change response can be normalized deterministically.
+- PR #14 — authorized paths are now maximum write scope; a valid non-empty subset is allowed and a complete flat single-change response can be normalized deterministically;
+- PR #15 — up to four disjoint operations per authorized path can be composed deterministically into one ToolGateway write per file; overlapping operations remain blocked.
 
-Main after PR #14:
+Main after PR #15:
 
-`45fa433ef408f600ab6890ac43e170b327f1eec3`
+`9b50ea11ca0d679adaa643d7dbc4b7c308866c01`
 
 ## Current confirmed blocker
 
-**Multiple independent edits to the same authorized file are rejected as duplicate paths.**
+**A syntactically invalid Python repair can consume the only repair budget.**
 
-The next real Dental Quote repair attempt passed the PR #14 contract blocker but failed with:
+Real child run:
 
-`repair run execution failed: ValueError: AI Developer multi-file patch contains duplicate paths`
+`run-be067c4915d2`
 
-Canonical code inspection confirmed that the validator still assumes at most one structured change per file. That is too strict for a real file that may need separate edits to calculation logic and UI while remaining inside the same authorized path.
+Observed sequence:
+
+- initial candidate changed both authorized Dental Quote files;
+- deterministic tests failed because the generated function still accepted two positional arguments while the new test called it with six;
+- Support/Developer used the one allowed repair attempt;
+- the repair candidate introduced invalid Python, including malformed indentation;
+- the second deterministic test stopped at import with `IndentationError: unexpected indent`;
+- run ended `DIAGNOSING`, tests FAIL, repair attempts 1;
+- no `Changes.patch` was produced because the candidate never reached the review phase.
 
 ## Current proposal under validation
 
 Branch:
 
-`mvp1-disjoint-same-file-change-composition`
+`mvp1-python-syntax-prewrite-repair`
 
 Intent:
 
-- preserve the immutable 1–3 authorized path scope;
-- permit at most 4 structured operations per authorized path in subset mode;
-- require every `old_text` to occur exactly once in the same current source snapshot;
-- permit multiple operations on one file only when their original-source spans are disjoint;
-- reject overlapping/conflicting same-file operations before any write;
-- compose disjoint operations deterministically into one final replacement per file;
-- keep ToolGateway to one authoritative write per changed file;
-- keep no fuzzy patching, path expansion rejection, no-op/size checks, tests, semantic review and Product Owner promotion gate unchanged.
+- validate the final in-memory candidate for every modified `.py` file with Python AST parsing before ToolGateway write;
+- treat Python syntax failure as recoverable pre-write validation, not as a consumed functional repair;
+- initial generation and semantic-repair paths also receive the same syntax guard;
+- for test-failure repair, allow exactly one bounded pre-write correction when format, exact-source reference, or Python syntax validation fails;
+- only a syntactically valid repair candidate is written and increments the real repair counter;
+- keep max repair attempts, authorized paths, no fuzzy patching, deterministic tests, semantic review and Product Owner gate unchanged.
 
 ## MVP gates current status
 
 - **G1 Usability:** materially demonstrated; dashboard can initiate real runs.
-- **G2 Autonomy:** not yet PASS; the current validator still rejects valid disjoint same-file operations before tests and semantic review can complete.
+- **G2 Autonomy:** not yet PASS; a malformed Python repair can currently exhaust the single repair budget and return debugging work to the Product Owner.
 - **G3 Real output:** FAIL / not yet proven for the full three-treatment objective.
-- **G4 Quality:** semantic review is authoritative on main after PR #12; real-run validation is still pending because the current Developer contract failed before review.
+- **G4 Quality:** semantic review is authoritative on main after PR #12; real-run validation is still pending because the repair candidate failed Python syntax before review.
 - **G5 Human control:** PASS so far; no candidate has been promoted without explicit Product Owner approval.
 
 ## Infrastructure freeze
@@ -112,6 +119,6 @@ Do not add deployment, multi-tenant, billing, advanced observability, scaling, u
 
 ## Single next action
 
-Validate and, only after explicit Product Owner approval, merge the disjoint same-file change composition proposal.
+Validate and, only after explicit Product Owner approval, merge the Python syntax pre-write repair proposal.
 
-Then rerun the same Dental Quote Product Owner repair scenario once. Inspect `ReviewReport.json` and `Changes.patch` before any promotion.
+Then rerun the same Dental Quote Product Owner repair scenario once. Inspect `TestEvidence.json`, `ReviewReport.json` and `Changes.patch` before any promotion.
