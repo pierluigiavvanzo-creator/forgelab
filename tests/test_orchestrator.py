@@ -1141,19 +1141,20 @@ class MultiAgentTests(unittest.TestCase):
             })
 
             corrected_patch = json.dumps({
-                "schema_version": "2.0",
+                "schema_version": "2.1",
                 "summary": "Fix addition and metadata",
-                "changes": [
+                "files": [
                     {
                         "path": "calculator.py",
-                        "old_text": "return a - b",
-                        "new_text": "return a + b",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    return a + b\n"
+                        ),
                         "summary": "Fix addition",
                     },
                     {
                         "path": "operation.py",
-                        "old_text": 'OPERATION = "subtract"',
-                        "new_text": 'OPERATION = "add"',
+                        "new_text": 'OPERATION = "add"\n',
                         "summary": "Align metadata",
                     },
                 ],
@@ -1262,14 +1263,33 @@ class MultiAgentTests(unittest.TestCase):
                 retry_prompt,
             )
             self.assertIn(
-                "copied verbatim from the current complete "
-                "authorized file",
+                "REFERENCE RECOVERY MODE",
                 retry_prompt,
             )
             self.assertIn(
-                "do not reference text introduced only by "
-                "a prior candidate",
+                "COMPLETE replacement file content",
                 retry_prompt,
+            )
+
+            retry_format = (
+                invoke.call_args_list[2].args[3]
+            )
+            self.assertEqual(
+                retry_format["properties"]["schema_version"]
+                ["enum"],
+                ["2.1"],
+            )
+            file_properties = (
+                retry_format["properties"]["files"]["items"]
+                ["properties"]
+            )
+            self.assertNotIn(
+                "old_text",
+                file_properties,
+            )
+            self.assertIn(
+                "new_text",
+                file_properties,
             )
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
@@ -1979,6 +1999,220 @@ class MultiAgentTests(unittest.TestCase):
             self.assertIn(
                 "return a - b",
                 (repo / "calculator.py").read_text(encoding="utf-8"),
+            )
+
+
+    def test_ai_developer_repair_recovers_stale_reference_with_full_file_once(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_multi_demo(root)
+
+            initial_patch = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Initial candidate leaves arithmetic wrong",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a - b",
+                        "new_text": "return a * b",
+                        "summary": "Incorrect arithmetic candidate",
+                    },
+                    {
+                        "path": "operation.py",
+                        "old_text": 'OPERATION = "subtract"',
+                        "new_text": 'OPERATION = "add"',
+                        "summary": "Correct operation metadata",
+                    },
+                ],
+            })
+
+            stale_repair = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Use stale arithmetic anchor",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a / b",
+                        "new_text": "return a + b",
+                        "summary": "Attempt arithmetic repair",
+                    }
+                ],
+            })
+
+            full_file_recovery = json.dumps({
+                "schema_version": "2.1",
+                "summary": "Replace calculator from current source",
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    return a + b\n"
+                        ),
+                        "summary": "Correct arithmetic",
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    "Bounded multi-file plan",
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    50,
+                    30,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    (
+                        "The arithmetic test fails because "
+                        "calculator.py multiplies instead of adds."
+                    ),
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    stale_repair,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    full_file_recovery,
+                    45,
+                    25,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix calculator addition and align "
+                            "operation metadata"
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                        allowed_paths=(
+                            "calculator.py",
+                            "operation.py",
+                        ),
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                summary["repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                [
+                    item["exit_status"]
+                    for item in evidence["evidence"]
+                    if item["check_type"] == "tests"
+                ],
+                [1, 0],
+            )
+            self.assertEqual(
+                developer["repair_attempts"][0]
+                ["prewrite_correction_attempts"],
+                1,
+            )
+            self.assertEqual(
+                developer["repair_attempts"][0]
+                ["patch"]["schema_version"],
+                "2.0",
+            )
+            self.assertEqual(
+                developer["repair_attempts"][0]
+                ["patch"]["changes"][0]["old_text"],
+                (
+                    "def add(a, b):\n"
+                    "    return a * b\n"
+                ),
+            )
+            self.assertEqual(
+                usage["llm_calls"],
+                6,
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                6,
+            )
+
+            prewrite_prompt = (
+                invoke.call_args_list[4].args[1]
+            )
+            self.assertIn(
+                "old_text must occur exactly once in "
+                "calculator.py; found 0",
+                prewrite_prompt,
+            )
+            self.assertIn(
+                "REFERENCE RECOVERY MODE",
+                prewrite_prompt,
+            )
+
+            prewrite_format = (
+                invoke.call_args_list[4].args[3]
+            )
+            self.assertEqual(
+                prewrite_format["properties"]["schema_version"]
+                ["enum"],
+                ["2.1"],
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                "return a - b",
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
             )
 
 
