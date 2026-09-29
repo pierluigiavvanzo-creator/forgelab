@@ -211,3 +211,30 @@ Required behavior:
 - preserve max repair attempts, immutable path scope, no fuzzy patching, deterministic tests, semantic review and explicit Product Owner gate.
 
 Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the same Dental Quote repair scenario once.
+
+
+## 2026-09-29 MVP-1 live blocker update — repeated stale old_text after PR #16
+
+PR #16 merged Python syntax validation before ToolGateway write plus one bounded pre-write correction for malformed repair output.
+
+A subsequent Product Owner repair request from active run `run-be067c4915d2` failed with:
+
+`AIDeveloperReferenceError: AI Developer old_text must occur exactly once in quote_calculator.py; found 0`
+
+Root cause: the first exact-source mismatch is recoverable, but the single correction still asks the model to provide another exact `old_text` fragment. If that second fragment is stale, validation terminates.
+
+Current proposal branch:
+
+`mvp1-reference-error-full-file-fallback`
+
+Required behavior:
+
+- keep exactly one pre-write correction;
+- for reference errors only, switch that correction to structured full-file replacement mode;
+- model supplies authorized `path + complete new_text`, not `old_text`;
+- ForgeLab supplies the current complete source as deterministic `old_text`;
+- normalize to the existing internal patch contract;
+- syntax-check modified Python before ToolGateway write;
+- preserve scope, no fuzzy matching, repair budget, deterministic tests, semantic review and explicit Product Owner gate.
+
+Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the Dental Quote repair scenario once.
