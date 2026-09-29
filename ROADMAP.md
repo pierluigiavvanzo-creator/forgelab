@@ -131,3 +131,29 @@ Minimal intended behavior:
 No extra retry, no paid provider, no model change, no deterministic test-timeout change.
 
 Single next action: validate and, only with explicit Product Owner approval, merge that proposal; then repeat the same Dental Quote repair scenario.
+
+
+## 2026-09-29 MVP-1 live blocker update — authorized scope vs mandatory edits
+
+PR #13 merged the bounded Ollama transient retry timeout.
+
+The next real Product Owner repair attempt then failed with:
+
+`AIDeveloperFormatError: AI Developer multi-file patch missing fields: changes, schema_version`
+
+Root cause: initial AI Developer generation currently treats every authorized path as a mandatory edit.
+
+Current proposal branch:
+
+`mvp1-authorized-scope-subset-normalization`
+
+Required behavior:
+
+- authorized paths remain immutable maximum write scope;
+- initial AI Developer may return any non-empty subset of those paths;
+- a complete flat single-change response may be deterministically wrapped into the multi-file contract;
+- no missing change is invented;
+- exact-source/path/scope/no-op/size validation remains authoritative;
+- blocking semantic review decides whether the subset actually satisfies the objective.
+
+Single next action: validate and, only with explicit Product Owner approval, merge that proposal; then repeat the same Dental Quote repair scenario once.
