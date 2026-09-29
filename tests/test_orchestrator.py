@@ -1948,6 +1948,11 @@ class MultiAgentTests(unittest.TestCase):
                 developer["repair_attempts"][0]["changed_paths"],
                 ["calculator.py"],
             )
+            self.assertEqual(
+                developer["repair_attempts"][0]
+                ["prewrite_correction_attempts"],
+                0,
+            )
             self.assertEqual(usage["llm_calls"], 5)
             self.assertTrue(
                 (run_dir / "tasks" / "support-1" / "AgentResult.json").is_file()
@@ -1974,6 +1979,204 @@ class MultiAgentTests(unittest.TestCase):
             self.assertIn(
                 "return a - b",
                 (repo / "calculator.py").read_text(encoding="utf-8"),
+            )
+
+
+    def test_ai_developer_repair_corrects_invalid_python_syntax_prewrite_once(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_multi_demo(root)
+
+            initial_patch = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Initial candidate leaves arithmetic wrong",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a - b",
+                        "new_text": "return a * b",
+                        "summary": "Incorrect arithmetic candidate",
+                    },
+                    {
+                        "path": "operation.py",
+                        "old_text": 'OPERATION = "subtract"',
+                        "new_text": 'OPERATION = "add"',
+                        "summary": "Correct operation metadata",
+                    },
+                ],
+            })
+
+            invalid_repair = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Malformed Python repair",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a * b",
+                        "new_text": "if True:\nreturn a + b",
+                        "summary": "Attempt arithmetic repair",
+                    }
+                ],
+            })
+
+            corrected_repair = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Syntactically valid arithmetic repair",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": "return a * b",
+                        "new_text": "return a + b",
+                        "summary": "Correct arithmetic",
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    "Bounded multi-file plan",
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    50,
+                    30,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    (
+                        "The arithmetic assertion fails because "
+                        "calculator.py multiplies instead of adds."
+                    ),
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    invalid_repair,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    corrected_repair,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix calculator addition and align "
+                            "operation metadata"
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                        allowed_paths=(
+                            "calculator.py",
+                            "operation.py",
+                        ),
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                summary["repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                [
+                    item["exit_status"]
+                    for item in evidence["evidence"]
+                    if item["check_type"] == "tests"
+                ],
+                [1, 0],
+            )
+            self.assertEqual(
+                developer["repair_attempts"][0]
+                ["prewrite_correction_attempts"],
+                1,
+            )
+            self.assertEqual(
+                developer["repair_attempts"][0]
+                ["changed_paths"],
+                ["calculator.py"],
+            )
+            self.assertEqual(
+                usage["llm_calls"],
+                6,
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                6,
+            )
+
+            prewrite_prompt = (
+                invoke.call_args_list[4].args[1]
+            )
+            self.assertIn(
+                "failed deterministic",
+                prewrite_prompt,
+            )
+            self.assertIn(
+                "Python candidate does not parse",
+                prewrite_prompt,
+            )
+            self.assertIn(
+                "ONE bounded pre-write correction",
+                prewrite_prompt,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                "return a - b",
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
             )
 
 
