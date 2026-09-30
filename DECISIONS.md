@@ -106,3 +106,25 @@ Decision:
 - future material changes continue to follow governed branch/review/approval discipline.
 
 This synchronization does not change product status: ForgeLab remains PRE-MVP until the real application MVP gates pass.
+
+---
+
+## D-008 — ForgeLab is the primary software factory; Golden Path outranks infrastructure
+
+**Date:** 2026-09-30
+**Status:** Accepted
+
+ForgeLab is the primary product: a provider-replaceable software/product creation platform that must own the workflow from Product Owner objective through planning, implementation, deterministic verification, bounded repair, independent review, working preview and explicit human promotion.
+
+Decision:
+
+- do not use ChatGPT chat as ForgeLab's orchestration layer;
+- prefer the local zero-cost Ollama path where practical while keeping the provider replaceable;
+- prioritize product-level Golden Path failures over generic infrastructure or refactor work;
+- after Dental Quote PASS, validate generality on a small CRUD SaaS and an automation/reporting tool;
+- defer multi-tenancy, billing, advanced scaling, broad observability, paid-provider expansion and unrelated architecture work until product evidence requires them;
+- preserve explicit Product Owner approval before promotion.
+
+Rationale:
+
+The primary risk is no longer lack of infrastructure. It is failure to convert an objective into a genuinely usable software product with low Product Owner effort.

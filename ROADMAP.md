@@ -4,7 +4,7 @@
 
 `ECONOMIC VALUE × USABLE PRODUCT VALUE / USER TIME`
 
-Do not optimize milestones, test count or infrastructure complexity as ends in themselves.
+ForgeLab is optimized for usable product output with low Product Owner effort, not for code volume, agent count, test count or infrastructure complexity.
 
 ## Completed technical foundation
 
@@ -15,226 +15,66 @@ Do not optimize milestones, test count or infrastructure complexity as ends in t
 - M8.7.1 — Windows-safe exact patch artifact persistence — PASS
 - M8.8 — Bounded repository context / project-memory injection — PASS
 - M8.9 — Canonical local ForgeLab source repository / self-hosting readiness — TECHNICAL PASS
+- MVP-1 blocker sequence PR #5 through PR #17 — merged on `main`
+
+Current verified `main` before stabilization: `20c3c2565c6ce066520b8ce831b13640858cde2b`.
 
 ## NOW — A Product Critical
 
-### MVP-1 — Real Application Test
+### Stabilization publication gate
 
-Target:
+Candidate branch: `mvp1-stabilization-cleanup`
 
-`C:\Users\NITRO\source\FORGELAB_MVP1_DENTAL_QUOTE`
+Evidence:
 
-Original objective:
+- 68 dead/premature files removed;
+- 72 tracked files in the reviewed local code change;
+- 19 insertions / 7,633 deletions;
+- API integration tests 12/12 PASS;
+- full Python suite 106/106 PASS;
+- dashboard production build PASS reported by Product Owner;
+- no intentional core orchestrator, ToolGateway, promotion, repair-budget, runner, smoke or telemetry changes.
 
-> Add support for three treatments, automatic subtotals, percentage discount and final total. Validate inputs. Modify only necessary files. Add tests. Do not change dependencies or configuration unless necessary and explicitly justified.
+Exit condition: PR diff matches reviewed scope, CI has no new blocker, and Product Owner explicitly approves merge.
 
-Current evidence:
+### Golden Path 1 — Dental Quote
 
-- dashboard run initiation works;
-- local Ollama structured multi-file generation works;
-- deterministic tests execute;
-- evidence is directly inspectable;
-- Product Owner human gate works;
-- Product Owner repair can launch a bounded child run;
-- exact-source `old_text` mismatch has one bounded pre-write correction;
-- no provider spend was introduced;
-- no candidate has been promoted.
+Immediately after approved stabilization merge:
 
-Current Product Critical blocker:
+`PRODUCT OBJECTIVE -> CREATE/SELECT PROJECT -> PLAN -> IMPLEMENT -> TEST -> BOUNDED AUTO-REPAIR -> RETEST -> REQUIREMENT REVIEW -> WORKING PREVIEW -> PRODUCT OWNER APPROVAL -> PROMOTABLE PRODUCT`
 
-> Semantic review is generated but not authoritative. Scope-only `ReviewReport.json` can PASS while the patch fails the actual objective.
+Target: `C:\\Users\\NITRO\\source\\FORGELAB_MVP1_DENTAL_QUOTE`
 
-Current proposal:
+Pass condition: ForgeLab produces the complete requested three-treatment application without ChatGPT manually orchestrating routine repair/debug steps.
 
-`mvp1-semantic-review-gate`
+Only blockers demonstrated by this journey may justify additional ForgeLab changes.
 
-Required validation:
+## NEXT — generality proof after Dental Quote PASS
 
-`objective -> structured semantic review -> FAIL on missing requirement -> bounded repair -> retest -> semantic re-review -> READY_FOR_DECISION only on full review PASS`
+### Golden Path 2 — Small CRUD SaaS
 
-### MVP-1 gates
+Category: `records/users/workflow`.
 
-1. **Usability** — materially demonstrated.
-2. **Autonomy** — in progress; semantic review repair must stop Product Owner retry orchestration.
-3. **Real output** — not yet PASS; three-treatment behavior remains unproven.
-4. **Quality** — not yet PASS; semantic objective coverage must become blocking.
-5. **Human control** — PASS so far; explicit approval remains required before promotion.
+Acceptance direction: create/read/update/delete records, bounded validation, workflow/status handling, deterministic tests, usable preview, same review and human-promotion gate.
+
+### Golden Path 3 — Automation / Reporting Tool
+
+Category: `ingest -> transform -> report`.
+
+Acceptance direction: bounded input ingestion, deterministic validation/transformation, explicit invalid-record handling, generated report/output, deterministic tests, usable result, same review and human-promotion gate.
+
+Generality PASS requires the same ForgeLab workflow across all three categories without being hardcoded for Dental Quote.
 
 ## Failure rule
 
-For every MVP-1 failure:
-
-1. identify the single blocking product gap;
-2. make the smallest safe correction;
-3. preserve repository/tool/human-gate governance;
-4. rerun the same Dental Quote scenario;
-5. do not start broad infrastructure work.
-
-## NEXT — only after MVP-1 PASS
-
-### MVP-2 — Real multi-file feature
-
-Repeat on a real multi-file task without increasing Product Owner operational burden.
-
-### MVP-3 — Failure + autonomous bounded repair
-
-Demonstrate a real failing candidate diagnosed and repaired without Product Owner debugging/retry orchestration.
-
-### MVP-4 — Second unrelated repository
-
-Prove repeatability outside the Dental Quote test repository.
+For every Golden Path failure: identify one blocking product gap, make the smallest safe correction, preserve isolation/ToolGateway/deterministic verification/human gate, rerun the same scenario, and do not start broad infrastructure work.
 
 ## LATER — evidence-driven only
 
-- deployment;
-- advanced observability;
-- multi-tenant;
-- billing;
-- scale optimization;
-- expanded paid provider/model routing.
+Deployment platform expansion, advanced observability, multi-tenancy, billing, scale optimization and expanded paid provider/model routing.
 
-## Economic validation track
+## Economic validation
 
-For every real MVP run record:
+Track Product Owner active minutes, user touches, time to usable output, provider/model cost, autonomous repair cycles, manual developer time avoided and post-approval defects.
 
-- Product Owner active minutes;
-- user touches;
-- elapsed time to usable result;
-- provider/model cost;
-- autonomous repair cycles;
-- manual developer time avoided;
-- post-approval defects.
-
-Primary economic KPI:
-
-`USER_TIME_SAVED_PER_SUCCESSFUL_RUN`
-
-
-## 2026-09-29 MVP-1 live blocker update
-
-PR #12 merged the blocking semantic-review gate.
-
-The next real Product Owner repair attempt failed before candidate completion with:
-
-`ProviderTransientError: Ollama unavailable: timed out`
-
-Current code gives local Ollama one retry, but both attempts use the same inherited 60-second timeout.
-
-Current proposal branch:
-
-`mvp1-ollama-transient-timeout-retry`
-
-Minimal intended behavior:
-
-`60s first local attempt -> transient timeout -> one 180s retry`
-
-No extra retry, no paid provider, no model change, no deterministic test-timeout change.
-
-Single next action: validate and, only with explicit Product Owner approval, merge that proposal; then repeat the same Dental Quote repair scenario.
-
-
-## 2026-09-29 MVP-1 live blocker update — authorized scope vs mandatory edits
-
-PR #13 merged the bounded Ollama transient retry timeout.
-
-The next real Product Owner repair attempt then failed with:
-
-`AIDeveloperFormatError: AI Developer multi-file patch missing fields: changes, schema_version`
-
-Root cause: initial AI Developer generation currently treats every authorized path as a mandatory edit.
-
-Current proposal branch:
-
-`mvp1-authorized-scope-subset-normalization`
-
-Required behavior:
-
-- authorized paths remain immutable maximum write scope;
-- initial AI Developer may return any non-empty subset of those paths;
-- a complete flat single-change response may be deterministically wrapped into the multi-file contract;
-- no missing change is invented;
-- exact-source/path/scope/no-op/size validation remains authoritative;
-- blocking semantic review decides whether the subset actually satisfies the objective.
-
-Single next action: validate and, only with explicit Product Owner approval, merge that proposal; then repeat the same Dental Quote repair scenario once.
-
-
-## 2026-09-29 MVP-1 live blocker update — disjoint same-file operations
-
-PR #14 merged the authorized-scope subset/normalization correction.
-
-The next real Product Owner repair attempt then failed with:
-
-`ValueError: AI Developer multi-file patch contains duplicate paths`
-
-Root cause: the multi-file validator still assumes one structured change per file, even when separate edits to the same authorized file are independent.
-
-Current proposal branch:
-
-`mvp1-disjoint-same-file-change-composition`
-
-Required behavior:
-
-- subset mode remains inside the same authorized path set;
-- permit at most 4 operations per authorized path;
-- validate every `old_text` against the same current source snapshot;
-- reject overlapping original-source spans;
-- deterministically compose disjoint same-file operations into one final file replacement;
-- apply one ToolGateway write per changed file;
-- preserve deterministic tests, semantic review and explicit Product Owner gate.
-
-Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the same Dental Quote repair scenario once.
-
-
-## 2026-09-29 MVP-1 live blocker update — invalid Python repair consumes budget
-
-PR #15 merged bounded disjoint same-file operation composition.
-
-Real child run:
-
-`run-be067c4915d2`
-
-The initial candidate reached deterministic tests but failed because the generated implementation still exposed the wrong function signature. The single bounded repair then produced syntactically invalid Python; the second test run stopped at import with `IndentationError`.
-
-Root cause: ForgeLab validates structured format, scope and exact-source references before write, but does not validate Python syntax before a test-failure repair consumes the repair budget.
-
-Current proposal branch:
-
-`mvp1-python-syntax-prewrite-repair`
-
-Required behavior:
-
-- build the final candidate text in memory;
-- for modified `.py` files, parse it deterministically before ToolGateway write;
-- on syntax failure, permit exactly one pre-write correction for that repair candidate;
-- do not increment the real repair count until a syntactically valid candidate is written;
-- preserve max repair attempts, immutable path scope, no fuzzy patching, deterministic tests, semantic review and explicit Product Owner gate.
-
-Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the same Dental Quote repair scenario once.
-
-
-## 2026-09-29 MVP-1 live blocker update — repeated stale old_text after PR #16
-
-PR #16 merged Python syntax validation before ToolGateway write plus one bounded pre-write correction for malformed repair output.
-
-A subsequent Product Owner repair request from active run `run-be067c4915d2` failed with:
-
-`AIDeveloperReferenceError: AI Developer old_text must occur exactly once in quote_calculator.py; found 0`
-
-Root cause: the first exact-source mismatch is recoverable, but the single correction still asks the model to provide another exact `old_text` fragment. If that second fragment is stale, validation terminates.
-
-Current proposal branch:
-
-`mvp1-reference-error-full-file-fallback`
-
-Required behavior:
-
-- keep exactly one pre-write correction;
-- for reference errors only, switch that correction to structured full-file replacement mode;
-- model supplies authorized `path + complete new_text`, not `old_text`;
-- ForgeLab supplies the current complete source as deterministic `old_text`;
-- normalize to the existing internal patch contract;
-- syntax-check modified Python before ToolGateway write;
-- preserve scope, no fuzzy matching, repair budget, deterministic tests, semantic review and explicit Product Owner gate.
-
-Single next action: validate and, only with explicit Product Owner approval, merge this proposal; then repeat the Dental Quote repair scenario once.
+Primary economic KPI: `USER_TIME_SAVED_PER_SUCCESSFUL_RUN`.

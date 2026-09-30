@@ -10,7 +10,6 @@ class PackageIntegrityTests(unittest.TestCase):
             ".forgelab/agents.yaml",
             ".forgelab/policy.yaml",
             ".forgelab/routing.yaml",
-            ".forgelab/quality-gates.yaml",
             "bootstrap.ps1",
             "Start-ForgeLab.ps1",
             "dashboard/package.json",

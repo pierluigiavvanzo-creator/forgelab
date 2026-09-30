@@ -17,6 +17,21 @@ from forgelab.runner import RunRequest, run_isolated
 
 TOKEN = "test-token-with-at-least-24-characters"
 
+def semantic_review_pass() -> str:
+    return json.dumps({
+        "schema_version": "1.0",
+        "status": "PASS",
+        "summary": "All explicit objective requirements are evidenced.",
+        "requirements": [
+            {
+                "requirement": "Requested objective is implemented",
+                "status": "SATISFIED",
+                "evidence": "Patch and tests provide direct evidence",
+            },
+        ],
+        "findings": [],
+    })
+
 
 class ApiTests(unittest.TestCase):
     def setUp(self):
@@ -715,7 +730,7 @@ class ApiTests(unittest.TestCase):
                 actual_cost=Decimal("0"),
             ),
             ProviderResponse(
-                "Independent review",
+                semantic_review_pass(),
                 10,
                 5,
                 actual_cost=Decimal("0"),
@@ -871,7 +886,7 @@ class ApiTests(unittest.TestCase):
                 actual_cost=Decimal("0"),
             ),
             ProviderResponse(
-                "Independent review",
+                semantic_review_pass(),
                 10,
                 5,
                 actual_cost=Decimal("0"),
