@@ -21,8 +21,15 @@ function Invoke-PythonStep {
     Write-LogLine ""
     Write-LogLine "=== $Name ==="
 
-    $output = & py -3.11 @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & py -3.11 @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
 
     if ($output) {
         $output | Tee-Object -FilePath $Log -Append
