@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-01
-**Checkpoint:** PR #20 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #22 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #20:
+Current canonical `main` before PR #22:
 
-`3fb2e6940325650f9c97a18d0e845355c4eab404`
+`c0c7fafb604893840efe22597f1ae18bb4cd32f5` (merge of PR #20)
 
 Current remediation branch:
 
-`mvp1-plan-to-developer-acceptance-contract`
+`mvp1-end-to-end-acceptance-and-review-evidence`
 
 PR:
 
-`#20 — MVP-1: propagate PM acceptance contract to Developer`
+`#22 — MVP-1: enforce end-to-end acceptance and grounded review`
 
-Runtime/code candidate validated locally before memory-only documentation update:
+Runtime/test candidate validated locally:
 
-`2d3e766f4c9f58f29c71816422ebc41f6ab70df2`
+`0bd8cd2c937eaca93d18ab2b0b2bbfcaf0ec61b4`
 
 ## 3. Product Owner contract
 
@@ -95,7 +95,7 @@ Repair budget:
 
 `1`
 
-## 5. Fresh Golden Path evidence
+## 5. Earlier Golden Path evidence
 
 Run:
 
@@ -144,7 +144,44 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 8. Validation evidence
+## 8. Golden Path rerun after PR #20
+
+Run:
+
+`run-c135dcec0887`
+
+Observed:
+
+- deterministic status PASS;
+- Developer added aggregate multi-treatment calculation logic;
+- tests covered three treatments and percentage-discount calculations;
+- Tkinter UI remained one-treatment only;
+- aggregate discount remained hard-coded at 10%;
+- semantic Reviewer correctly blocked promotion;
+- Reviewer wording incorrectly characterized some partial implementation/tests as absent.
+
+Current blocker:
+
+`END_TO_END_ACCEPTANCE_NOT_ENFORCED_AND_REVIEW_EVIDENCE_NOT_GROUNDED`
+
+## 9. PR #22 remediation
+
+PR #22:
+
+- provides complete authorized target files to the Project Manager as bounded read-only planning context;
+- requires Developer to wire user-visible behavior through an existing interface/entry point;
+- treats helper-only implementation as insufficient for end-to-end acceptance;
+- requires Developer self-check against every acceptance criterion;
+- provides complete final authorized candidate files to Reviewer;
+- requires Reviewer to describe partial evidence precisely rather than falsely calling it absent;
+- preserves Reviewer independence from the PM contract;
+- adds no agent, provider, dependency, repair-budget increase or infrastructure expansion.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 10. Validation evidence
 
 Product Owner local validation reached:
 
@@ -161,11 +198,12 @@ The checked harness requires:
 
 Current evidence classification:
 
-- PR #20 runtime/code: **TESTED locally**
-- PR #20: **NOT MERGED**
-- Dental Quote after PR #20: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #20: **MERGED** at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`
+- PR #22 runtime/test code: **TESTED locally**
+- PR #22: **NOT MERGED**
+- Dental Quote after PR #22: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 9. Out of scope until Dental Quote PASS
+## 11. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -181,7 +219,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 10. Generality proof after Dental Quote PASS
+## 12. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -189,15 +227,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 11. Current gate
+## 13. Current gate
 
-PR #20 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #22 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 12. Single next action
+## 14. Single next action
 
-Obtain explicit Product Owner approval for PR #20 merge.
+Obtain explicit Product Owner approval for PR #22 merge.
 
 After approved merge:
 
