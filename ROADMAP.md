@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #20:
+Current canonical `main` before PR #22:
 
-`3fb2e6940325650f9c97a18d0e845355c4eab404`
+`c0c7fafb604893840efe22597f1ae18bb4cd32f5`
 
 ## NOW — A Product Critical
 
@@ -54,37 +54,45 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 ### Latest Golden Path evidence
 
-Run `run-6a0c2c512498`:
+PR #20 was merged to `main` at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`.
 
-- deterministic tests passed after one bounded repair;
+Fresh rerun `run-c135dcec0887`:
+
+- deterministic status PASS;
+- Developer produced multi-treatment aggregate helpers and related tests;
+- existing Tkinter UI remained one-treatment only;
+- aggregate discount remained hard-coded at 10%;
 - semantic Reviewer correctly blocked promotion;
-- final candidate remained incomplete against the three-treatment objective;
-- blocker isolated as `PROJECT_MANAGER_OUTPUT_NOT_CONSUMED_BY_DEVELOPER`.
+- Reviewer wording was partly ungrounded because it called present-but-incomplete code/tests absent.
 
-### Current remediation — PR #20
+Current blocker:
 
-PR #20 implements the smallest product-relevant correction:
+`END_TO_END_ACCEPTANCE_NOT_ENFORCED_AND_REVIEW_EVIDENCE_NOT_GROUNDED`
 
-`OBJECTIVE -> STRUCTURED PM ACCEPTANCE CONTRACT -> DEVELOPER -> TEST -> INDEPENDENT REVIEW -> BOUNDED REPAIR -> HUMAN GATE`
+### Current remediation — PR #22
+
+PR #22 implements the smallest product-relevant correction:
+
+`OBJECTIVE -> FILE-AWARE PM PLAN -> END-TO-END DEVELOPER ACCEPTANCE -> TEST -> FILE-GROUNDED INDEPENDENT REVIEW -> BOUNDED REPAIR -> HUMAN GATE`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It reuses existing ModelRouter/Ollama structured output, AgentTask acceptance criteria, ToolGateway, independent Reviewer and bounded repair loop.
+It reuses existing bounded target-file context, PM/Developer/Reviewer prompts, ToolGateway and repair loop.
 
 No new dependency, provider, agent role, repair budget or broad infrastructure was added.
 
-Local validation reached `FORGELAB VALIDATION PASS` using a self-checking harness that runs focused contract tests, API regressions and non-zero full Python test discovery.
+Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #20 exit gate
+### PR #22 exit gate
 
-PR #20 is not complete until:
+PR #22 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
-3. the same Dental Quote Golden Path is rerun without changing the objective;
-4. the product reaches a correct reviewed state, not merely green tests.
+3. the same unchanged Dental Quote Golden Path is rerun;
+4. the product reaches correct end-to-end behavior and grounded semantic PASS, not merely green tests.
 
 ## NEXT — only after Dental Quote PASS
 
