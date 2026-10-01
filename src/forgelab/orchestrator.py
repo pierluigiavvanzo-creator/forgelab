@@ -1662,6 +1662,19 @@ def run_multi_agent(request: MultiAgentRequest, output_root: Path) -> Path:
             for path in target_paths
         )
 
+        plan_source_texts = _read_ai_developer_targets(
+            request.repository,
+            target_paths,
+        )
+        plan_files_context = "\n\n".join(
+            (
+                f"--- BEGIN AUTHORIZED FILE {path} ---\n"
+                f"{plan_source_texts[path]}\n"
+                f"--- END AUTHORIZED FILE {path} ---"
+            )
+            for path in target_paths
+        )
+
         plan_prompt = f"""
 You are the PROJECT_MANAGER agent in ForgeLab.
 
@@ -1676,6 +1689,9 @@ Authorized target paths:
 
 Governed read-only project/repository context:
 {governed_context}
+
+Current complete authorized files (read-only planning context):
+{plan_files_context}
 
 Rules:
 - decompose the objective into every explicit obligation;
@@ -1882,6 +1898,12 @@ Rules:
 - passing existing tests is not proof of an uncovered criterion.
 - add or strengthen tests inside authorized scope when required
   by the acceptance contract.
+- when an authorized file contains an existing user-facing
+  interface or entry point and the objective changes user-visible
+  behavior, wire the required behavior through that interface;
+  helper functions alone do not satisfy end-to-end acceptance.
+- before returning, verify every acceptance criterion against the
+  proposed implementation and tests in the authorized files.
 - every path MUST be one of the authorized target paths.
 - authorized paths define the maximum write scope, not mandatory edits.
 - return one or more changes only for files that actually need modification.
@@ -2724,6 +2746,21 @@ The current complete authorized files above are authoritative.
                 ) = None
 
                 if ai_router is not None:
+                    review_source_texts = (
+                        _read_ai_developer_targets(
+                            workspace.path,  # type: ignore[arg-type]
+                            target_paths,
+                        )
+                    )
+                    review_files_context = "\n\n".join(
+                        (
+                            f"--- BEGIN CANDIDATE FILE {path} ---\n"
+                            f"{review_source_texts[path]}\n"
+                            f"--- END CANDIDATE FILE {path} ---"
+                        )
+                        for path in target_paths
+                    )
+
                     review_prompt = f"""
 You are the REVIEWER agent in ForgeLab.
 
@@ -2736,6 +2773,9 @@ Objective:
 
 Allowed targets:
 {chr(10).join(f"- {path}" for path in target_paths)}
+
+Current complete authorized candidate files:
+{review_files_context}
 
 Patch:
 {diff[-8000:]}
@@ -2752,9 +2792,18 @@ Instructions:
 - include one requirements[] entry for each obligation;
 - preserve quantitative requirements such as exact counts,
   "three", "each", "all", percentages, validation, and tests;
-- mark SATISFIED only when the patch contains direct evidence;
+- mark SATISFIED only when the candidate files, patch, and test
+  evidence contain direct support for the complete requirement;
+- evaluate user-visible requirements end-to-end through the
+  existing interface or entry point when one is present;
+- helper/backend logic without required interface integration is
+  incomplete, not absent;
 - a passing test suite does NOT satisfy an objective requirement
   that the tests do not cover;
+- if tests or partial implementation are present but insufficient,
+  acknowledge that evidence precisely and describe the remaining
+  gap; do not claim required behavior or tests are absent when the
+  candidate files directly show them;
 - mark missing or insufficiently evidenced behavior as MISSING
   or UNVERIFIED and set overall status FAIL;
 - use BLOCKER findings for missing required behavior;
