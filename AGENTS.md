@@ -1,3 +1,9 @@
+> **Shared governance v2 — 2026-10-01**
+>
+> Read `AGENTS_MASTER.md` before this file. The master governs shared product, economic, marketability and engineering execution. This `AGENTS.md` remains authoritative for ForgeLab-specific multi-agent control-plane constraints, baseline integrity, isolation, review/security and promotion gates. Project-specific rules may tighten the master and must not silently weaken it.
+
+---
+
 # AGENTS.md
 
 ## Mission
