@@ -21,24 +21,27 @@ function Invoke-PythonStep {
     Write-LogLine ""
     Write-LogLine "=== $Name ==="
 
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = "py"
-    $psi.UseShellExecute = $false
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.CreateNoWindow = $true
-    $psi.ArgumentList.Add("-3.11")
-    foreach ($arg in $Arguments) {
-        $psi.ArgumentList.Add($arg)
-    }
+    $stdoutFile = [System.IO.Path]::GetTempFileName()
+    $stderrFile = [System.IO.Path]::GetTempFileName()
 
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $psi
-    [void]$process.Start()
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
-    $exitCode = $process.ExitCode
+    try {
+        $allArgs = @("-3.11") + $Arguments
+        $process = Start-Process `
+            -FilePath "py" `
+            -ArgumentList $allArgs `
+            -NoNewWindow `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdoutFile `
+            -RedirectStandardError $stderrFile
+
+        $stdout = Get-Content $stdoutFile -Raw -ErrorAction SilentlyContinue
+        $stderr = Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue
+        $exitCode = $process.ExitCode
+    }
+    finally {
+        Remove-Item $stdoutFile, $stderrFile -Force -ErrorAction SilentlyContinue
+    }
 
     if ($stdout) {
         $stdout.TrimEnd() | Tee-Object -FilePath $Log -Append
