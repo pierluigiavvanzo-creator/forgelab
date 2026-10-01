@@ -130,7 +130,7 @@ The primary risk is no longer lack of infrastructure. It is failure to convert a
 ## D-009 — Project Manager acceptance contract must govern implementation
 
 **Date:** 2026-10-01
-**Status:** Proposed in PR #20; becomes Accepted only if PR #20 is explicitly approved and merged
+**Status:** Accepted — PR #20 merged 2026-10-01
 
 Evidence:
 
@@ -153,3 +153,30 @@ Decision candidate:
 Rationale:
 
 A multi-agent plan that is stored but not consumed does not govern execution. Propagating the acceptance contract closes that gap without adding agents, dependencies or infrastructure.
+
+
+---
+
+## D-010 — End-to-end acceptance and grounded reviewer evidence
+
+**Date:** 2026-10-01
+**Status:** Proposed in PR #22; becomes Accepted only if PR #22 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote rerun `run-c135dcec0887` after PR #20 showed that structured PM acceptance criteria materially improved Developer output, but the generated application still stopped at helper/backend coverage while the existing Tkinter interface remained a one-treatment workflow. The Reviewer blocked promotion correctly, yet described present-but-incomplete implementation/tests as absent.
+
+Decision candidate:
+
+- Project Manager may inspect the complete authorized target files as bounded read-only planning context;
+- when an existing user-facing interface or entry point is inside authorized scope, Developer must wire user-visible requirements through it;
+- helper/backend functions alone do not satisfy an end-to-end user-visible requirement;
+- Developer must self-check every acceptance criterion against implementation and tests before returning;
+- Reviewer must inspect complete final authorized candidate files in addition to patch and deterministic test evidence;
+- Reviewer must distinguish absent behavior from partially implemented or insufficiently evidenced behavior;
+- Reviewer remains independent and continues to judge the original Product Owner objective rather than inheriting PM conclusions;
+- existing isolation, ToolGateway, repair budget, deterministic test gate and human promotion gate remain unchanged.
+
+Rationale:
+
+The next product risk is not planning availability but incomplete vertical-slice execution and imprecise semantic evidence. The smallest safe correction is to make planning file-aware, implementation explicitly end-to-end, and review grounded in the complete candidate state.
