@@ -187,7 +187,7 @@ The next product risk is not planning availability but incomplete vertical-slice
 ## D-011 — Bounded repair must preserve passing contracts
 
 **Date:** 2026-10-01
-**Status:** Proposed in PR #23; becomes Accepted only if PR #23 is explicitly approved and merged
+**Status:** Accepted — PR #23 merged 2026-10-01
 
 Evidence:
 
@@ -209,3 +209,31 @@ Decision candidate:
 Rationale:
 
 A bounded repair that fixes one failing assertion by breaking previously green behavior is not a valid repair. The smallest safe improvement is to make existing green behavior an explicit contract during diagnosis and repair.
+
+
+---
+
+## D-012 — Recoverable no-op patches use bounded pre-write correction
+
+**Date:** 2026-10-01
+**Status:** Proposed in PR #24; becomes Accepted only if PR #24 is explicitly approved and merged
+
+Evidence:
+
+A fresh Dental Quote run after PR #23 terminated before write with `ValueError: AI Developer proposed a no-op replacement`.
+
+Root cause:
+
+`NOOP_PATCH_BYPASSES_PREWRITE_RECOVERY`
+
+Decision candidate:
+
+- no-op replacements remain invalid and must never be written;
+- single-change, composed multi-change and full-file no-op candidates are classified as `AIDeveloperFormatError`;
+- recoverable no-op output is routed through the existing one bounded pre-write correction;
+- Developer prompts explicitly prohibit `old_text == new_text` and require unchanged files/regions to be omitted;
+- no repair-budget increase, new agent, provider or dependency is introduced.
+
+Rationale:
+
+A safe deterministic rejection should not terminate the entire run when the failure is a recoverable response-format defect and ForgeLab already has a bounded pre-write correction mechanism for that class of error.
