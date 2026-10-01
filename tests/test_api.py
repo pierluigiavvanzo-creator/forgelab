@@ -17,6 +17,26 @@ from forgelab.runner import RunRequest, run_isolated
 
 TOKEN = "test-token-with-at-least-24-characters"
 
+
+def ai_plan() -> str:
+    return json.dumps({
+        "schema_version": "1.0",
+        "intended_outcome": "Deliver the requested bounded change.",
+        "execution_steps": [
+            "Inspect authorized files.",
+            "Implement the requested behavior.",
+            "Run deterministic tests.",
+        ],
+        "acceptance_criteria": [
+            "Implement the requested objective.",
+            "Tests cover the requested behavior.",
+        ],
+        "principal_risks": [
+            "Do not expand authorized write scope.",
+        ],
+    })
+
+
 def semantic_review_pass() -> str:
     return json.dumps({
         "schema_version": "1.0",
@@ -718,7 +738,7 @@ class ApiTests(unittest.TestCase):
 
         scripted = [
             ProviderResponse(
-                "Bounded plan",
+                ai_plan(),
                 10,
                 5,
                 actual_cost=Decimal("0"),
@@ -874,7 +894,7 @@ class ApiTests(unittest.TestCase):
 
         scripted = [
             ProviderResponse(
-                "Bounded multi-file plan",
+                ai_plan(),
                 10,
                 5,
                 actual_cost=Decimal("0"),

@@ -495,6 +495,125 @@ def _extract_ai_developer_json(
     )
 
 
+
+def _ai_plan_response_schema() -> dict[str, object]:
+    text_item: dict[str, object] = {
+        "type": "string",
+        "minLength": 1,
+    }
+
+    return {
+        "type": "object",
+        "properties": {
+            "schema_version": {
+                "type": "string",
+                "enum": ["1.0"],
+            },
+            "intended_outcome": {
+                "type": "string",
+                "minLength": 1,
+            },
+            "execution_steps": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 20,
+                "items": text_item,
+            },
+            "acceptance_criteria": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 40,
+                "items": text_item,
+            },
+            "principal_risks": {
+                "type": "array",
+                "maxItems": 20,
+                "items": text_item,
+            },
+        },
+        "required": [
+            "schema_version",
+            "intended_outcome",
+            "execution_steps",
+            "acceptance_criteria",
+            "principal_risks",
+        ],
+        "additionalProperties": False,
+    }
+
+
+def _validate_ai_plan(
+    response_text: str,
+) -> dict[str, Any]:
+    payload = _extract_ai_developer_json(response_text)
+
+    required = {
+        "schema_version",
+        "intended_outcome",
+        "execution_steps",
+        "acceptance_criteria",
+        "principal_risks",
+    }
+    missing = required - set(payload)
+    if missing:
+        raise ValueError(
+            "AI Project Manager missing fields: "
+            + ", ".join(sorted(missing))
+        )
+
+    if payload["schema_version"] != "1.0":
+        raise ValueError(
+            "AI Project Manager schema_version must be 1.0"
+        )
+
+    intended_outcome = payload["intended_outcome"]
+    if (
+        not isinstance(intended_outcome, str)
+        or not intended_outcome.strip()
+    ):
+        raise ValueError(
+            "AI Project Manager intended_outcome must be non-empty"
+        )
+
+    def validated_list(
+        key: str,
+        *,
+        required_non_empty: bool,
+    ) -> list[str]:
+        raw = payload[key]
+        if (
+            not isinstance(raw, list)
+            or (required_non_empty and not raw)
+            or not all(
+                isinstance(item, str)
+                and item.strip()
+                for item in raw
+            )
+        ):
+            raise ValueError(
+                f"AI Project Manager {key} "
+                "must be a structured string list"
+            )
+        return [item.strip() for item in raw]
+
+    return {
+        "schema_version": "1.0",
+        "intended_outcome": intended_outcome.strip(),
+        "execution_steps": validated_list(
+            "execution_steps",
+            required_non_empty=True,
+        ),
+        "acceptance_criteria": validated_list(
+            "acceptance_criteria",
+            required_non_empty=True,
+        ),
+        "principal_risks": validated_list(
+            "principal_risks",
+            required_non_empty=False,
+        ),
+    }
+
+
 def _ai_review_response_schema() -> dict[str, object]:
     requirement_schema: dict[str, object] = {
         "type": "object",
@@ -1532,6 +1651,8 @@ def run_multi_agent(request: MultiAgentRequest, output_root: Path) -> Path:
 
     ai_router: ModelRouter | None = None
     ai_ledger = UsageLedger(Decimal("0"))
+    ai_plan: dict[str, Any] | None = None
+    plan_contract_text = ""
 
     if use_ai:
         ai_router, ai_ledger = _build_local_ai_router()
@@ -1544,7 +1665,8 @@ def run_multi_agent(request: MultiAgentRequest, output_root: Path) -> Path:
         plan_prompt = f"""
 You are the PROJECT_MANAGER agent in ForgeLab.
 
-Create a concise bounded implementation plan.
+Create a concise bounded implementation plan AND a binding
+acceptance contract for the downstream Developer.
 
 Objective:
 {request.objective}
@@ -1555,13 +1677,20 @@ Authorized target paths:
 Governed read-only project/repository context:
 {governed_context}
 
-Return:
-1. intended outcome
-2. execution steps
-3. acceptance criteria
-4. principal risks
+Rules:
+- decompose the objective into every explicit obligation;
+- do not invent product requirements, optional enhancements,
+  dependencies or scope beyond the objective and governed context;
+- preserve quantitative words and counts such as "three",
+  "each", "all", ranges, percentages and exact limits;
+- acceptance criteria must be observable in implementation,
+  deterministic tests or user-visible behavior;
+- include required test coverage as acceptance criteria when
+  the objective asks for tests;
+- do not expand the authorized write scope;
+- do not claim tools or tests have already run.
 
-Do not claim that tools or tests have already run.
+Return ONLY the required structured JSON object.
 """
 
         plan_response = ai_router.execute(
@@ -1571,6 +1700,14 @@ Do not claim that tools or tests have already run.
             Role.PROJECT_MANAGER.value,
             "AI-assisted bounded planning",
             request.timeout_seconds,
+            response_format=_ai_plan_response_schema(),
+        )
+
+        ai_plan = _validate_ai_plan(plan_response.text)
+        plan_contract_text = json.dumps(
+            ai_plan,
+            indent=2,
+            ensure_ascii=False,
         )
 
         plan_route = ai_router.route(
@@ -1583,6 +1720,7 @@ Do not claim that tools or tests have already run.
                 "role": Role.PROJECT_MANAGER.value,
                 "provider": plan_route.provider,
                 "model": plan_route.model,
+                **ai_plan,
                 "text": plan_response.text,
                 "context_bundle_ref": "ContextBundle.json",
                 "context_selection_sha256": context_bundle["selection_sha256"],
@@ -1600,6 +1738,11 @@ Do not claim that tools or tests have already run.
         _task(run_id, "test", Role.TESTER, "Run acceptance tests", target_paths, ["test_runner"], ["implement"]),
         _task(run_id, "review", Role.REVIEWER, "Review scope and correctness", target_paths, ["git_diff"], ["test"]),
     ]
+
+    if ai_plan is not None:
+        task_defs[1]["acceptance_criteria"] = list(
+            ai_plan["acceptance_criteria"]
+        )
     if Role.SECURITY in roles:
         task_defs.append(_task(run_id, "security", Role.SECURITY, "Review security risk", target_paths, ["policy_check"], ["review"]))
     if Role.DOCUMENTATION in roles:
@@ -1714,6 +1857,10 @@ replacement set needed to satisfy the objective.
 Objective:
 {request.objective}
 
+Project Manager structured implementation plan and binding
+acceptance contract:
+{plan_contract_text}
+
 Authorized target paths:
 {authorized_list}
 
@@ -1730,6 +1877,11 @@ Required schema:
 {schema_instructions}
 
 Rules:
+- every Project Manager acceptance_criteria item is binding.
+- preserve exact quantitative requirements from the plan.
+- passing existing tests is not proof of an uncovered criterion.
+- add or strengthen tests inside authorized scope when required
+  by the acceptance contract.
 - every path MUST be one of the authorized target paths.
 - authorized paths define the maximum write scope, not mandatory edits.
 - return one or more changes only for files that actually need modification.
@@ -1818,6 +1970,9 @@ Validation error:
 
 Objective:
 {request.objective}
+
+Project Manager binding acceptance contract:
+{plan_contract_text}
 
 Authorized target paths:
 {authorized_list}
@@ -2237,6 +2392,9 @@ hypothesis and failed-test evidence.
 Objective:
 {request.objective}
 
+Project Manager binding acceptance contract:
+{plan_contract_text}
+
 Original authorized paths (scope is immutable):
 {repair_authorized_list}
 
@@ -2325,6 +2483,9 @@ Validation error:
 
 Objective:
 {request.objective}
+
+Project Manager binding acceptance contract:
+{plan_contract_text}
 
 Original authorized paths (scope is immutable):
 {repair_authorized_list}
@@ -2814,6 +2975,9 @@ independent semantic objective-coverage review.
 Original objective:
 {request.objective}
 
+Project Manager binding acceptance contract:
+{plan_contract_text}
+
 Original authorized paths (scope is immutable):
 {chr(10).join(f"- {path}" for path in target_paths)}
 
@@ -2905,6 +3069,9 @@ Validation error:
 
 Original objective:
 {request.objective}
+
+Project Manager binding acceptance contract:
+{plan_contract_text}
 
 Blocking semantic review:
 {json.dumps(semantic_review, indent=2, ensure_ascii=False)}

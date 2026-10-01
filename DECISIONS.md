@@ -96,16 +96,12 @@ PR #2 merge commit:
 
 `9560729bfc9f27422d92d20d8fb43db5886a1cba`
 
-The local ForgeLab `main` was then fast-forwarded to the same GitHub `main` commit and verified clean.
-
 Decision:
 
 - GitHub `pierluigiavvanzo-creator/forgelab` on `main` is the canonical shared source of truth for ForgeLab code and governance;
 - the local checkout tracks that history;
-- no force or rebase was used for synchronization;
+- no force or rebase is used for synchronization;
 - future material changes continue to follow governed branch/review/approval discipline.
-
-This synchronization does not change product status: ForgeLab remains PRE-MVP until the real application MVP gates pass.
 
 ---
 
@@ -128,3 +124,32 @@ Decision:
 Rationale:
 
 The primary risk is no longer lack of infrastructure. It is failure to convert an objective into a genuinely usable software product with low Product Owner effort.
+
+---
+
+## D-009 — Project Manager acceptance contract must govern implementation
+
+**Date:** 2026-10-01
+**Status:** Proposed in PR #20; becomes Accepted only if PR #20 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-6a0c2c512498` passed deterministic tests after a bounded repair but failed independent semantic review because the generated application did not satisfy the complete three-treatment objective.
+
+Root cause:
+
+The Project Manager produced a plan, but the Developer did not consume that plan or its acceptance criteria before implementation.
+
+Decision candidate:
+
+- Project Manager output must be structured, not advisory free text;
+- explicit Product Owner obligations must be decomposed into binding `acceptance_criteria`;
+- quantitative requirements such as exact counts, "three", "each", "all", percentages and limits must be preserved;
+- the Project Manager must not invent new product scope;
+- Developer and bounded repair paths must consume the same acceptance contract;
+- independent Reviewer must continue evaluating the original Product Owner objective rather than inheriting the PM contract as truth;
+- existing isolation, ToolGateway, test, repair-budget and human-promotion controls remain unchanged.
+
+Rationale:
+
+A multi-agent plan that is stored but not consumed does not govern execution. Propagating the acceptance contract closes that gap without adding agents, dependencies or infrastructure.

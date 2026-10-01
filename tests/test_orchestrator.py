@@ -82,6 +82,29 @@ def request(repo: Path, **overrides) -> MultiAgentRequest:
     return MultiAgentRequest(**values)
 
 
+
+def ai_plan(
+    acceptance_criteria: list[str] | None = None,
+) -> str:
+    criteria = acceptance_criteria or [
+        "Implement the requested objective.",
+        "Add or update deterministic tests for the requested behavior.",
+    ]
+    return json.dumps({
+        "schema_version": "1.0",
+        "intended_outcome": "Deliver the requested bounded change.",
+        "execution_steps": [
+            "Inspect authorized files.",
+            "Implement the smallest sufficient change.",
+            "Run deterministic tests.",
+        ],
+        "acceptance_criteria": criteria,
+        "principal_risks": [
+            "Do not expand authorized write scope.",
+        ],
+    })
+
+
 def semantic_review_pass() -> str:
     return json.dumps({
         "schema_version": "1.0",
@@ -221,7 +244,7 @@ class MultiAgentTests(unittest.TestCase):
                 "summary": "Apply addition policy",
             })
             scripted = [
-                ProviderResponse("Bounded plan", 10, 5, actual_cost=Decimal("0")),
+                ProviderResponse(ai_plan(), 10, 5, actual_cost=Decimal("0")),
                 ProviderResponse(developer_patch, 30, 20, actual_cost=Decimal("0")),
                 ProviderResponse(semantic_review_pass(), 12, 6, actual_cost=Decimal("0")),
             ]
@@ -358,7 +381,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded AI plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -447,7 +470,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded AI plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -588,7 +611,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -735,7 +758,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -805,7 +828,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -966,7 +989,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -1162,7 +1185,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -1326,9 +1349,16 @@ class MultiAgentTests(unittest.TestCase):
                 "summary": "Add the missing input validation",
             })
 
+            plan_marker = (
+                "PLAN_CONTRACT_REJECT_NONE_INPUTS"
+            )
+
             scripted = [
                 ProviderResponse(
-                    "Bounded plan",
+                    ai_plan([
+                        "Fix addition.",
+                        plan_marker,
+                    ]),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -1395,6 +1425,16 @@ class MultiAgentTests(unittest.TestCase):
             )
             ai_review = json.loads(
                 (run_dir / "AIReview.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            ai_plan_artifact = json.loads(
+                (run_dir / "AIPlan.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            execution_plan = json.loads(
+                (run_dir / "ExecutionPlan.json").read_text(
                     encoding="utf-8"
                 )
             )
@@ -1466,6 +1506,61 @@ class MultiAgentTests(unittest.TestCase):
                 len(invoke.call_args_list),
                 5,
             )
+
+            planner_schema = (
+                invoke.call_args_list[0]
+                .args[3]
+            )
+            self.assertIn(
+                "acceptance_criteria",
+                planner_schema["required"],
+            )
+            self.assertIn(
+                plan_marker,
+                ai_plan_artifact[
+                    "acceptance_criteria"
+                ],
+            )
+
+            implement_task = next(
+                item
+                for item in execution_plan["tasks"]
+                if item["task_id"] == "implement"
+            )
+            self.assertIn(
+                plan_marker,
+                implement_task[
+                    "acceptance_criteria"
+                ],
+            )
+
+            developer_prompt = (
+                invoke.call_args_list[1].args[1]
+            )
+            first_reviewer_prompt = (
+                invoke.call_args_list[2].args[1]
+            )
+            semantic_repair_prompt = (
+                invoke.call_args_list[3].args[1]
+            )
+            second_reviewer_prompt = (
+                invoke.call_args_list[4].args[1]
+            )
+
+            self.assertIn(plan_marker, developer_prompt)
+            self.assertIn(
+                plan_marker,
+                semantic_repair_prompt,
+            )
+            self.assertNotIn(
+                plan_marker,
+                first_reviewer_prompt,
+            )
+            self.assertNotIn(
+                plan_marker,
+                second_reviewer_prompt,
+            )
+
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
                 "",
@@ -1487,7 +1582,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -1587,7 +1682,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded AI plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -1658,7 +1753,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -1844,7 +1939,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -1906,7 +2001,7 @@ class MultiAgentTests(unittest.TestCase):
             })
 
             scripted = [
-                ProviderResponse("Bounded plan", 10, 5, actual_cost=Decimal("0")),
+                ProviderResponse(ai_plan(), 10, 5, actual_cost=Decimal("0")),
                 ProviderResponse(initial_patch, 30, 20, actual_cost=Decimal("0")),
                 ProviderResponse(
                     "The failed test shows multiplication where addition is required.",
@@ -2056,7 +2151,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -2268,7 +2363,7 @@ class MultiAgentTests(unittest.TestCase):
 
             scripted = [
                 ProviderResponse(
-                    "Bounded multi-file plan",
+                    ai_plan(),
                     10,
                     5,
                     actual_cost=Decimal("0"),
@@ -2451,7 +2546,7 @@ class MultiAgentTests(unittest.TestCase):
             })
 
             scripted = [
-                ProviderResponse("Bounded multi-file plan", 10, 5, actual_cost=Decimal("0")),
+                ProviderResponse(ai_plan(), 10, 5, actual_cost=Decimal("0")),
                 ProviderResponse(initial_patch, 50, 30, actual_cost=Decimal("0")),
                 ProviderResponse(
                     "Only calculator.py contradicts the failed arithmetic assertion; operation.py already passes.",
@@ -2577,7 +2672,7 @@ class MultiAgentTests(unittest.TestCase):
             })
 
             scripted = [
-                ProviderResponse("Bounded plan", 10, 5, actual_cost=Decimal("0")),
+                ProviderResponse(ai_plan(), 10, 5, actual_cost=Decimal("0")),
                 ProviderResponse(initial_patch, 30, 20, actual_cost=Decimal("0")),
                 ProviderResponse(
                     "The arithmetic implementation still violates the failed addition assertion.",
@@ -2632,7 +2727,7 @@ class MultiAgentTests(unittest.TestCase):
             )
 
             scripted = [
-                ProviderResponse("Bounded plan", 10, 5, actual_cost=Decimal("0")),
+                ProviderResponse(ai_plan(), 10, 5, actual_cost=Decimal("0")),
                 ProviderResponse(initial_patch, 30, 20, actual_cost=Decimal("0")),
                 ProviderResponse(repeated_hypothesis, 20, 10, actual_cost=Decimal("0")),
                 ProviderResponse(first_repair, 30, 20, actual_cost=Decimal("0")),
