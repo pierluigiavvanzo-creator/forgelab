@@ -72,3 +72,23 @@ After fresh Golden Path success, choose one narrow first ICP and validate whethe
 
 ## Commercial discipline
 Do not expand the multi-agent platform surface merely because more agents/features are possible. Every major capability must improve the probability, speed, reliability or economics of a sellable end-to-end software outcome.
+
+---
+
+## 2026-10-01 commercial realignment
+
+The next proof is no longer another internal application after Dental Quote.
+
+### Updated next commercial evidence
+
+1. finish the current stabilization gate;
+2. run Dental Quote once and capture objective-to-preview time, human minutes, repair count and runtime cost;
+3. choose one narrow buyer/job hypothesis;
+4. obtain a real external brief;
+5. produce a usable preview with ForgeLab;
+6. seek a paid pilot, paid bounded build, LOI with economic commitment or equivalent transaction signal.
+
+The first go-to-market hypothesis is **output-first**: test whether buyers will pay for the software outcome before assuming they will buy ForgeLab as a platform.
+
+A technically successful Golden Path remains `C0` until buyer/problem evidence exists.
+
