@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #22:
+Current canonical `main` before PR #23:
 
-`c0c7fafb604893840efe22597f1ae18bb4cd32f5`
+`e8a768044ed0e61c2f5619c5d558c2025b0eafa2`
 
 ## NOW — A Product Critical
 
@@ -54,45 +54,45 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 ### Latest Golden Path evidence
 
-PR #20 was merged to `main` at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`.
+PR #22 was merged to `main` at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`.
 
-Fresh rerun `run-c135dcec0887`:
+Fresh rerun `run-81c1ceb4506c`:
 
-- deterministic status PASS;
-- Developer produced multi-treatment aggregate helpers and related tests;
-- existing Tkinter UI remained one-treatment only;
-- aggregate discount remained hard-coded at 10%;
-- semantic Reviewer correctly blocked promotion;
-- Reviewer wording was partly ungrounded because it called present-but-incomplete code/tests absent.
+- initial deterministic run: 4 PASS / 1 ERROR;
+- the failing test attempted to combine two dictionary return values directly;
+- one bounded repair was used;
+- after repair: 2 ERROR + 1 FAIL;
+- previously passing API behavior regressed;
+- run stopped before semantic review.
 
 Current blocker:
 
-`END_TO_END_ACCEPTANCE_NOT_ENFORCED_AND_REVIEW_EVIDENCE_NOT_GROUNDED`
+`BOUNDED_REPAIR_REGRESSION_AND_TEST_CONTRACT_DRIFT`
 
-### Current remediation — PR #22
+### Current remediation — PR #23
 
-PR #22 implements the smallest product-relevant correction:
+PR #23 implements the smallest product-relevant correction:
 
-`OBJECTIVE -> FILE-AWARE PM PLAN -> END-TO-END DEVELOPER ACCEPTANCE -> TEST -> FILE-GROUNDED INDEPENDENT REVIEW -> BOUNDED REPAIR -> HUMAN GATE`
+`FAILED TEST -> SUPPORT CLASSIFICATION -> REGRESSION-CONSTRAINED REPAIR -> RETEST -> REVIEW -> HUMAN GATE`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It reuses existing bounded target-file context, PM/Developer/Reviewer prompts, ToolGateway and repair loop.
+It reuses the existing Support/Developer bounded repair path and adds explicit compatibility/regression constraints.
 
 No new dependency, provider, agent role, repair budget or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #22 exit gate
+### PR #23 exit gate
 
-PR #22 is not complete until:
+PR #23 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. the product reaches correct end-to-end behavior and grounded semantic PASS, not merely green tests.
+4. repair preserves already-green behavior and the product reaches semantic review successfully.
 
 ## NEXT — only after Dental Quote PASS
 

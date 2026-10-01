@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #22: `c0c7fafb604893840efe22597f1ae18bb4cd32f5` (merge of PR #20).
+Current canonical `main` before PR #23: `e8a768044ed0e61c2f5619c5d558c2025b0eafa2` (merge of PR #22).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -160,18 +160,70 @@ Validation evidence:
 
 Evidence state:
 
-**PR #22 runtime/test code is TESTED locally; PR #22 is NOT MERGED; Dental Quote has NOT yet been rerun on PR #22.**
+**PR #22 was TESTED locally and merged to `main` at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`.**
+
+## Golden Path rerun after PR #22
+
+Run:
+
+`run-81c1ceb4506c`
+
+Observed result:
+
+- initial candidate changed both authorized files;
+- deterministic tests: 4 PASS / 1 ERROR;
+- failing test attempted to add two dictionary results directly;
+- the single bounded repair was used;
+- after repair, previously passing behavior regressed: 2 ERROR + 1 FAIL;
+- run stopped in DIAGNOSING with `repair_attempts=1`;
+- no `Changes.patch` was produced and semantic review was never reached.
+
+New blocker:
+
+`BOUNDED_REPAIR_REGRESSION_AND_TEST_CONTRACT_DRIFT`
+
+## PR #23 — preserve passing contracts during bounded repair
+
+Branch:
+
+`mvp1-repair-regression-contract`
+
+Runtime/test candidate HEAD validated locally:
+
+`f271b71e60c696018ae15226f6cd4353a2e53791`
+
+PR:
+
+`#23 — MVP-1: preserve passing contracts during bounded repair`
+
+Candidate behavior:
+
+- new/modified tests must use the actual candidate API consistently;
+- Support must distinguish production defects from malformed/API-inconsistent tests;
+- tests already reported as `ok` become regression constraints;
+- repairs must preserve established public return types, keys, call signatures and passing semantics unless the Product Owner objective explicitly requires a breaking change;
+- malformed tests may be corrected without weakening acceptance requirements;
+- repair rechecks both previously passing and currently failing tests;
+- no new agent, provider, dependency, repair-budget increase or infrastructure was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #23 runtime/test code is TESTED locally; PR #23 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #23.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #22 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #23 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #22 end-to-end/reviewer-grounding change is locally TESTED.
+- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #23 repair-regression constraints are locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #22 and obtain explicit Product Owner approval before merge.
+Review PR #23 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.

@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-01
-**Checkpoint:** PR #22 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #23 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #22:
+Current canonical `main` before PR #23:
 
-`c0c7fafb604893840efe22597f1ae18bb4cd32f5` (merge of PR #20)
+`e8a768044ed0e61c2f5619c5d558c2025b0eafa2` (merge of PR #22)
 
 Current remediation branch:
 
-`mvp1-end-to-end-acceptance-and-review-evidence`
+`mvp1-repair-regression-contract`
 
 PR:
 
-`#22 — MVP-1: enforce end-to-end acceptance and grounded review`
+`#23 — MVP-1: preserve passing contracts during bounded repair`
 
 Runtime/test candidate validated locally:
 
-`0bd8cd2c937eaca93d18ab2b0b2bbfcaf0ec61b4`
+`f271b71e60c696018ae15226f6cd4353a2e53791`
 
 ## 3. Product Owner contract
 
@@ -181,7 +181,45 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 10. Validation evidence
+## 10. Golden Path rerun after PR #22
+
+Run:
+
+`run-81c1ceb4506c`
+
+Observed:
+
+- initial candidate changed both authorized files;
+- first deterministic run: 4 PASS / 1 ERROR;
+- failing test attempted to add two dictionary results directly;
+- one bounded repair was used;
+- after repair, previously passing tests regressed: 2 ERROR + 1 FAIL;
+- run ended in DIAGNOSING with `repair_attempts=1`;
+- no `Changes.patch` was produced;
+- semantic review was never reached.
+
+Current blocker:
+
+`BOUNDED_REPAIR_REGRESSION_AND_TEST_CONTRACT_DRIFT`
+
+## 11. PR #23 remediation
+
+PR #23:
+
+- makes newly-added tests follow the actual candidate API consistently;
+- requires Support to distinguish implementation defects from malformed/API-inconsistent tests;
+- treats tests already reported as `ok` as regression constraints;
+- preserves public return types, dictionary keys, call signatures and passing semantics unless the objective explicitly requires change;
+- allows correcting malformed tests without weakening acceptance requirements;
+- carries the same constraints into bounded pre-write repair;
+- keeps `max repair attempts = 1`;
+- adds no agent, provider, dependency or infrastructure.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 12. Validation evidence
 
 Product Owner local validation reached:
 
@@ -199,11 +237,12 @@ The checked harness requires:
 Current evidence classification:
 
 - PR #20: **MERGED** at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`
-- PR #22 runtime/test code: **TESTED locally**
-- PR #22: **NOT MERGED**
-- Dental Quote after PR #22: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #22: **MERGED** at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`
+- PR #23 runtime/test code: **TESTED locally**
+- PR #23: **NOT MERGED**
+- Dental Quote after PR #23: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 11. Out of scope until Dental Quote PASS
+## 13. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -219,7 +258,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 12. Generality proof after Dental Quote PASS
+## 14. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -227,15 +266,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 13. Current gate
+## 15. Current gate
 
-PR #22 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #23 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 14. Single next action
+## 16. Single next action
 
-Obtain explicit Product Owner approval for PR #22 merge.
+Obtain explicit Product Owner approval for PR #23 merge.
 
 After approved merge:
 

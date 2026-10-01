@@ -160,7 +160,7 @@ A multi-agent plan that is stored but not consumed does not govern execution. Pr
 ## D-010 — End-to-end acceptance and grounded reviewer evidence
 
 **Date:** 2026-10-01
-**Status:** Proposed in PR #22; becomes Accepted only if PR #22 is explicitly approved and merged
+**Status:** Accepted — PR #22 merged 2026-10-01
 
 Evidence:
 
@@ -180,3 +180,32 @@ Decision candidate:
 Rationale:
 
 The next product risk is not planning availability but incomplete vertical-slice execution and imprecise semantic evidence. The smallest safe correction is to make planning file-aware, implementation explicitly end-to-end, and review grounded in the complete candidate state.
+
+
+---
+
+## D-011 — Bounded repair must preserve passing contracts
+
+**Date:** 2026-10-01
+**Status:** Proposed in PR #23; becomes Accepted only if PR #23 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-81c1ceb4506c` after PR #22 produced an initial candidate with 4 passing tests and 1 error. The single bounded repair then broke behavior exercised by tests that had already passed, ending with 2 errors and 1 failure and stopping before semantic review.
+
+Root cause:
+
+`BOUNDED_REPAIR_REGRESSION_AND_TEST_CONTRACT_DRIFT`
+
+Decision candidate:
+
+- tests reported as passing in the failed deterministic run become regression constraints for the repair;
+- Support must distinguish production-code defects from malformed or API-inconsistent newly-added tests;
+- Developer repair must preserve established public return types, dictionary keys, call signatures and already-passing semantics unless the Product Owner objective explicitly requires a breaking change;
+- a malformed test may be corrected when inconsistent with the intended API/objective, but acceptance requirements must not be weakened merely to obtain green tests;
+- initial Developer output must keep new/modified tests consistent with the candidate API it creates;
+- the repair budget remains unchanged.
+
+Rationale:
+
+A bounded repair that fixes one failing assertion by breaking previously green behavior is not a valid repair. The smallest safe improvement is to make existing green behavior an explicit contract during diagnosis and repair.
