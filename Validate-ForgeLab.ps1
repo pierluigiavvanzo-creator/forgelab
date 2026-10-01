@@ -49,6 +49,14 @@ function Invoke-PythonStep {
 
     Write-LogLine "EXIT_CODE: $exitCode"
 
+    $combinedOutput = $stdout + [Environment]::NewLine + $stderr
+    if (
+        $Name -eq "FULL PYTHON REGRESSION" -and
+        $combinedOutput -match "Ran\s+0\s+tests"
+    ) {
+        throw "FULL_PYTHON_REGRESSION_DISCOVERED_ZERO_TESTS"
+    }
+
     if ($exitCode -ne 0) {
         throw "$Name FAILED"
     }
