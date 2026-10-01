@@ -1904,6 +1904,12 @@ Rules:
   helper functions alone do not satisfy end-to-end acceptance.
 - before returning, verify every acceptance criterion against the
   proposed implementation and tests in the authorized files.
+- new or modified tests must exercise the candidate API consistently
+  with its actual return types and public contract; do not write a
+  test that combines or indexes values in a way the implementation
+  contract does not support.
+- preserve existing public return shapes, keys, and already-valid
+  behavior unless the objective explicitly requires changing them.
 - every path MUST be one of the authorized target paths.
 - authorized paths define the maximum write scope, not mandatory edits.
 - return one or more changes only for files that actually need modification.
@@ -2288,6 +2294,19 @@ Governed read-only repository context (same contract used by Developer):
 
 Produce a NEW evidence-backed failure hypothesis for this
 specific failed test and the smallest repair strategy.
+
+Diagnosis rules:
+- distinguish a production-code defect from a malformed or
+  API-inconsistent newly-added test;
+- tests reported as "ok" in the same deterministic run are regression
+  constraints that the repair should preserve unless they conflict
+  explicitly with the Product Owner objective;
+- preserve established public return types/shapes and semantics unless
+  the objective explicitly requires changing them;
+- prefer repairing the narrowest incorrect test or implementation
+  assumption instead of redesigning a working public contract;
+- do not weaken an acceptance requirement merely to obtain green tests.
+
 Do not repeat a prior hypothesis. Do not invent test results.
 """
 
@@ -2445,6 +2464,19 @@ Rules:
 - every path MUST remain inside the ORIGINAL authorized path set.
 - do not add, infer, or request any new path.
 - for multi-file scope, repair only the non-empty subset actually needed.
+- treat every test shown as "ok" in the failed deterministic evidence
+  as a regression constraint; the repair must preserve those behaviors
+  unless they explicitly conflict with the Product Owner objective.
+- distinguish an implementation defect from a malformed or
+  API-inconsistent newly-added test before changing production code.
+- preserve established public return types, dictionary keys, call
+  signatures, and already-passing semantics unless the objective
+  explicitly requires changing them.
+- do not weaken tests merely to make them pass; correcting a malformed
+  test is allowed only when it is inconsistent with the actual intended
+  API or objective.
+- before returning, mentally re-check the proposed repair against all
+  previously passing tests plus the currently failing test.
 - old_text MUST occur exactly once in the current corresponding file.
 - choose the smallest sufficient repair.
 - do not modify any other file.
@@ -2539,6 +2571,12 @@ Rules:
 - old_text MUST be copied verbatim from the current corresponding file.
 - old_text MUST occur exactly once.
 - preserve valid Python syntax in every modified .py file.
+- preserve tests already reported as "ok" in the failed deterministic
+  evidence and preserve the public API contract they exercise unless
+  the Product Owner objective explicitly requires a breaking change.
+- distinguish malformed test construction from production-code defects;
+  do not redesign a working return type just to satisfy an inconsistent
+  test.
 - do not weaken tests merely to make them pass.
 - do not modify dependencies or configuration.
 - do not claim tests have run.
