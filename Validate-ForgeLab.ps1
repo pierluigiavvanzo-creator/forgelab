@@ -21,18 +21,30 @@ function Invoke-PythonStep {
     Write-LogLine ""
     Write-LogLine "=== $Name ==="
 
-    $previousErrorActionPreference = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    try {
-        $output = & py -3.11 @Arguments 2>&1
-        $exitCode = $LASTEXITCODE
-    }
-    finally {
-        $ErrorActionPreference = $previousErrorActionPreference
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = "py"
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+    $psi.ArgumentList.Add("-3.11")
+    foreach ($arg in $Arguments) {
+        $psi.ArgumentList.Add($arg)
     }
 
-    if ($output) {
-        $output | Tee-Object -FilePath $Log -Append
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+    [void]$process.Start()
+    $stdout = $process.StandardOutput.ReadToEnd()
+    $stderr = $process.StandardError.ReadToEnd()
+    $process.WaitForExit()
+    $exitCode = $process.ExitCode
+
+    if ($stdout) {
+        $stdout.TrimEnd() | Tee-Object -FilePath $Log -Append
+    }
+    if ($stderr) {
+        $stderr.TrimEnd() | Tee-Object -FilePath $Log -Append
     }
 
     Write-LogLine "EXIT_CODE: $exitCode"
@@ -70,7 +82,7 @@ Invoke-PythonStep -Name "PLAN -> DEVELOPER -> SEMANTIC REPAIR CONTRACT" -Argumen
 
 Invoke-PythonStep -Name "API AI-GENERATE REGRESSION" -Arguments @("-m", "unittest", "tests.test_api.ApiTests.test_create_run_accepts_ai_generate_without_old_new", "tests.test_api.ApiTests.test_create_run_accepts_ai_generate_with_two_authorized_paths", "-v")
 
-Invoke-PythonStep -Name "FULL PYTHON REGRESSION" -Arguments @("-m", "unittest", "discover", "-v")
+Invoke-PythonStep -Name "FULL PYTHON REGRESSION" -Arguments @("-m", "unittest", "discover", "-s", "tests", "-p", "test*.py", "-v")
 
 Write-LogLine ""
 Write-LogLine "=== GIT STATUS AFTER TESTS ==="
