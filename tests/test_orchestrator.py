@@ -1509,7 +1509,7 @@ class MultiAgentTests(unittest.TestCase):
 
             planner_schema = (
                 invoke.call_args_list[0]
-                .kwargs["response_format"]
+                .args[3]
             )
             self.assertIn(
                 "acceptance_criteria",
