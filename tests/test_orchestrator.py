@@ -2111,6 +2111,35 @@ class MultiAgentTests(unittest.TestCase):
             self.assertIn("M88_SHARED_CONTEXT_MARKER", prompts[1])
             self.assertIn("M88_SHARED_CONTEXT_MARKER", prompts[2])
             self.assertIn("M88_SHARED_CONTEXT_MARKER", prompts[3])
+            self.assertIn(
+                "new or modified tests must exercise the candidate API "
+                "consistently",
+                prompts[1],
+            )
+            self.assertIn(
+                "distinguish a production-code defect from a malformed "
+                "or",
+                prompts[2],
+            )
+            self.assertIn(
+                'tests reported as "ok" in the same deterministic run '
+                "are regression",
+                prompts[2],
+            )
+            self.assertIn(
+                'treat every test shown as "ok" in the failed '
+                "deterministic evidence",
+                prompts[3],
+            )
+            self.assertIn(
+                "preserve established public return types, dictionary "
+                "keys",
+                prompts[3],
+            )
+            self.assertIn(
+                "do not weaken tests merely to make them pass",
+                prompts[3],
+            )
             self.assertEqual(
                 diagnostics["context_selection_sha256"],
                 context["selection_sha256"],
