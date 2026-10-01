@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #23: `e8a768044ed0e61c2f5619c5d558c2025b0eafa2` (merge of PR #22).
+Current canonical `main` before PR #24: `18a49ab54f90efefabdd5e54c4abeebd962cd35a` (merge of PR #23).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -212,18 +212,67 @@ Validation evidence:
 
 Evidence state:
 
-**PR #23 runtime/test code is TESTED locally; PR #23 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #23.**
+**PR #23 was TESTED locally and merged to `main` at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`.**
+
+## Golden Path rerun after PR #23
+
+Observed failure:
+
+`ValueError: AI Developer proposed a no-op replacement`
+
+Run behavior:
+
+- ForgeLab rejected the candidate before any repository write;
+- the no-op safety rule worked correctly;
+- the recoverable no-op was raised as generic `ValueError`;
+- generic `ValueError` bypassed the existing bounded pre-write recovery;
+- the run terminated before implementation/testing/review could continue.
+
+New blocker:
+
+`NOOP_PATCH_BYPASSES_PREWRITE_RECOVERY`
+
+## PR #24 — recover no-op AI patches before write
+
+Branch:
+
+`mvp1-noop-prewrite-recovery`
+
+Runtime/test candidate HEAD validated locally:
+
+`baa0dc1eb43509af733b5d3fcb245b7b717d7947`
+
+PR:
+
+`#24 — MVP-1: recover no-op AI patches before write`
+
+Candidate behavior:
+
+- single-change, composed multi-change, and full-file no-op candidates are classified as `AIDeveloperFormatError`;
+- no-op safety rejection remains intact and no no-op is written;
+- recoverable no-op output enters the existing single bounded pre-write correction;
+- Developer/pre-write prompts explicitly prohibit unchanged replacements and require omitting unchanged files/regions;
+- regression coverage proves a no-op first response can be corrected once and execution can continue;
+- no new agent, provider, dependency, repair-budget increase or infrastructure was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #24 runtime/test code is TESTED locally; PR #24 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #24.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #23 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #24 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #23 repair-regression constraints are locally TESTED.
+- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #24 no-op pre-write recovery is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #23 and obtain explicit Product Owner approval before merge.
+Review PR #24 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
