@@ -959,6 +959,125 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_ai_developer_recovers_noop_patch_prewrite_once(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            noop_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": "return a - b",
+                "summary": "No effective change",
+            })
+
+            corrected_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": "return a + b",
+                "summary": "Fix addition",
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    noop_patch,
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    corrected_patch,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            generated = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                generated["prewrite_repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                generated["format_repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                generated["validated_change_count"],
+                1,
+            )
+            self.assertEqual(usage["llm_calls"], 4)
+            self.assertEqual(len(invoke.call_args_list), 4)
+
+            developer_prompt = invoke.call_args_list[1].args[1]
+            retry_prompt = invoke.call_args_list[2].args[1]
+
+            self.assertIn(
+                "never emit a no-op change",
+                developer_prompt,
+            )
+            self.assertIn(
+                "AI Developer proposed a no-op replacement",
+                retry_prompt,
+            )
+            self.assertIn(
+                "never emit a no-op change",
+                retry_prompt,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_ai_developer_repairs_invalid_multifile_format_once(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
