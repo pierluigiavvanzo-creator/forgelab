@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #20: `3fb2e6940325650f9c97a18d0e845355c4eab404`.
+Current canonical `main` before PR #22: `c0c7fafb604893840efe22597f1ae18bb4cd32f5` (merge of PR #20).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -45,7 +45,7 @@ Objective:
 
 ## Golden Path 1 evidence
 
-Fresh run:
+Earlier run:
 
 `run-6a0c2c512498`
 
@@ -107,18 +107,71 @@ The self-checking validation harness requires all of the following before PASS:
 
 Evidence state:
 
-**TESTED locally; NOT YET MERGED; NOT YET REAL-WORKFLOW REVALIDATED.**
+**PR #20 was TESTED locally and merged to `main` at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`.**
+
+## Golden Path rerun after PR #20
+
+Run:
+
+`run-c135dcec0887`
+
+Observed result:
+
+- deterministic status PASS;
+- Developer added aggregate multi-treatment calculation helpers;
+- Developer added explicit tests for three treatments and percentage-discount calculations;
+- existing Tkinter UI remained a one-treatment workflow;
+- aggregate discount remained hard-coded at 10% instead of being user-configurable end-to-end;
+- independent Reviewer correctly blocked promotion overall;
+- Reviewer wording was partially inaccurate because it described present-but-incomplete behavior/tests as absent.
+
+New blocker:
+
+`END_TO_END_ACCEPTANCE_NOT_ENFORCED_AND_REVIEW_EVIDENCE_NOT_GROUNDED`
+
+## PR #22 — end-to-end acceptance and grounded review
+
+Branch:
+
+`mvp1-end-to-end-acceptance-and-review-evidence`
+
+Runtime/test candidate HEAD validated locally:
+
+`0bd8cd2c937eaca93d18ab2b0b2bbfcaf0ec61b4`
+
+PR:
+
+`#22 — MVP-1: enforce end-to-end acceptance and grounded review`
+
+Candidate behavior:
+
+- Project Manager receives complete authorized target files as bounded read-only planning context;
+- Developer must wire user-visible requirements through an existing interface/entry point;
+- helper-only implementation no longer counts as end-to-end acceptance;
+- Developer must self-check every acceptance criterion against implementation and tests;
+- Reviewer receives complete final authorized candidate files in addition to patch/test evidence;
+- Reviewer must distinguish partial/incomplete evidence from absent behavior;
+- Reviewer remains independent from the PM contract and still judges the original Product Owner objective;
+- no new agent, provider, dependency, repair budget or infrastructure was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #22 runtime/test code is TESTED locally; PR #22 is NOT MERGED; Dental Quote has NOT yet been rerun on PR #22.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective is rerun successfully after PR #20 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #22 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #20 contract propagation is locally TESTED.
+- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #22 end-to-end/reviewer-grounding change is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #20 and obtain explicit Product Owner approval before merge.
+Review PR #22 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
