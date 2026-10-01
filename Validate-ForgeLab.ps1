@@ -45,6 +45,17 @@ if ($ExpectedHead -and $Head -ne $ExpectedHead) {
     throw "UNEXPECTED_HEAD: $Head"
 }
 
+Get-ChildItem -Path $RepoRoot -Recurse -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+
+Write-LogLine ""
+Write-LogLine "=== GIT STATUS BEFORE TESTS ==="
+$beforeStatus = git status --porcelain
+if ($beforeStatus) {
+    $beforeStatus | Tee-Object -FilePath $Log -Append
+    throw "VALIDATION_WORKTREE_NOT_CLEAN"
+}
+Write-LogLine "CLEAN"
+
 $env:PYTHONPATH = Join-Path $RepoRoot "src"
 $env:PYTHONDONTWRITEBYTECODE = "1"
 
