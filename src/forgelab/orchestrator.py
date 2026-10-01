@@ -1679,6 +1679,8 @@ Governed read-only project/repository context:
 
 Rules:
 - decompose the objective into every explicit obligation;
+- do not invent product requirements, optional enhancements,
+  dependencies or scope beyond the objective and governed context;
 - preserve quantitative words and counts such as "three",
   "each", "all", ranges, percentages and exact limits;
 - acceptance criteria must be observable in implementation,
