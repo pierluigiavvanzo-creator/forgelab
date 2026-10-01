@@ -111,3 +111,26 @@ Use GitHub as source of truth; verify `main`; read `MANIFEST.md`, `AGENTS.md`, `
 ## 12. Single next action
 
 Review stabilization PR and CI. Stop before merge for explicit Product Owner approval.
+
+---
+
+## Commercial roadmap override — 2026-10-01
+
+Shared governance now prioritizes market evidence over additional internal technical milestones.
+
+**Current commercial evidence:** `C0 — Hypothesis`.
+
+The stabilization PR and one fresh Dental Quote Golden Path run remain the immediate prerequisite because they create a measurable demo asset. After that PASS:
+
+`STOP INTERNAL EXPANSION -> SELECT NARROW BUYER/JOB -> REAL EXTERNAL BRIEF -> WORKING PREVIEW -> BUYER FEEDBACK -> PAID PILOT/LOI SIGNAL`
+
+Do not continue to a second generic benchmark application, new agents, platform breadth or infrastructure work by default.
+
+The next commercial action is:
+
+`FORGELAB_C1_OUTPUT_FIRST_BUYER_VALIDATION`
+
+The first market test should validate a bounded **software outcome produced by ForgeLab**. Whether ForgeLab itself should later be sold as a standalone control-plane product remains a commercial hypothesis, not a settled fact.
+
+No external offer, pricing commitment or customer communication is authorized by this documentation update.
+

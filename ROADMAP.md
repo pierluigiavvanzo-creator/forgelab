@@ -78,3 +78,65 @@ Deployment platform expansion, advanced observability, multi-tenancy, billing, s
 Track Product Owner active minutes, user touches, time to usable output, provider/model cost, autonomous repair cycles, manual developer time avoided and post-approval defects.
 
 Primary economic KPI: `USER_TIME_SAVED_PER_SUCCESSFUL_RUN`.
+
+---
+
+## Commercial evidence realignment — 2026-10-01
+
+**Commercial evidence level:** `C0 — Hypothesis`.
+
+ForgeLab's stabilization and Golden Path work remain Product Critical only because they can create a credible, measurable demo asset. They are **not** market validation.
+
+### Commercialization hypothesis to test
+
+For the first market test, prefer selling a **bounded usable software outcome produced by ForgeLab** rather than asking an external buyer to purchase the ForgeLab control plane itself.
+
+This is a testable go-to-market hypothesis, not a permanent product-positioning decision.
+
+### Evidence sequence
+
+`C0A — INTERNAL CAPABILITY PROOF`
+- complete the already-reviewed stabilization publication gate;
+- run the Dental Quote Golden Path once end-to-end;
+- record elapsed time, Product Owner intervention minutes, repair attempts, runtime/model cost and final usable-output status;
+- treat the result as a demo/evidence asset only.
+
+`C1 — BUYER/PROBLEM EVIDENCE`
+- select one narrow buyer segment and one bounded software job;
+- validate that the job is frequent/costly/risky enough to justify external help or tooling;
+- identify current alternative, decision maker, expected time-to-value and acceptable delivery model.
+
+`C2 — REAL BRIEF / SOLUTION EVIDENCE`
+- obtain a real external software brief from a qualified prospect;
+- use ForgeLab to produce a reviewable working preview/output;
+- record buyer feedback, required corrections, trust objections and delivery burden.
+
+`C3 — TRANSACTION EVIDENCE`
+- paid pilot, paid bounded build, signed LOI with economic commitment or equivalent strong willingness-to-pay signal.
+
+### Freeze rule after Dental Quote
+
+After one fresh Dental Quote Golden Path PASS, freeze additional internal benchmark apps, agent expansion, platform breadth and infrastructure work unless:
+- a real buyer brief exposes a concrete blocker; or
+- a specific commercial objection requires evidence.
+
+The previously planned generic second application becomes secondary to external proof. It should run only when it answers a commercial/generalization question that a real prospect makes material.
+
+### Single next commercial action
+
+`FORGELAB_C1_OUTPUT_FIRST_BUYER_VALIDATION`
+
+Prepare the narrow ICP/job hypothesis and a bounded external pilot offer. No external commercial commitment is authorized by this roadmap update.
+
+### Sellability metrics
+
+Track alongside technical quality:
+- objective-to-working-preview elapsed time;
+- Product Owner/human minutes per delivered outcome;
+- repair/retry count;
+- runtime/model/infrastructure cost per delivered outcome;
+- buyer-requested correction count;
+- time from first brief to usable result;
+- support/onboarding minutes;
+- transaction outcome.
+
