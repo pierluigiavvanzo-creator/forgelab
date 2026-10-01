@@ -60,3 +60,32 @@ Objective: add support for three treatments, automatic subtotals, percentage dis
 ## Single next action
 
 Review the stabilization PR and CI. Do not merge without explicit Product Owner approval. After approved merge, immediately run Dental Quote Golden Path end-to-end and fix only blockers that prevent that product journey.
+
+---
+
+## Commercial evidence state — 2026-10-01
+
+**Evidence level:** `C0 — Hypothesis`.
+
+ForgeLab is technically advanced enough to justify a fresh Golden Path demonstration, but there is still **no canonical buyer, no validated pain severity and no willingness-to-pay evidence**.
+
+The project now distinguishes:
+
+1. `GOLDEN_PATH_PASS` — ForgeLab can produce a usable result;
+2. `EXTERNAL_BRIEF_PASS` — a real prospect can obtain value from that result;
+3. `TRANSACTION_SIGNAL` — the prospect is willing to make an economic commitment.
+
+Only the first is currently being prepared.
+
+### Product priority after stabilization
+
+The Dental Quote run is the final internal proof before the commercial gate. A PASS should produce a measurable demo asset and then stop internal expansion.
+
+Next commercial uncertainty:
+
+`WILL_A_NARROW_BUYER_PAY_FOR_A_BOUNDED_SOFTWARE_OUTCOME_PRODUCED_WITH_FORGELAB`
+
+The initial commercialization test should be **output-first**: sell/test the usable result and delivery economics before assuming buyers want the control-plane product itself.
+
+No architecture change is implied. ForgeLab remains the production/control system behind the test.
+
