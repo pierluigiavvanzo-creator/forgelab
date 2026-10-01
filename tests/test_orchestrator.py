@@ -1534,6 +1534,9 @@ class MultiAgentTests(unittest.TestCase):
                 ],
             )
 
+            planner_prompt = (
+                invoke.call_args_list[0].args[1]
+            )
             developer_prompt = (
                 invoke.call_args_list[1].args[1]
             )
@@ -1547,7 +1550,33 @@ class MultiAgentTests(unittest.TestCase):
                 invoke.call_args_list[4].args[1]
             )
 
+            self.assertIn(
+                "Current complete authorized files",
+                planner_prompt,
+            )
+            self.assertIn(
+                "def add(a, b):",
+                planner_prompt,
+            )
             self.assertIn(plan_marker, developer_prompt)
+            self.assertIn(
+                "helper functions alone do not satisfy "
+                "end-to-end acceptance",
+                developer_prompt,
+            )
+            self.assertIn(
+                "Current complete authorized candidate files",
+                first_reviewer_prompt,
+            )
+            self.assertIn(
+                "return a + b",
+                first_reviewer_prompt,
+            )
+            self.assertIn(
+                "do not claim required behavior or tests are "
+                "absent when the",
+                first_reviewer_prompt,
+            )
             self.assertIn(
                 plan_marker,
                 semantic_repair_prompt,
