@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-01
-**Checkpoint:** PR #23 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #24 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #23:
+Current canonical `main` before PR #24:
 
-`e8a768044ed0e61c2f5619c5d558c2025b0eafa2` (merge of PR #22)
+`18a49ab54f90efefabdd5e54c4abeebd962cd35a` (merge of PR #23)
 
 Current remediation branch:
 
-`mvp1-repair-regression-contract`
+`mvp1-noop-prewrite-recovery`
 
 PR:
 
-`#23 — MVP-1: preserve passing contracts during bounded repair`
+`#24 — MVP-1: recover no-op AI patches before write`
 
 Runtime/test candidate validated locally:
 
-`f271b71e60c696018ae15226f6cd4353a2e53791`
+`baa0dc1eb43509af733b5d3fcb245b7b717d7947`
 
 ## 3. Product Owner contract
 
@@ -219,7 +219,39 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 12. Validation evidence
+## 12. Golden Path rerun after PR #23
+
+Observed failure:
+
+`ValueError: AI Developer proposed a no-op replacement`
+
+Observed behavior:
+
+- candidate was rejected before repository write;
+- no-op safety rule worked;
+- generic `ValueError` bypassed bounded pre-write recovery;
+- run terminated before the normal implementation/test/review flow.
+
+Current blocker:
+
+`NOOP_PATCH_BYPASSES_PREWRITE_RECOVERY`
+
+## 13. PR #24 remediation
+
+PR #24:
+
+- classifies no-op patch candidates as recoverable `AIDeveloperFormatError`;
+- keeps no-op writes prohibited;
+- routes no-op responses through the existing one bounded pre-write correction;
+- tells Developer to omit unchanged files/regions and never emit a no-op replacement;
+- adds regression coverage for successful bounded recovery;
+- adds no agent, provider, dependency, repair-budget increase or infrastructure.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 14. Validation evidence
 
 Product Owner local validation reached:
 
@@ -238,11 +270,12 @@ Current evidence classification:
 
 - PR #20: **MERGED** at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`
 - PR #22: **MERGED** at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`
-- PR #23 runtime/test code: **TESTED locally**
-- PR #23: **NOT MERGED**
-- Dental Quote after PR #23: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #23: **MERGED** at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`
+- PR #24 runtime/test code: **TESTED locally**
+- PR #24: **NOT MERGED**
+- Dental Quote after PR #24: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 13. Out of scope until Dental Quote PASS
+## 15. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -258,7 +291,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 14. Generality proof after Dental Quote PASS
+## 16. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -266,15 +299,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 15. Current gate
+## 17. Current gate
 
-PR #23 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #24 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 16. Single next action
+## 18. Single next action
 
-Obtain explicit Product Owner approval for PR #23 merge.
+Obtain explicit Product Owner approval for PR #24 merge.
 
 After approved merge:
 

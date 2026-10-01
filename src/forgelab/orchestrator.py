@@ -953,7 +953,7 @@ def _validate_ai_developer_change(
         )
 
     if old_text == new_text:
-        raise ValueError(
+        raise AIDeveloperFormatError(
             "AI Developer proposed "
             "a no-op replacement"
         )
@@ -1055,7 +1055,7 @@ def _compose_ai_developer_changes(
         composed = "".join(parts)
 
         if composed == source:
-            raise ValueError(
+            raise AIDeveloperFormatError(
                 "AI Developer composed a no-op "
                 f"replacement for {path}"
             )
@@ -1184,7 +1184,7 @@ def _validate_ai_developer_full_file_patch(
         current = source_texts[path]
 
         if new_text == current:
-            raise ValueError(
+            raise AIDeveloperFormatError(
                 "AI Developer proposed a no-op "
                 f"full-file replacement for {path}"
             )
@@ -1913,6 +1913,8 @@ Rules:
 - every path MUST be one of the authorized target paths.
 - authorized paths define the maximum write scope, not mandatory edits.
 - return one or more changes only for files that actually need modification.
+- never emit a no-op change: old_text and new_text must differ; omit
+  any unchanged file or region instead.
 - multiple changes may target the same file only when their old_text regions are disjoint.
 - use at most 4 changes per authorized path.
 - old_text MUST occur exactly once in its corresponding file.
@@ -2019,6 +2021,8 @@ Rules:
 - every path MUST be one of the authorized target paths.
 - authorized paths define the maximum write scope, not mandatory edits.
 - return one or more changes only for files that actually need modification.
+- never emit a no-op change: old_text and new_text must differ; omit
+  any unchanged file or region instead.
 - multiple changes may target the same file only when their old_text regions are disjoint.
 - use at most 4 changes per authorized path.
 - old_text MUST be copied verbatim from the current complete authorized file shown above.
