@@ -1447,6 +1447,49 @@ def _validate_ai_developer_candidate_syntax(
             ) from error
 
 
+def _extract_deterministic_test_outcomes(
+    stdout: str,
+    stderr: str,
+) -> dict[str, str]:
+    outcomes: dict[str, str] = {}
+
+    for raw_line in (stdout + "\n" + stderr).splitlines():
+        line = raw_line.strip()
+
+        if " ... " not in line:
+            continue
+
+        test_name, raw_status = line.rsplit(
+            " ... ",
+            1,
+        )
+        status = raw_status.strip()
+
+        if status == "ok":
+            outcomes[test_name.strip()] = "PASS"
+        elif status in {"FAIL", "ERROR"}:
+            outcomes[test_name.strip()] = status
+
+    return outcomes
+
+
+def _regressed_passing_tests(
+    before: dict[str, str],
+    after: dict[str, str],
+) -> list[str]:
+    return sorted(
+        test_name
+        for test_name, status in before.items()
+        if (
+            status == "PASS"
+            and after.get(test_name) in {
+                "FAIL",
+                "ERROR",
+            }
+        )
+    )
+
+
 class TaskGraphError(ValueError):
     pass
 
@@ -1805,6 +1848,15 @@ Return ONLY the required structured JSON object.
     semantic_review_history: list[dict[str, Any]] = []
     source_unchanged = False
     final_test_passed = False
+    repair_regression_baseline: dict[str, str] | None = None
+    repair_regression_baseline_stdout = ""
+    repair_regression_baseline_stderr = ""
+    repair_regression_snapshot: dict[str, str] | None = None
+    repair_regression_changed_paths: list[str] = []
+    repair_regression_correction_used = False
+    repair_regression_attempt_number = 0
+    repair_regression_evidence_ref = ""
+    regression_correction_retest_pending = False
     review_report: dict[str, Any] = {"status": "FAIL", "findings": []}
     security_report: dict[str, Any] = {"status": "PASS", "findings": []}
     try:
@@ -2271,15 +2323,340 @@ For Python files, return complete syntactically valid Python.
         while True:
             test = gateway.run_test(Role.TESTER, workspace.path, request.test_command, request.timeout_seconds)  # type: ignore[arg-type]
             ev_id = f"ev-test-{repair_attempts}"
+            if regression_correction_retest_pending:
+                ev_id += "-regression-correction"
+                regression_correction_retest_pending = False
+
             evidence.append({
                 "evidence_id": ev_id, "check_type": "tests", "command_or_tool": request.test_command,
                 "exit_status": test.exit_status, "summary": "Tests passed" if test.exit_status == 0 else "Tests failed",
                 "stdout": test.stdout[-4000:], "stderr": test.stderr[-4000:], "repair_attempt": repair_attempts,
             })
+            current_test_outcomes = (
+                _extract_deterministic_test_outcomes(
+                    test.stdout,
+                    test.stderr,
+                )
+            )
+
             if test.exit_status == 0:
                 final_test_passed = True
                 results.append(_result(store, "test", ResultStatus.PASS, "Acceptance tests passed", [ev_id], "Review patch"))
                 break
+
+            regressed_tests: list[str] = []
+
+            if (
+                request.operation == "ai_generate"
+                and ai_router is not None
+                and repair_regression_baseline is not None
+                and repair_regression_snapshot is not None
+                and repair_attempts
+                == repair_regression_attempt_number
+                and not repair_regression_correction_used
+            ):
+                regressed_tests = (
+                    _regressed_passing_tests(
+                        repair_regression_baseline,
+                        current_test_outcomes,
+                    )
+                )
+
+            if regressed_tests:
+                regression_evidence_id = (
+                    f"ev-repair-regression-{repair_attempts}"
+                )
+                evidence.append({
+                    "evidence_id": regression_evidence_id,
+                    "check_type": "repair_regression",
+                    "command_or_tool": "deterministic_test_outcome_diff",
+                    "exit_status": 1,
+                    "repair_attempt": repair_attempts,
+                    "summary": (
+                        "Repair regressed previously passing tests: "
+                        + ", ".join(regressed_tests)
+                    ),
+                    "regressed_tests": regressed_tests,
+                    "before_test_evidence_ref":
+                        repair_regression_evidence_ref,
+                    "after_test_evidence_ref": ev_id,
+                })
+
+                machine.transition(RunStatus.DIAGNOSING)
+
+                current_files = (
+                    _read_ai_developer_targets(
+                        workspace.path,  # type: ignore[arg-type]
+                        target_paths,
+                    )
+                )
+
+                for rollback_path in (
+                    repair_regression_changed_paths
+                ):
+                    current_text = current_files[
+                        rollback_path
+                    ]
+                    prior_text = repair_regression_snapshot[
+                        rollback_path
+                    ]
+
+                    if current_text != prior_text:
+                        gateway.edit_text(
+                            Role.DEVELOPER,
+                            workspace.path,  # type: ignore[arg-type]
+                            authorized_paths,
+                            rollback_path,
+                            current_text,
+                            prior_text,
+                        )
+
+                rollback_source_texts = (
+                    _read_ai_developer_targets(
+                        workspace.path,  # type: ignore[arg-type]
+                        target_paths,
+                    )
+                )
+                rollback_files_context = "\n\n".join(
+                    (
+                        f"--- BEGIN FILE {path} ---\n"
+                        f"{rollback_source_texts[path]}\n"
+                        f"--- END FILE {path} ---"
+                    )
+                    for path in target_paths
+                )
+
+                correction_id = (
+                    f"repair-{repair_attempts}"
+                    "-regression-correction"
+                )
+
+                correction_prompt = f"""
+You are the DEVELOPER agent in ForgeLab.
+
+The single bounded repair attempt introduced a deterministic
+regression. ForgeLab has rolled that repair back to the exact
+candidate state that existed immediately before the repair.
+
+This is the ONE bounded regression correction inside the same
+repair attempt. It does not increase max_repair_attempts.
+
+Objective:
+{request.objective}
+
+Project Manager binding acceptance contract:
+{plan_contract_text}
+
+Original failed-test evidence before the repair:
+stdout:
+{repair_regression_baseline_stdout[-2500:]}
+
+stderr:
+{repair_regression_baseline_stderr[-2500:]}
+
+Previously passing tests that the repair regressed:
+{chr(10).join(f"- {name}" for name in regressed_tests)}
+
+Failed evidence after the regressing repair:
+stdout:
+{test.stdout[-2500:]}
+
+stderr:
+{test.stderr[-2500:]}
+
+Current complete authorized files AFTER deterministic rollback:
+{rollback_files_context}
+
+Rules:
+- preserve every previously passing test listed above.
+- fix the original failing requirement without changing an established
+  public return type, dictionary key, call signature, or passing
+  semantic unless the Product Owner objective explicitly requires it.
+- distinguish malformed/API-inconsistent test construction from a
+  production-code defect before changing production code.
+- preserve direct acceptance-test coverage for every binding criterion.
+- do not weaken, delete, rename, or replace coverage merely to get green.
+- quantitative criteria require direct quantitative tests.
+- test names, setup, exercised API, and assertions must agree.
+- return COMPLETE replacement content only for the authorized file
+  subset that actually needs correction.
+- do not modify dependencies or configuration.
+- do not claim tests have run.
+
+Return ONLY the required JSON object.
+"""
+
+                machine.transition(RunStatus.REPAIRING)
+
+                task_defs.append(
+                    _task(
+                        run_id,
+                        correction_id,
+                        Role.DEVELOPER,
+                        (
+                            "Correct deterministic repair "
+                            "regression once"
+                        ),
+                        target_paths,
+                        ["repo_edit"],
+                        [f"repair-{repair_attempts}"],
+                    )
+                )
+                validate_task_graph(task_defs)
+
+                correction_response = ai_router.execute(
+                    TaskClass.S2,
+                    correction_prompt,
+                    correction_id,
+                    Role.DEVELOPER.value,
+                    "Correct regressing bounded repair once",
+                    request.timeout_seconds,
+                    response_format=(
+                        _ai_developer_full_file_response_schema(
+                            target_paths
+                        )
+                    ),
+                )
+                correction_route = ai_router.route(
+                    TaskClass.S2
+                )
+                correction_error = ""
+                correction_patch: dict[str, Any] | None = None
+
+                try:
+                    correction_patch = (
+                        _validate_ai_developer_full_file_patch(
+                            correction_response.text,
+                            target_paths,
+                            rollback_source_texts,
+                        )
+                    )
+                    _validate_ai_developer_candidate_syntax(
+                        correction_patch,
+                        rollback_source_texts,
+                    )
+
+                    correction_payload_key = json.dumps(
+                        correction_patch,
+                        sort_keys=True,
+                        ensure_ascii=False,
+                    )
+
+                    if (
+                        correction_payload_key
+                        in seen_repair_payloads
+                    ):
+                        raise ValueError(
+                            "AI Developer repeated an identical "
+                            "regression correction payload"
+                        )
+
+                    seen_repair_payloads.add(
+                        correction_payload_key
+                    )
+                except ValueError as error:
+                    correction_error = str(error)
+
+                repair_regression_correction_used = True
+
+                if correction_patch is not None:
+                    correction_changes = _ai_patch_changes(
+                        correction_patch
+                    )
+                    correction_changed_paths = [
+                        item["path"]
+                        for item in correction_changes
+                    ]
+
+                    for correction_change in (
+                        correction_changes
+                    ):
+                        gateway.edit_text(
+                            Role.DEVELOPER,
+                            workspace.path,  # type: ignore[arg-type]
+                            authorized_paths,
+                            correction_change["path"],
+                            correction_change["old_text"],
+                            correction_change["new_text"],
+                        )
+
+                    _result(
+                        store,
+                        correction_id,
+                        ResultStatus.PASS,
+                        (
+                            "Regressing repair rolled back and "
+                            "corrected once"
+                        ),
+                        [
+                            repair_regression_evidence_ref,
+                            regression_evidence_id,
+                        ],
+                        "Rerun deterministic tests",
+                        changed=correction_changed_paths,
+                    )
+                else:
+                    correction_changed_paths = []
+                    _result(
+                        store,
+                        correction_id,
+                        ResultStatus.FAIL,
+                        (
+                            "Regression correction rejected "
+                            f"before write: {correction_error}"
+                        ),
+                        [regression_evidence_id],
+                        "Rerun rolled-back candidate tests",
+                    )
+
+                if (
+                    ai_developer_artifact is not None
+                    and ai_developer_artifact[
+                        "repair_attempts"
+                    ]
+                ):
+                    repair_record = (
+                        ai_developer_artifact[
+                            "repair_attempts"
+                        ][-1]
+                    )
+                    repair_record[
+                        "regression_correction_attempts"
+                    ] = 1
+                    repair_record[
+                        "regressed_tests"
+                    ] = regressed_tests
+                    repair_record[
+                        "regression_correction"
+                    ] = {
+                        "developer_task_id":
+                            correction_id,
+                        "provider":
+                            correction_route.provider,
+                        "model":
+                            correction_route.model,
+                        "changed_paths":
+                            correction_changed_paths,
+                        "patch":
+                            correction_patch,
+                        "validation_error":
+                            correction_error or None,
+                        "applied_by":
+                            (
+                                "deterministic_tool_gateway"
+                                if correction_patch is not None
+                                else None
+                            ),
+                    }
+                    store.write_optional_json(
+                        "AIDeveloperPatch.json",
+                        ai_developer_artifact,
+                    )
+
+                regression_correction_retest_pending = True
+                machine.transition(RunStatus.TESTING)
+                continue
+
             repair_available = (
                 request.operation == "ai_generate"
                 or request.initial_new_text is not None
@@ -2727,6 +3104,27 @@ For Python files, return complete syntactically valid Python.
                     item["path"]
                     for item in repair_changes
                 ]
+
+                repair_regression_baseline = dict(
+                    current_test_outcomes
+                )
+                repair_regression_baseline_stdout = (
+                    test.stdout
+                )
+                repair_regression_baseline_stderr = (
+                    test.stderr
+                )
+                repair_regression_snapshot = dict(
+                    repair_source_texts
+                )
+                repair_regression_changed_paths = list(
+                    repair_changed_paths
+                )
+                repair_regression_correction_used = False
+                repair_regression_attempt_number = (
+                    repair_attempts + 1
+                )
+                repair_regression_evidence_ref = ev_id
 
                 task_defs.append(_task(run_id, repair_id, Role.DEVELOPER, "Apply bounded AI repair", target_paths, ["repo_edit"], [support_id]))
                 validate_task_graph(task_defs)
