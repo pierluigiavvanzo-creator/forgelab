@@ -2556,6 +2556,7 @@ Return ONLY the required JSON object.
                     )
                 except ValueError as error:
                     correction_error = str(error)
+                    correction_patch = None
 
                 repair_regression_correction_used = True
 
