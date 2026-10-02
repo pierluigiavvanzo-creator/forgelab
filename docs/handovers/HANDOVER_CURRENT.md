@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-02
-**Checkpoint:** PR #26 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #28 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,23 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #26:
+Current canonical `main` before PR #28:
 
-`2eaa2f0399b4080e54633357bc9668cd6975e96e` (merge of PR #25)
+`a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
+
+PR #26 merged at `97f25bdb358adaa050735d463000495bafcf0b85`. PR #27 subsequently changed only `AGENTS_MASTER.md`.
 
 Current remediation branch:
 
-`mvp1-syntax-prewrite-full-file-recovery`
+`mvp1-deterministic-repair-regression-gate`
 
 PR:
 
-`#26 — MVP-1: use full-file recovery for Python syntax failures`
+`#28 — MVP-1: enforce repair regression constraints deterministically`
 
 Runtime/test candidate validated locally:
 
-`8551e5967c429d11d132fa03fd165030b3544ded`
+`356eef408926e8c97139b2fa3c9c0b18143093d2`
 
 ## 3. Product Owner contract
 
@@ -325,7 +327,47 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 18. Validation evidence
+## 18. Golden Path rerun after PR #26
+
+Run:
+
+`run-0a4726594909`
+
+Observed:
+
+- full-file syntax recovery prevented the prior pre-write crash;
+- initial deterministic tests: 4 PASS / 1 ERROR;
+- `test_multiple_treatments` failed because it added two dictionary results directly;
+- one bounded repair was used;
+- repaired run made `test_multiple_treatments` PASS;
+- repaired run regressed `test_discount_applied` and `test_single_treatment_total` from PASS to ERROR;
+- repair changed established mapping/dictionary behavior into float behavior;
+- run ended in DIAGNOSING with repair budget exhausted;
+- no patch artifact was produced and semantic review was not reached.
+
+Current blocker:
+
+`PROMPT_ONLY_REGRESSION_CONSTRAINT_NOT_ENFORCED_DETERMINISTICALLY`
+
+## 19. PR #28 remediation
+
+PR #28:
+
+- parses deterministic test outcomes before and after repair;
+- turns previously PASS tests into machine-enforced regression constraints;
+- emits explicit `repair_regression` evidence;
+- rolls back a regressing repair to the exact pre-repair candidate state;
+- allows one regression correction inside the same top-level repair attempt;
+- uses full-file correction for the authorized subset;
+- reruns deterministic tests after correction;
+- keeps `max repair attempts = 1`;
+- adds no new agent, provider, dependency or infrastructure.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 20. Validation evidence
 
 Product Owner local validation reached:
 
@@ -347,11 +389,13 @@ Current evidence classification:
 - PR #23: **MERGED** at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`
 - PR #24: **MERGED** at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`
 - PR #25: **MERGED** at `2eaa2f0399b4080e54633357bc9668cd6975e96e`
-- PR #26 runtime/test code: **TESTED locally** at `8551e5967c429d11d132fa03fd165030b3544ded`
-- PR #26: **NOT MERGED**
-- Dental Quote after PR #26: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #26: **MERGED** at `97f25bdb358adaa050735d463000495bafcf0b85`
+- PR #27: **MERGED** governance-only update to `AGENTS_MASTER.md`; canonical main advanced to `a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
+- PR #28 runtime/test code: **TESTED locally** at `356eef408926e8c97139b2fa3c9c0b18143093d2`
+- PR #28: **NOT MERGED**
+- Dental Quote after PR #28: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 19. Out of scope until Dental Quote PASS
+## 21. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -367,7 +411,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 20. Generality proof after Dental Quote PASS
+## 22. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -375,15 +419,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 21. Current gate
+## 23. Current gate
 
-PR #26 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #28 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 22. Single next action
+## 24. Single next action
 
-Obtain explicit Product Owner approval for PR #26 merge.
+Obtain explicit Product Owner approval for PR #28 merge.
 
 After approved merge:
 
