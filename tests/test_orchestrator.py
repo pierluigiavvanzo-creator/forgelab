@@ -1735,8 +1735,12 @@ class MultiAgentTests(unittest.TestCase):
                 developer_prompt,
             )
             self.assertIn(
-                'exact counts such as "three" require distinct '
-                "inputs/items",
+                "quantitative requirements must be tested "
+                "quantitatively: exact counts",
+                developer_prompt,
+            )
+            self.assertIn(
+                'such as "three" require distinct inputs/items',
                 developer_prompt,
             )
             self.assertIn(
