@@ -628,6 +628,7 @@ def _ai_review_response_schema() -> dict[str, object]:
                     "SATISFIED",
                     "MISSING",
                     "UNVERIFIED",
+                    "PARTIAL",
                 ],
             },
             "evidence": {
@@ -784,6 +785,7 @@ def _validate_ai_review(
                 "SATISFIED",
                 "MISSING",
                 "UNVERIFIED",
+                "PARTIAL",
             }
             or not isinstance(evidence, str)
             or not evidence.strip()
@@ -1898,6 +1900,17 @@ Rules:
 - passing existing tests is not proof of an uncovered criterion.
 - add or strengthen tests inside authorized scope when required
   by the acceptance contract.
+- for every acceptance criterion that can be deterministically tested
+  inside authorized scope, include at least one test whose setup and
+  assertions directly exercise that criterion; a test name alone is
+  not evidence.
+- quantitative requirements must be tested quantitatively: exact counts
+  such as "three" require distinct inputs/items and assertions over the
+  complete aggregate behavior, not merely generic collection support.
+- do not repurpose an existing test name to assert unrelated behavior;
+  test name, setup, exercised API, and assertions must agree.
+- keep user-facing numeric/unit conventions consistent end-to-end;
+  avoid applying the same conversion at multiple boundaries.
 - when an authorized file contains an existing user-facing
   interface or entry point and the objective changes user-visible
   behavior, wire the required behavior through that interface;
@@ -2473,6 +2486,13 @@ Rules:
   unless they explicitly conflict with the Product Owner objective.
 - distinguish an implementation defect from a malformed or
   API-inconsistent newly-added test before changing production code.
+- preserve direct acceptance-test coverage for every testable binding
+  criterion; do not repair one deterministic failure by deleting,
+  weakening, renaming, or replacing coverage for another criterion.
+- quantitative criteria must retain direct quantitative tests with the
+  required distinct inputs/items and aggregate assertions.
+- test names, setup, exercised API, and assertions must remain
+  semantically aligned.
 - preserve established public return types, dictionary keys, call
   signatures, and already-passing semantics unless the objective
   explicitly requires changing them.
@@ -2839,9 +2859,20 @@ Instructions:
 - evaluate user-visible requirements end-to-end through the
   existing interface or entry point when one is present;
 - helper/backend logic without required interface integration is
-  incomplete, not absent;
+  PARTIAL, not MISSING;
+- use PARTIAL whenever relevant implementation or tests exist but do
+  not yet satisfy the complete requirement; use MISSING only when no
+  relevant implementation/test evidence exists at all;
+- before marking MISSING, search the complete candidate files for
+  related functions, methods, fields, UI controls, and tests and cite
+  any partial evidence instead of denying its existence;
 - a passing test suite does NOT satisfy an objective requirement
   that the tests do not cover;
+- a test satisfies a requirement only when its setup, exercised API,
+  and assertions directly test that requirement; misleading test names
+  or unrelated assertions are not acceptance evidence;
+- quantitative requirements such as exact counts must have direct
+  quantitative evidence in implementation and tests.
 - if tests or partial implementation are present but insufficient,
   acknowledge that evidence precisely and describe the remaining
   gap; do not claim required behavior or tests are absent when the
