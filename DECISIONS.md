@@ -216,7 +216,7 @@ A bounded repair that fixes one failing assertion by breaking previously green b
 ## D-012 — Recoverable no-op patches use bounded pre-write correction
 
 **Date:** 2026-10-01
-**Status:** Proposed in PR #24; becomes Accepted only if PR #24 is explicitly approved and merged
+**Status:** Accepted — PR #24 merged 2026-10-02
 
 Evidence:
 
@@ -237,3 +237,34 @@ Decision candidate:
 Rationale:
 
 A safe deterministic rejection should not terminate the entire run when the failure is a recoverable response-format defect and ForgeLab already has a bounded pre-write correction mechanism for that class of error.
+
+
+---
+
+## D-013 — Acceptance criteria require direct test traceability; partial evidence must remain partial
+
+**Date:** 2026-10-02
+**Status:** Proposed in PR #25; becomes Accepted only if PR #25 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-e83f1cfbebff` reached deterministic PASS after one bounded repair and then failed semantic review. The candidate still lacked the complete three-treatment user workflow and direct three-treatment test coverage. Some test names no longer matched the behavior exercised, and percentage conversion was inconsistent across UI/domain boundaries. Reviewer blocking was appropriate, but existing subtotal/discount/final-total logic was described as absent rather than incomplete.
+
+Root cause:
+
+`ACCEPTANCE_TEST_TRACEABILITY_GAP_AND_NO_PARTIAL_REVIEW_STATE`
+
+Decision candidate:
+
+- every deterministically testable acceptance criterion requires at least one direct test whose setup, exercised API and assertions prove that criterion;
+- exact quantitative requirements require direct quantitative evidence using the required distinct inputs/items;
+- test names must remain semantically aligned with setup and assertions;
+- bounded repair must preserve coverage for all binding criteria rather than trading one criterion for another;
+- user-facing numeric/unit conversions must be applied consistently at one boundary;
+- Reviewer requirement status adds `PARTIAL`;
+- `PARTIAL` is used when relevant implementation/tests exist but do not satisfy the complete requirement;
+- `MISSING` is reserved for genuinely absent relevant evidence.
+
+Rationale:
+
+Green tests are insufficient when the tests do not trace to the Product Owner's actual acceptance criteria, and review evidence must distinguish incomplete implementation from absent implementation.
