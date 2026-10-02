@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #24:
+Current canonical `main` before PR #25:
 
-`18a49ab54f90efefabdd5e54c4abeebd962cd35a`
+`0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`
 
 ## NOW — A Product Critical
 
@@ -54,42 +54,46 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 ### Latest Golden Path evidence
 
-PR #23 was merged to `main` at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`.
+PR #24 was merged to `main` at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`.
 
-Fresh rerun failed before write with:
+Fresh rerun `run-e83f1cfbebff`:
 
-`ValueError: AI Developer proposed a no-op replacement`
-
-The no-op safety rule correctly rejected the candidate, but the generic exception type bypassed bounded pre-write recovery.
+- one bounded repair converted deterministic FAIL to PASS;
+- semantic review was reached;
+- the GUI still exposed one treatment instead of the required three-treatment workflow;
+- exact quantitative behavior was not directly tested;
+- a test name no longer matched the behavior it exercised;
+- percentage conversion was inconsistent end-to-end;
+- Reviewer blocked correctly but described partial implementation as absent.
 
 Current blocker:
 
-`NOOP_PATCH_BYPASSES_PREWRITE_RECOVERY`
+`ACCEPTANCE_TEST_TRACEABILITY_GAP_AND_NO_PARTIAL_REVIEW_STATE`
 
-### Current remediation — PR #24
+### Current remediation — PR #25
 
-PR #24 implements the smallest product-relevant correction:
+PR #25 implements the smallest product-relevant correction:
 
-`AI NO-OP CANDIDATE -> FORMAT ERROR -> ONE BOUNDED PRE-WRITE CORRECTION -> NORMAL GOLDEN PATH`
+`ACCEPTANCE CRITERIA -> DIRECT TEST TRACEABILITY -> IMPLEMENT/REPAIR -> FILE-GROUNDED REVIEW WITH PARTIAL STATE -> HUMAN GATE`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It reuses the existing format-error recovery path and preserves all existing safety gates.
+It reuses the existing Developer, repair and Reviewer contracts while making evidence stricter and more precise.
 
 No new dependency, provider, agent role, repair budget or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #24 exit gate
+### PR #25 exit gate
 
-PR #24 is not complete until:
+PR #25 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. a recoverable no-op no longer terminates the run and the product proceeds through normal test/review gates.
+4. exact quantitative requirements receive direct tests and partial evidence is described accurately.
 
 ## NEXT — only after Dental Quote PASS
 

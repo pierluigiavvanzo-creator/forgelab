@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-10-01
-**Checkpoint:** PR #24 locally TESTED / explicit merge approval pending
+**Checkpoint date:** 2026-10-02
+**Checkpoint:** PR #25 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #24:
+Current canonical `main` before PR #25:
 
-`18a49ab54f90efefabdd5e54c4abeebd962cd35a` (merge of PR #23)
+`0af0a75b2be4b66ab3da8d26449265c4d0ef8c78` (merge of PR #24)
 
 Current remediation branch:
 
-`mvp1-noop-prewrite-recovery`
+`mvp1-acceptance-test-traceability-and-partial-review`
 
 PR:
 
-`#24 — MVP-1: recover no-op AI patches before write`
+`#25 — MVP-1: trace acceptance tests and represent partial review evidence`
 
 Runtime/test candidate validated locally:
 
-`baa0dc1eb43509af733b5d3fcb245b7b717d7947`
+`f1d23fc0c6588b4400ff5507312031027a15fb23`
 
 ## 3. Product Owner contract
 
@@ -251,7 +251,48 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 14. Validation evidence
+## 14. Golden Path rerun after PR #24
+
+Run:
+
+`run-e83f1cfbebff`
+
+Observed:
+
+- no-op recovery worked and the run continued;
+- first deterministic run failed;
+- one bounded repair was used;
+- second deterministic run passed;
+- independent semantic review was reached;
+- candidate still lacked an explicit three-treatment GUI workflow;
+- no direct test exercised exactly three distinct treatments;
+- a test name no longer matched the behavior it exercised;
+- discount percentage conversion was inconsistent end-to-end;
+- Reviewer blocked promotion but mislabeled existing partial logic as absent.
+
+Current blocker:
+
+`ACCEPTANCE_TEST_TRACEABILITY_GAP_AND_NO_PARTIAL_REVIEW_STATE`
+
+## 15. PR #25 remediation
+
+PR #25:
+
+- adds `PARTIAL` semantic requirement status;
+- reserves `MISSING` for genuinely absent evidence;
+- requires Reviewer to inspect complete candidate files before claiming absence;
+- requires direct tests for each testable acceptance criterion;
+- requires direct quantitative tests for quantitative requirements;
+- requires semantic alignment among test name, setup, exercised API and assertions;
+- carries criterion-coverage constraints into bounded repair;
+- requires consistent numeric/unit conversion across boundaries;
+- adds no agent, provider, dependency, repair-budget increase or infrastructure.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 16. Validation evidence
 
 Product Owner local validation reached:
 
@@ -271,11 +312,12 @@ Current evidence classification:
 - PR #20: **MERGED** at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`
 - PR #22: **MERGED** at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`
 - PR #23: **MERGED** at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`
-- PR #24 runtime/test code: **TESTED locally**
-- PR #24: **NOT MERGED**
-- Dental Quote after PR #24: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #24: **MERGED** at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`
+- PR #25 runtime/test code: **TESTED locally** at `f1d23fc0c6588b4400ff5507312031027a15fb23`
+- PR #25: **NOT MERGED**
+- Dental Quote after PR #25: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 15. Out of scope until Dental Quote PASS
+## 17. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -291,7 +333,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 16. Generality proof after Dental Quote PASS
+## 18. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -299,15 +341,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 17. Current gate
+## 19. Current gate
 
-PR #24 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #25 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 18. Single next action
+## 20. Single next action
 
-Obtain explicit Product Owner approval for PR #24 merge.
+Obtain explicit Product Owner approval for PR #25 merge.
 
 After approved merge:
 

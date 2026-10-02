@@ -9,7 +9,15 @@ from pathlib import Path
 
 from forgelab.domain import Role
 from forgelab.model_router import ProviderResponse
-from forgelab.orchestrator import MultiAgentRequest, TaskGraphError, run_multi_agent, select_roles, validate_task_graph
+from forgelab.orchestrator import (
+    MultiAgentRequest,
+    TaskGraphError,
+    _ai_review_response_schema,
+    _validate_ai_review,
+    run_multi_agent,
+    select_roles,
+    validate_task_graph,
+)
 from forgelab.promote import decide
 
 
@@ -118,6 +126,31 @@ def semantic_review_pass() -> str:
             },
         ],
         "findings": [],
+    })
+
+
+def semantic_review_partial() -> str:
+    return json.dumps({
+        "schema_version": "1.0",
+        "status": "FAIL",
+        "summary": "Relevant implementation exists but is incomplete.",
+        "requirements": [
+            {
+                "requirement": "Complete user-visible behavior",
+                "status": "PARTIAL",
+                "evidence": (
+                    "A backend helper exists, but the existing interface "
+                    "does not expose the complete required workflow."
+                ),
+            },
+        ],
+        "findings": [
+            {
+                "severity": "BLOCKER",
+                "category": "objective_coverage",
+                "description": "End-to-end requirement is only partially implemented.",
+            },
+        ],
     })
 
 
@@ -1439,6 +1472,24 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_ai_review_contract_accepts_partial_requirement_status(self):
+        schema = _ai_review_response_schema()
+        status_enum = (
+            schema["properties"]["requirements"]["items"]
+            ["properties"]["status"]["enum"]
+        )
+        self.assertIn("PARTIAL", status_enum)
+
+        parsed = _validate_ai_review(
+            semantic_review_partial()
+        )
+        self.assertEqual(parsed["status"], "FAIL")
+        self.assertEqual(
+            parsed["requirements"][0]["status"],
+            "PARTIAL",
+        )
+
+
     def test_semantic_review_failure_uses_bounded_repair_and_rereview(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -1679,6 +1730,20 @@ class MultiAgentTests(unittest.TestCase):
             )
             self.assertIn(plan_marker, developer_prompt)
             self.assertIn(
+                "for every acceptance criterion that can be "
+                "deterministically tested",
+                developer_prompt,
+            )
+            self.assertIn(
+                "quantitative requirements must be tested "
+                "quantitatively: exact counts",
+                developer_prompt,
+            )
+            self.assertIn(
+                'such as "three" require distinct inputs/items',
+                developer_prompt,
+            )
+            self.assertIn(
                 "helper functions alone do not satisfy "
                 "end-to-end acceptance",
                 developer_prompt,
@@ -1699,6 +1764,15 @@ class MultiAgentTests(unittest.TestCase):
             self.assertIn(
                 plan_marker,
                 semantic_repair_prompt,
+            )
+            self.assertIn(
+                "PARTIAL whenever relevant implementation or tests "
+                "exist",
+                first_reviewer_prompt,
+            )
+            self.assertIn(
+                "misleading test names",
+                first_reviewer_prompt,
             )
             self.assertNotIn(
                 plan_marker,
