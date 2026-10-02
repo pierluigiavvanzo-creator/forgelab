@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-02
-**Checkpoint:** PR #25 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #26 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #25:
+Current canonical `main` before PR #26:
 
-`0af0a75b2be4b66ab3da8d26449265c4d0ef8c78` (merge of PR #24)
+`2eaa2f0399b4080e54633357bc9668cd6975e96e` (merge of PR #25)
 
 Current remediation branch:
 
-`mvp1-acceptance-test-traceability-and-partial-review`
+`mvp1-syntax-prewrite-full-file-recovery`
 
 PR:
 
-`#25 — MVP-1: trace acceptance tests and represent partial review evidence`
+`#26 — MVP-1: use full-file recovery for Python syntax failures`
 
 Runtime/test candidate validated locally:
 
-`f1d23fc0c6588b4400ff5507312031027a15fb23`
+`8551e5967c429d11d132fa03fd165030b3544ded`
 
 ## 3. Product Owner contract
 
@@ -292,7 +292,40 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 16. Validation evidence
+## 16. Golden Path rerun after PR #25
+
+Observed failure:
+
+`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 41: unterminated string literal`
+
+Observed behavior:
+
+- invalid Python was rejected before repository write;
+- the existing single pre-write correction path was entered;
+- snippet-oriented syntax correction could still compose invalid Python;
+- a subsequent syntax error escaped the normal governed run lifecycle.
+
+Current blocker:
+
+`EXHAUSTED_PREWRITE_CORRECTION_ESCAPES_RUN_LIFECYCLE`
+
+## 17. PR #26 remediation
+
+PR #26:
+
+- reuses full-file recovery for `AIDeveloperSyntaxError`;
+- uses complete current authorized files as authoritative recovery context;
+- requires complete syntactically valid Python for changed Python files;
+- runs deterministic syntax validation before write;
+- applies the same rule to syntax errors inside bounded test-failure repair;
+- retains exactly one pre-write correction;
+- adds no agent, provider, dependency, repair-budget increase or infrastructure.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 18. Validation evidence
 
 Product Owner local validation reached:
 
@@ -313,11 +346,12 @@ Current evidence classification:
 - PR #22: **MERGED** at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`
 - PR #23: **MERGED** at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`
 - PR #24: **MERGED** at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`
-- PR #25 runtime/test code: **TESTED locally** at `f1d23fc0c6588b4400ff5507312031027a15fb23`
-- PR #25: **NOT MERGED**
-- Dental Quote after PR #25: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #25: **MERGED** at `2eaa2f0399b4080e54633357bc9668cd6975e96e`
+- PR #26 runtime/test code: **TESTED locally** at `8551e5967c429d11d132fa03fd165030b3544ded`
+- PR #26: **NOT MERGED**
+- Dental Quote after PR #26: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 17. Out of scope until Dental Quote PASS
+## 19. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -333,7 +367,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 18. Generality proof after Dental Quote PASS
+## 20. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -341,15 +375,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 19. Current gate
+## 21. Current gate
 
-PR #25 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #26 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 20. Single next action
+## 22. Single next action
 
-Obtain explicit Product Owner approval for PR #25 merge.
+Obtain explicit Product Owner approval for PR #26 merge.
 
 After approved merge:
 
