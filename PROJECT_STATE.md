@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #26: `2eaa2f0399b4080e54633357bc9668cd6975e96e` (merge of PR #25).
+Current canonical `main` before PR #28: `a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496` (PR #26 merged at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 then updated governance only).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -367,18 +367,75 @@ Validation evidence:
 
 Evidence state:
 
-**PR #26 runtime/test code is TESTED locally; PR #26 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #26.**
+**PR #26 was TESTED locally and merged to `main` at `97f25bdb358adaa050735d463000495bafcf0b85`. PR #27 subsequently changed only `AGENTS_MASTER.md`.**
+
+## Golden Path rerun after PR #26
+
+Run:
+
+`run-0a4726594909`
+
+Observed result:
+
+- syntax recovery no longer terminated the run;
+- initial deterministic run produced 4 PASS / 1 ERROR;
+- `test_multiple_treatments` failed because two dictionary results were added directly;
+- one bounded repair was used;
+- after repair, `test_multiple_treatments` passed;
+- two tests that were previously PASS regressed to ERROR:
+  - `test_discount_applied`;
+  - `test_single_treatment_total`;
+- the repair changed an established mapping/dictionary return contract into float semantics;
+- the run stopped in DIAGNOSING with `repair_attempts=1`;
+- no `Changes.patch` was produced and semantic review was not reached.
+
+New blocker:
+
+`PROMPT_ONLY_REGRESSION_CONSTRAINT_NOT_ENFORCED_DETERMINISTICALLY`
+
+## PR #28 — deterministic repair regression gate
+
+Branch:
+
+`mvp1-deterministic-repair-regression-gate`
+
+Runtime/test candidate HEAD validated locally:
+
+`356eef408926e8c97139b2fa3c9c0b18143093d2`
+
+PR:
+
+`#28 — MVP-1: enforce repair regression constraints deterministically`
+
+Candidate behavior:
+
+- deterministic unittest outcomes are parsed before and after bounded repair;
+- tests that were PASS before repair become machine-enforced regression constraints;
+- if a repair turns a previously PASS test into FAIL/ERROR, ForgeLab records `repair_regression` evidence;
+- the regressing repair is rolled back to the exact pre-repair candidate state;
+- one bounded regression correction is allowed inside the same top-level repair attempt;
+- regression correction uses complete authorized-file replacements to reduce stale-reference/syntax risk;
+- `max_repair_attempts` remains unchanged;
+- no new agent, provider, dependency or infrastructure was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #28 runtime/test code is TESTED locally; PR #28 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #28.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #26 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #28 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic syntax validation and independent semantic blocking are working; PR #26 full-file syntax recovery is locally TESTED.
+- G4 Quality: deterministic syntax validation, regression detection/rollback, and independent semantic blocking are working; PR #28 deterministic repair-regression gate is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #26 and obtain explicit Product Owner approval before merge.
+Review PR #28 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.

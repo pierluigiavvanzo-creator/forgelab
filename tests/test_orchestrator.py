@@ -2468,6 +2468,264 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_ai_developer_repair_regression_is_rolled_back_and_corrected_once(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "regression-demo"
+            repo.mkdir()
+
+            (repo / "calculator.py").write_text(
+                "def calculate(value):\n"
+                "    return {\"value\": value}\n",
+                encoding="utf-8",
+            )
+            original_test = (
+                "import unittest\n"
+                "from calculator import calculate\n\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_existing_shape(self):\n"
+                "        self.assertEqual(calculate(2)[\"value\"], 2)\n\n"
+                "if __name__ == \"__main__\":\n"
+                "    unittest.main()\n"
+            )
+            (repo / "test_calculator.py").write_text(
+                original_test,
+                encoding="utf-8",
+            )
+            git(repo, "init", "-b", "main")
+            git(repo, "add", ".")
+            subprocess.run(
+                [
+                    "git", "-C", str(repo),
+                    "-c", "user.name=Test",
+                    "-c", "user.email=test@local",
+                    "commit", "-m", "regression demo",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            malformed_test = original_test.replace(
+                (
+                    "    def test_existing_shape(self):\n"
+                    "        self.assertEqual(calculate(2)[\"value\"], 2)\n"
+                ),
+                (
+                    "    def test_existing_shape(self):\n"
+                    "        self.assertEqual(calculate(2)[\"value\"], 2)\n\n"
+                    "    def test_multiple(self):\n"
+                    "        self.assertEqual(calculate(1) + calculate(2), 3)\n"
+                ),
+            )
+            corrected_test = malformed_test.replace(
+                "calculate(1) + calculate(2)",
+                (
+                    "calculate(1)[\"value\"] "
+                    "+ calculate(2)[\"value\"]"
+                ),
+            )
+
+            initial_patch = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Add requested multi-result coverage",
+                "changes": [
+                    {
+                        "path": "test_calculator.py",
+                        "old_text": original_test,
+                        "new_text": malformed_test,
+                        "summary": "Add multi-result acceptance test",
+                    }
+                ],
+            })
+            regressing_repair = json.dumps({
+                "schema_version": "2.0",
+                "summary": "Make arithmetic directly additive",
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": (
+                            "def calculate(value):\n"
+                            "    return {\"value\": value}\n"
+                        ),
+                        "new_text": (
+                            "def calculate(value):\n"
+                            "    return value\n"
+                        ),
+                        "summary": "Return numeric value directly",
+                    }
+                ],
+            })
+            regression_correction = json.dumps({
+                "schema_version": "2.1",
+                "summary": "Preserve mapping API and correct malformed test",
+                "files": [
+                    {
+                        "path": "test_calculator.py",
+                        "new_text": corrected_test,
+                        "summary": "Combine mapped values correctly",
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan([
+                        "Preserve the existing mapping return API.",
+                        "Add deterministic coverage for combining two results.",
+                    ]),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    (
+                        "The new test combines mapping objects directly; "
+                        "preserve the existing mapping API."
+                    ),
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    regressing_repair,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    regression_correction,
+                    40,
+                    25,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Add deterministic coverage for combining "
+                            "two calculation results while preserving "
+                            "the existing mapping API."
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                        allowed_paths=(
+                            "calculator.py",
+                            "test_calculator.py",
+                        ),
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(summary["repair_attempts"], 1)
+            self.assertEqual(
+                [
+                    item["exit_status"]
+                    for item in evidence["evidence"]
+                    if item["check_type"] == "tests"
+                ],
+                [1, 1, 0],
+            )
+            regression_evidence = [
+                item
+                for item in evidence["evidence"]
+                if item["check_type"] == "repair_regression"
+            ]
+            self.assertEqual(len(regression_evidence), 1)
+            self.assertIn(
+                "test_existing_shape",
+                regression_evidence[0]["regressed_tests"][0],
+            )
+
+            repair_record = developer["repair_attempts"][0]
+            self.assertEqual(
+                repair_record["regression_correction_attempts"],
+                1,
+            )
+            self.assertEqual(
+                repair_record["changed_paths"],
+                ["calculator.py"],
+            )
+            self.assertEqual(
+                repair_record["regression_correction"]
+                ["changed_paths"],
+                ["test_calculator.py"],
+            )
+            self.assertEqual(usage["llm_calls"], 6)
+            self.assertEqual(len(invoke.call_args_list), 6)
+
+            correction_prompt = (
+                invoke.call_args_list[4].args[1]
+            )
+            self.assertIn(
+                "rolled that repair back",
+                correction_prompt,
+            )
+            self.assertIn(
+                "preserve every previously passing test",
+                correction_prompt,
+            )
+            self.assertEqual(
+                invoke.call_args_list[4].args[3]
+                ["properties"]["schema_version"]["enum"],
+                ["2.1"],
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                'return {"value": value}',
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
+            )
+
+
     def test_ai_developer_repair_recovers_stale_reference_with_full_file_once(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

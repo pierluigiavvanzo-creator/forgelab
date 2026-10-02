@@ -275,7 +275,7 @@ Green tests are insufficient when the tests do not trace to the Product Owner's 
 ## D-014 — Python syntax failures use full-file bounded pre-write recovery
 
 **Date:** 2026-10-02
-**Status:** Proposed in PR #26; becomes Accepted only if PR #26 is explicitly approved and merged
+**Status:** Accepted — PR #26 merged 2026-10-02
 
 Evidence:
 
@@ -298,3 +298,35 @@ Decision candidate:
 Rationale:
 
 When syntax failure is caused by composing partial text fragments, retrying with the same fragment format unnecessarily repeats the failure mode. Full-file recovery reduces ambiguity while preserving scope, deterministic validation and the existing single-attempt bound.
+
+
+---
+
+## D-015 — Previously passing tests are deterministic repair constraints
+
+**Date:** 2026-10-02
+**Status:** Proposed in PR #28; becomes Accepted only if PR #28 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-0a4726594909` after PR #26 produced an initial deterministic result of 4 PASS / 1 ERROR. The single bounded repair fixed the originally failing `test_multiple_treatments` but regressed `test_discount_applied` and `test_single_treatment_total`, changing established dictionary-return semantics into float-return semantics.
+
+Root cause:
+
+`PROMPT_ONLY_REGRESSION_CONSTRAINT_NOT_ENFORCED_DETERMINISTICALLY`
+
+Decision candidate:
+
+- parse deterministic unittest outcomes before and after bounded repair;
+- tests reported PASS before repair become machine-enforced regression constraints;
+- if a repair turns a previously PASS test into FAIL/ERROR, record explicit `repair_regression` evidence;
+- rollback the regressing repair to the exact pre-repair candidate state;
+- allow one regression correction inside the same top-level repair attempt;
+- regression correction must receive both original failure evidence and regression evidence;
+- use complete authorized-file replacement for the regression correction to reduce stale-reference and syntax-composition risk;
+- `max_repair_attempts` remains unchanged;
+- if the bounded correction still fails, stop through the governed failure path.
+
+Rationale:
+
+A prompt-level instruction is not a reliable safety/control boundary when a local model can ignore it. Previously passing deterministic behavior must be enforced by orchestration logic rather than model compliance alone.
