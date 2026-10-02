@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-02
 **Current phase:** PRE-MVP / Software Factory Golden Path validation
 **Current priority:** A — Product Critical
 **Commercial evidence level:** C0 — Hypothesis
@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #24: `18a49ab54f90efefabdd5e54c4abeebd962cd35a` (merge of PR #23).
+Current canonical `main` before PR #25: `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78` (merge of PR #24).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -261,18 +261,76 @@ Validation evidence:
 
 Evidence state:
 
-**PR #24 runtime/test code is TESTED locally; PR #24 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #24.**
+**PR #24 was TESTED locally and merged to `main` at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`.**
+
+## Golden Path rerun after PR #24
+
+Run:
+
+`run-e83f1cfbebff`
+
+Observed result:
+
+- no-op recovery no longer terminated the run;
+- initial deterministic tests failed on discount behavior;
+- one bounded repair was used;
+- deterministic tests then passed;
+- run reached independent semantic review;
+- Reviewer correctly blocked promotion overall;
+- candidate still exposed only one treatment in the GUI;
+- no direct test exercised exactly three distinct treatments;
+- `test_blank_treatment_rejected` no longer tested a blank treatment name;
+- discount percentage conversion was inconsistent across UI/domain boundaries;
+- Reviewer incorrectly described existing subtotal/discount/final-total logic as absent rather than incomplete.
+
+New blocker:
+
+`ACCEPTANCE_TEST_TRACEABILITY_GAP_AND_NO_PARTIAL_REVIEW_STATE`
+
+## PR #25 — acceptance-test traceability and partial review evidence
+
+Branch:
+
+`mvp1-acceptance-test-traceability-and-partial-review`
+
+Runtime/test candidate HEAD validated locally:
+
+`f1d23fc0c6588b4400ff5507312031027a15fb23`
+
+PR:
+
+`#25 — MVP-1: trace acceptance tests and represent partial review evidence`
+
+Candidate behavior:
+
+- Reviewer supports `PARTIAL` for present-but-incomplete evidence;
+- `MISSING` is reserved for genuinely absent relevant evidence;
+- Reviewer must inspect complete candidate files before claiming behavior is absent;
+- each deterministically testable acceptance criterion requires direct test evidence;
+- quantitative requirements require direct quantitative tests;
+- test name, setup, exercised API and assertions must align;
+- numeric/unit conversions must remain consistent end-to-end;
+- bounded repair must preserve acceptance-test coverage;
+- no new agent, provider, dependency, repair-budget increase or infrastructure was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #25 runtime/test code is TESTED locally; PR #25 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #25.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #24 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #25 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #24 no-op pre-write recovery is locally TESTED.
+- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #25 acceptance-test traceability and partial-review contract is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #24 and obtain explicit Product Owner approval before merge.
+Review PR #25 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
