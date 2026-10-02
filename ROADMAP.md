@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #25:
+Current canonical `main` before PR #26:
 
-`0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`
+`2eaa2f0399b4080e54633357bc9668cd6975e96e`
 
 ## NOW — A Product Critical
 
@@ -54,46 +54,42 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 ### Latest Golden Path evidence
 
-PR #24 was merged to `main` at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`.
+PR #25 was merged to `main` at `2eaa2f0399b4080e54633357bc9668cd6975e96e`.
 
-Fresh rerun `run-e83f1cfbebff`:
+Fresh rerun failed before write with:
 
-- one bounded repair converted deterministic FAIL to PASS;
-- semantic review was reached;
-- the GUI still exposed one treatment instead of the required three-treatment workflow;
-- exact quantitative behavior was not directly tested;
-- a test name no longer matched the behavior it exercised;
-- percentage conversion was inconsistent end-to-end;
-- Reviewer blocked correctly but described partial implementation as absent.
+`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 41: unterminated string literal`
+
+The syntax gate worked, but snippet-oriented pre-write correction could still produce invalid Python and the subsequent syntax failure escaped the normal governed lifecycle.
 
 Current blocker:
 
-`ACCEPTANCE_TEST_TRACEABILITY_GAP_AND_NO_PARTIAL_REVIEW_STATE`
+`EXHAUSTED_PREWRITE_CORRECTION_ESCAPES_RUN_LIFECYCLE`
 
-### Current remediation — PR #25
+### Current remediation — PR #26
 
-PR #25 implements the smallest product-relevant correction:
+PR #26 implements the smallest product-relevant correction:
 
-`ACCEPTANCE CRITERIA -> DIRECT TEST TRACEABILITY -> IMPLEMENT/REPAIR -> FILE-GROUNDED REVIEW WITH PARTIAL STATE -> HUMAN GATE`
+`INVALID PYTHON -> ONE FULL-FILE PRE-WRITE RECOVERY -> DETERMINISTIC PARSE -> NORMAL GOLDEN PATH`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It reuses the existing Developer, repair and Reviewer contracts while making evidence stricter and more precise.
+It reuses the existing full-file recovery path and keeps the correction count bounded to one.
 
 No new dependency, provider, agent role, repair budget or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #25 exit gate
+### PR #26 exit gate
 
-PR #25 is not complete until:
+PR #26 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. exact quantitative requirements receive direct tests and partial evidence is described accurately.
+4. syntax-invalid AI output is either corrected once into parseable complete-file content or safely blocked before write.
 
 ## NEXT — only after Dental Quote PASS
 
