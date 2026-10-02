@@ -2047,15 +2047,26 @@ Rules:
 - do not create dependencies.
 """
 
-                reference_recovery = isinstance(
+                full_file_recovery = isinstance(
                     prewrite_error,
-                    AIDeveloperReferenceError,
+                    (
+                        AIDeveloperReferenceError,
+                        AIDeveloperSyntaxError,
+                    ),
                 )
 
-                if reference_recovery:
+                if full_file_recovery:
+                    recovery_mode = (
+                        "REFERENCE RECOVERY MODE"
+                        if isinstance(
+                            prewrite_error,
+                            AIDeveloperReferenceError,
+                        )
+                        else "SYNTAX RECOVERY MODE"
+                    )
                     prewrite_repair_prompt += f"""
 
-REFERENCE RECOVERY MODE:
+{recovery_mode}:
 Return COMPLETE replacement content for each file that must
 change. Do not return old_text snippets.
 
@@ -2073,6 +2084,7 @@ Required recovery schema:
 }}
 
 The current complete authorized files above are authoritative.
+For Python files, return complete syntactically valid Python.
 """
                     prewrite_response_format = (
                         _ai_developer_full_file_response_schema(
@@ -2092,7 +2104,7 @@ The current complete authorized files above are authoritative.
                     response_format=prewrite_response_format,
                 )
 
-                if reference_recovery:
+                if full_file_recovery:
                     generated_patch = (
                         _validate_ai_developer_full_file_patch(
                             developer_response.text,
@@ -2606,15 +2618,26 @@ Rules:
 - do not claim tests have run.
 """
 
-                    repair_reference_recovery = isinstance(
+                    repair_full_file_recovery = isinstance(
                         repair_prewrite_error,
-                        AIDeveloperReferenceError,
+                        (
+                            AIDeveloperReferenceError,
+                            AIDeveloperSyntaxError,
+                        ),
                     )
 
-                    if repair_reference_recovery:
+                    if repair_full_file_recovery:
+                        repair_recovery_mode = (
+                            "REFERENCE RECOVERY MODE"
+                            if isinstance(
+                                repair_prewrite_error,
+                                AIDeveloperReferenceError,
+                            )
+                            else "SYNTAX RECOVERY MODE"
+                        )
                         repair_prewrite_prompt += f"""
 
-REFERENCE RECOVERY MODE:
+{repair_recovery_mode}:
 Return COMPLETE replacement content for each file that must
 change. Do not return old_text snippets.
 
@@ -2632,6 +2655,7 @@ Required recovery schema:
 }}
 
 The current complete authorized files above are authoritative.
+For Python files, return complete syntactically valid Python.
 """
                         repair_response_format = (
                             _ai_developer_full_file_response_schema(
@@ -2656,7 +2680,7 @@ The current complete authorized files above are authoritative.
                         response_format=repair_response_format,
                     )
 
-                    if repair_reference_recovery:
+                    if repair_full_file_recovery:
                         repair_patch = (
                             _validate_ai_developer_full_file_patch(
                                 repair_response.text,

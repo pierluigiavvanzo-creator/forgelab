@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #25: `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78` (merge of PR #24).
+Current canonical `main` before PR #26: `2eaa2f0399b4080e54633357bc9668cd6975e96e` (merge of PR #25).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -319,18 +319,66 @@ Validation evidence:
 
 Evidence state:
 
-**PR #25 runtime/test code is TESTED locally; PR #25 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #25.**
+**PR #25 was TESTED locally and merged to `main` at `2eaa2f0399b4080e54633357bc9668cd6975e96e`.**
+
+## Golden Path rerun after PR #25
+
+Observed failure:
+
+`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 41: unterminated string literal`
+
+Run behavior:
+
+- deterministic syntax validation correctly blocked invalid Python before repository write;
+- the first syntax failure entered the existing single pre-write correction path;
+- snippet-oriented syntax recovery could still compose invalid Python;
+- a subsequent syntax failure escaped the governed run lifecycle and surfaced as `run execution failed`.
+
+New blocker:
+
+`EXHAUSTED_PREWRITE_CORRECTION_ESCAPES_RUN_LIFECYCLE`
+
+## PR #26 — full-file recovery for Python syntax failures
+
+Branch:
+
+`mvp1-syntax-prewrite-full-file-recovery`
+
+Runtime/test candidate HEAD validated locally:
+
+`8551e5967c429d11d132fa03fd165030b3544ded`
+
+PR:
+
+`#26 — MVP-1: use full-file recovery for Python syntax failures`
+
+Candidate behavior:
+
+- `AIDeveloperSyntaxError` reuses the existing full-file recovery mechanism already used for stale-reference recovery;
+- syntax recovery receives complete current authorized files as authoritative context;
+- recovery still uses exactly one bounded pre-write correction;
+- complete Python replacement content is deterministically parsed before any repository write;
+- the same full-file syntax recovery applies inside the bounded test-failure repair path;
+- no new agent, provider, dependency, repair-budget increase or infrastructure was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #26 runtime/test code is TESTED locally; PR #26 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #26.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #25 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #26 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic tests plus independent semantic blocking are working; PR #25 acceptance-test traceability and partial-review contract is locally TESTED.
+- G4 Quality: deterministic syntax validation and independent semantic blocking are working; PR #26 full-file syntax recovery is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #25 and obtain explicit Product Owner approval before merge.
+Review PR #26 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.

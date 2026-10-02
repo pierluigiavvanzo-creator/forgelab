@@ -244,7 +244,7 @@ A safe deterministic rejection should not terminate the entire run when the fail
 ## D-013 — Acceptance criteria require direct test traceability; partial evidence must remain partial
 
 **Date:** 2026-10-02
-**Status:** Proposed in PR #25; becomes Accepted only if PR #25 is explicitly approved and merged
+**Status:** Accepted — PR #25 merged 2026-10-02
 
 Evidence:
 
@@ -268,3 +268,33 @@ Decision candidate:
 Rationale:
 
 Green tests are insufficient when the tests do not trace to the Product Owner's actual acceptance criteria, and review evidence must distinguish incomplete implementation from absent implementation.
+
+
+---
+
+## D-014 — Python syntax failures use full-file bounded pre-write recovery
+
+**Date:** 2026-10-02
+**Status:** Proposed in PR #26; becomes Accepted only if PR #26 is explicitly approved and merged
+
+Evidence:
+
+A fresh Dental Quote run after PR #25 was blocked before write with `AIDeveloperSyntaxError` caused by an unterminated string literal in `quote_calculator.py`. Initial syntax validation worked, but snippet-oriented correction could still produce syntactically invalid composed Python.
+
+Root cause:
+
+`EXHAUSTED_PREWRITE_CORRECTION_ESCAPES_RUN_LIFECYCLE`
+
+Decision candidate:
+
+- `AIDeveloperSyntaxError` uses the existing full-file recovery mechanism already used for stale-reference recovery;
+- recovery receives complete authorized current files as authoritative context;
+- only authorized files that actually need changes may be returned;
+- complete Python replacement content must pass deterministic syntax parsing before any write;
+- the same recovery rule applies inside the bounded test-failure repair path;
+- exactly one bounded pre-write correction remains allowed;
+- no repair-budget increase, new provider, agent or dependency is introduced.
+
+Rationale:
+
+When syntax failure is caused by composing partial text fragments, retrying with the same fragment format unnecessarily repeats the failure mode. Full-file recovery reduces ambiguity while preserving scope, deterministic validation and the existing single-attempt bound.

@@ -1111,6 +1111,126 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_ai_developer_recovers_initial_python_syntax_with_full_file_once(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            invalid_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": 'return "unterminated',
+                "summary": "Malformed Python candidate",
+            })
+
+            corrected_full_file = json.dumps({
+                "schema_version": "2.1",
+                "summary": "Replace calculator with valid Python",
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    return a + b\n"
+                        ),
+                        "summary": "Fix addition with valid syntax",
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    invalid_patch,
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    corrected_full_file,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            generated = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                generated["prewrite_repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                generated["syntax_repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                generated["validated_change_count"],
+                1,
+            )
+            self.assertEqual(len(invoke.call_args_list), 4)
+
+            retry_prompt = invoke.call_args_list[2].args[1]
+            retry_format = invoke.call_args_list[2].args[3]
+
+            self.assertIn(
+                "SYNTAX RECOVERY MODE",
+                retry_prompt,
+            )
+            self.assertIn(
+                "complete syntactically valid Python",
+                retry_prompt,
+            )
+            self.assertEqual(
+                retry_format["properties"]["schema_version"]["enum"],
+                ["2.1"],
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_ai_developer_repairs_invalid_multifile_format_once(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -2600,13 +2720,15 @@ class MultiAgentTests(unittest.TestCase):
             })
 
             corrected_repair = json.dumps({
-                "schema_version": "2.0",
-                "summary": "Syntactically valid arithmetic repair",
-                "changes": [
+                "schema_version": "2.1",
+                "summary": "Syntactically valid arithmetic recovery",
+                "files": [
                     {
                         "path": "calculator.py",
-                        "old_text": "return a * b",
-                        "new_text": "return a + b",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    return a + b\n"
+                        ),
                         "summary": "Correct arithmetic",
                     }
                 ],
@@ -2747,6 +2869,15 @@ class MultiAgentTests(unittest.TestCase):
             self.assertIn(
                 "ONE bounded pre-write correction",
                 prewrite_prompt,
+            )
+            self.assertIn(
+                "SYNTAX RECOVERY MODE",
+                prewrite_prompt,
+            )
+            prewrite_format = invoke.call_args_list[4].args[3]
+            self.assertEqual(
+                prewrite_format["properties"]["schema_version"]["enum"],
+                ["2.1"],
             )
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
