@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #30: `02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14` (merge of PR #29).
+Current canonical `main` before PR #31: `081960cb6c0c696567010010dd387a49c6750114` (merge of PR #30).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -534,18 +534,78 @@ Validation evidence:
 
 Evidence state:
 
-**PR #30 runtime/test code is TESTED locally; PR #30 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #30.**
+**PR #30 was TESTED locally and merged to `main` at `081960cb6c0c696567010010dd387a49c6750114`.**
+
+## Golden Path rerun after PR #30
+
+Run:
+
+`run-7676d5c968dc`
+
+Observed result:
+
+- PR #30 behaved as intended: semantic repair ran, deterministic retest completed, and the run returned to independent semantic review;
+- initial deterministic tests: 6 / 6 PASS;
+- one semantic-review repair was applied;
+- deterministic retest after semantic repair: 9 / 9 PASS;
+- `Changes.patch` was refreshed after semantic repair and represented the current candidate;
+- second semantic review still returned FAIL;
+- overall semantic blocking was directionally correct because the exact three-treatment end-to-end workflow remained incomplete;
+- Reviewer wording remained partly inaccurate because it described some present-but-incomplete treatment/subtotal/discount behavior as absent;
+- the run stopped in REVIEW with tests PASS and `repair_attempts=1`;
+- no further bounded semantic correction was available because the single top-level repair attempt was already consumed.
+
+New blocker:
+
+`SEMANTIC_REPAIR_REVIEW_FAILURE_HAS_NO_IN_ATTEMPT_CORRECTION`
+
+## PR #31 — bounded semantic re-review correction
+
+Branch:
+
+`mvp1-semantic-rereview-in-attempt-correction`
+
+Runtime/test candidate HEAD validated locally:
+
+`8595a2c756f1db63b0e9eea9c425d72bbcbf40d4`
+
+PR:
+
+`#31 — MVP-1: correct failed semantic rereview within repair`
+
+Candidate behavior:
+
+- keeps `max_repair_attempts = 1`;
+- if the single semantic-review repair passes deterministic tests but the next semantic re-review still FAILS, ForgeLab allows exactly one semantic correction inside the same already-authorized repair attempt;
+- the correction receives the original objective, PM acceptance contract, latest semantic re-review, latest passing deterministic evidence, complete current authorized files, and current candidate diff;
+- the correction prompt requires the Developer to inspect current files before acting on Reviewer wording and repair the real remaining gap rather than duplicating/deleting existing behavior;
+- full-file replacement is required for only the authorized subset that actually needs correction;
+- scope and Python syntax are deterministically validated before write;
+- deterministic tests are rerun after the correction;
+- if tests PASS, ForgeLab performs one further independent semantic review;
+- if correction validation fails, tests fail, or the next review still fails, ForgeLab stops through the governed failure path;
+- `semantic_review_correction_attempts = 1` is recorded separately from the top-level repair count;
+- `Changes.patch` is refreshed after the correction;
+- no new agent, provider, dependency, infrastructure or top-level repair-budget increase was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #31 runtime/test code is TESTED locally; PR #31 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #31.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #30 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #31 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, semantic repair test correction, and independent semantic blocking are working; PR #30 is locally TESTED.
+- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, semantic repair test correction, semantic re-review correction, and independent semantic blocking are working; PR #31 is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #30 and obtain explicit Product Owner approval before merge.
+Review PR #31 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
