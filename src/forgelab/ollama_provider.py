@@ -127,18 +127,60 @@ class OllamaProvider:
         timeout_seconds: int,
         response_format: dict[str, object] | str | None = None,
     ) -> ProviderResponse:
+        return self._invoke(
+            model,
+            prompt,
+            timeout_seconds,
+            response_format,
+            repeat_limit_recovery=False,
+        )
+
+    def invoke_repeat_limit_recovery(
+        self,
+        model: str,
+        prompt: str,
+        timeout_seconds: int,
+        response_format: dict[str, object] | str | None = None,
+    ) -> ProviderResponse:
+        """Run the existing retry with explicit anti-repeat sampling."""
+
+        return self._invoke(
+            model,
+            prompt,
+            timeout_seconds,
+            response_format,
+            repeat_limit_recovery=True,
+        )
+
+    def _invoke(
+        self,
+        model: str,
+        prompt: str,
+        timeout_seconds: int,
+        response_format: dict[str, object] | str | None,
+        *,
+        repeat_limit_recovery: bool,
+    ) -> ProviderResponse:
+
+        options: dict[str, object] = {
+            "temperature": 0.1,
+            "num_ctx": 4096,
+            # Bounded but large enough for structured
+            # multi-file AI Developer JSON patches.
+            "num_predict": 2048,
+        }
+
+        if repeat_limit_recovery:
+            options.update({
+                "repeat_penalty": 1.1,
+                "repeat_last_n": 128,
+            })
 
         request_payload: dict[str, object] = {
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {
-                "temperature": 0.1,
-                "num_ctx": 4096,
-                # Bounded but large enough for structured
-                # multi-file AI Developer JSON patches.
-                "num_predict": 2048,
-            },
+            "options": options,
         }
 
         if response_format is not None:
