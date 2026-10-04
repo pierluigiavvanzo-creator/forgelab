@@ -15,7 +15,13 @@ from .domain import AgentResult, AgentTask, ResourceLimits, ResultStatus, Role, 
 from .quality import review_patch, security_review_patch
 from .state_machine import RunStateMachine
 from .workspace import IsolatedWorkspace
-from .model_router import ModelRouter, TaskClass, UsageLedger, load_routes
+from .model_router import (
+    ModelRouter,
+    ProviderTransientError,
+    TaskClass,
+    UsageLedger,
+    load_routes,
+)
 from .ollama_provider import OllamaProvider
 from .memory import ProjectMemory
 from .governance import PolicyEngine, ToolGateway
@@ -1595,6 +1601,69 @@ def _result(store: ArtifactStore, task_id: str, status: ResultStatus, summary: s
     return result
 
 
+def _record_provider_failure(
+    store: ArtifactStore,
+    run_id: str,
+    ledger: UsageLedger,
+    phase: str,
+    error: ProviderTransientError,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    last_record = (
+        ledger.records[-1]
+        if ledger.records
+        else None
+    )
+    task_id = (
+        last_record.task_id
+        if last_record is not None
+        else "unknown"
+    )
+    attempts_for_task = sum(
+        1
+        for record in ledger.records
+        if record.task_id == task_id
+    )
+    artifact = {
+        "run_id": run_id,
+        "status": "FAIL",
+        "reason": "PROVIDER_TRANSIENT_RETRY_EXHAUSTED",
+        "phase": phase,
+        "provider": (
+            last_record.provider
+            if last_record is not None
+            else None
+        ),
+        "model": (
+            last_record.model_id
+            if last_record is not None
+            else None
+        ),
+        "task_id": task_id,
+        "attempts": attempts_for_task,
+        "final_error_type": type(error).__name__,
+        "final_error": str(error),
+        "estimated_cost": str(ledger.spent),
+    }
+    store.write_optional_json(
+        "ProviderFailure.json",
+        artifact,
+    )
+    evidence = {
+        "evidence_id": "ev-provider-failure",
+        "check_type": "provider_runtime",
+        "command_or_tool": "local_zero_spend_model_router",
+        "exit_status": 1,
+        "summary": (
+            "Local provider retries exhausted: "
+            + str(error)
+        ),
+        "artifact_ref": "ProviderFailure.json",
+        "phase": phase,
+        "task_id": task_id,
+    }
+    return artifact, evidence
+
+
 def _render_governed_context(context_bundle: dict[str, object]) -> str:
     documents = context_bundle.get("documents", [])
     sections = [
@@ -1699,6 +1768,10 @@ def run_multi_agent(request: MultiAgentRequest, output_root: Path) -> Path:
     ai_plan: dict[str, Any] | None = None
     plan_contract_text = ""
 
+    machine.transition(
+        RunStatus.PRECHECK
+    )
+
     if use_ai:
         ai_router, ai_ledger = _build_local_ai_router()
 
@@ -1754,15 +1827,255 @@ Rules:
 Return ONLY the required structured JSON object.
 """
 
-        plan_response = ai_router.execute(
-            TaskClass.S1,
-            plan_prompt,
-            "plan",
-            Role.PROJECT_MANAGER.value,
-            "AI-assisted bounded planning",
-            request.timeout_seconds,
-            response_format=_ai_plan_response_schema(),
-        )
+        try:
+            plan_response = ai_router.execute(
+                TaskClass.S1,
+                plan_prompt,
+                "plan",
+                Role.PROJECT_MANAGER.value,
+                "AI-assisted bounded planning",
+                request.timeout_seconds,
+                response_format=_ai_plan_response_schema(),
+            )
+        except ProviderTransientError as provider_error:
+            _, provider_evidence = _record_provider_failure(
+                store,
+                run_id,
+                ai_ledger,
+                machine.status.value,
+                provider_error,
+            )
+            early_tasks = [
+                _task(
+                    run_id,
+                    "plan",
+                    Role.PROJECT_MANAGER,
+                    "Create bounded execution plan",
+                    target_paths,
+                    ["repo_read"],
+                    [],
+                ),
+                _task(
+                    run_id,
+                    "implement",
+                    Role.DEVELOPER,
+                    request.objective,
+                    target_paths,
+                    ["repo_edit"],
+                    ["plan"],
+                ),
+                _task(
+                    run_id,
+                    "test",
+                    Role.TESTER,
+                    "Run acceptance tests",
+                    target_paths,
+                    ["test_runner"],
+                    ["implement"],
+                ),
+                _task(
+                    run_id,
+                    "review",
+                    Role.REVIEWER,
+                    "Review scope and correctness",
+                    target_paths,
+                    ["git_diff"],
+                    ["test"],
+                ),
+            ]
+            machine.transition(
+                RunStatus.CLOSED
+            )
+            now = datetime.now(
+                timezone.utc
+            ).isoformat()
+            store.write(
+                "ExecutionPlan.json",
+                {
+                    "run_id": run_id,
+                    "objective": request.objective,
+                    "repository": str(
+                        request.repository.resolve()
+                    ),
+                    "tasks": early_tasks,
+                    "selected_roles": [
+                        role.value
+                        for role in roles
+                    ],
+                    "selection_reason": (
+                        "Planning provider failed after "
+                        "bounded local retries"
+                    ),
+                    "max_repair_attempts":
+                        request.max_repair_attempts,
+                    "test_command":
+                        request.test_command,
+                    "change_operation":
+                        request.operation,
+                    "allowed_paths":
+                        list(target_paths),
+                    "timeout_seconds":
+                        request.timeout_seconds,
+                    "requires_human_gate": True,
+                    "memory_snapshot_ref":
+                        "MemorySnapshot.json",
+                    "context_bundle_ref":
+                        "ContextBundle.json",
+                    "memory_manifest_sha256":
+                        memory_snapshot[
+                            "manifest_sha256"
+                        ],
+                    "context_selection": {
+                        "mode":
+                            context_bundle["mode"],
+                        "write_scope_expansion":
+                            context_bundle[
+                                "write_scope_expansion"
+                            ],
+                        "selection_sha256":
+                            context_bundle[
+                                "selection_sha256"
+                            ],
+                        "selected_paths":
+                            context_bundle[
+                                "selected_paths"
+                            ],
+                        "used_chars":
+                            context_bundle["used_chars"],
+                    },
+                },
+            )
+            store.write(
+                "AgentResult.json",
+                {
+                    "run_id": run_id,
+                    "status": "FAIL",
+                    "results": [
+                        AgentResult(
+                            ResultStatus.FAIL,
+                            (
+                                "Local provider retries exhausted "
+                                "during planning"
+                            ),
+                            [],
+                            ["ev-provider-failure"],
+                            [],
+                            [],
+                            "Retry or inspect local provider",
+                        ).to_dict()
+                    ],
+                    "task_result_root": "tasks/",
+                },
+            )
+            store.write(
+                "TestEvidence.json",
+                {
+                    "run_id": run_id,
+                    "evidence": [
+                        provider_evidence
+                    ],
+                },
+            )
+            store.write(
+                "ReviewReport.json",
+                {
+                    "run_id": run_id,
+                    "status": "FAIL",
+                    "changed_paths": [],
+                    "findings": [],
+                    "deterministic_status": "NOT_RUN",
+                    "semantic_status": "NOT_RUN",
+                    "semantic_requirements": [],
+                    "semantic_summary": (
+                        "Review did not run because the "
+                        "local provider failed during planning."
+                    ),
+                    "review_round": 0,
+                },
+            )
+            store.write(
+                "SecurityReport.json",
+                {
+                    "run_id": run_id,
+                    "status": "NOT_RUN",
+                    "findings": [],
+                    "source_repository_unchanged": True,
+                    "network_used": False,
+                    "tool_policy_denials": 0,
+                },
+            )
+            usage_report = ai_ledger.report()
+            usage_report.update({
+                "run_id": run_id,
+                "estimated_cost":
+                    str(ai_ledger.spent),
+                "runtime":
+                    "hybrid_local_ai",
+                "provider_mode":
+                    "local_zero_spend",
+            })
+            store.write(
+                "UsageReport.json",
+                usage_report,
+            )
+            store.write(
+                "RunSummary.json",
+                {
+                    "run_id": run_id,
+                    "status":
+                        machine.status.value,
+                    "history": [
+                        state.value
+                        for state in machine.history
+                    ],
+                    "repository": str(
+                        request.repository.resolve()
+                    ),
+                    "base_head": None,
+                    "plan":
+                        request.objective,
+                    "selected_roles": [
+                        role.value
+                        for role in roles
+                    ],
+                    "changes": [],
+                    "tests": "FAIL",
+                    "repair_attempts": 0,
+                    "risk":
+                        "Source unchanged; provider failure",
+                    "model_usage":
+                        "Ollama local",
+                    "decision":
+                        "Repair required",
+                    "created_at": now,
+                    "change_operation":
+                        request.operation,
+                    "context_bundle_ref":
+                        "ContextBundle.json",
+                    "context_selection_sha256":
+                        context_bundle[
+                            "selection_sha256"
+                        ],
+                    "context_selected_paths":
+                        context_bundle[
+                            "selected_paths"
+                        ],
+                },
+            )
+            store.write(
+                "GateDecision.json",
+                {
+                    "gate_type": "G3_PROMOTE",
+                    "actor": "SYSTEM",
+                    "decision": "REPAIR",
+                    "scope": (
+                        "Local provider failed before "
+                        "implementation"
+                    ),
+                    "timestamp": now,
+                },
+            )
+            return run_dir
 
         ai_plan = _validate_ai_plan(plan_response.text)
         plan_contract_text = json.dumps(
@@ -1828,7 +2141,6 @@ Return ONLY the required structured JSON object.
             "used_chars": context_bundle["used_chars"],
         },
     })
-    machine.transition(RunStatus.PRECHECK)
     machine.transition(RunStatus.PLANNED)
     _result(store, "plan", ResultStatus.PASS, "Bounded plan created", ["ExecutionPlan.json"], "Create isolated workspace")
     machine.transition(RunStatus.ISOLATED)
@@ -4894,6 +5206,36 @@ Return ONLY the required JSON object.
                     machine.transition(
                         RunStatus.READY_FOR_DECISION
                     )
+    except ProviderTransientError as provider_error:
+        _, provider_evidence = _record_provider_failure(
+            store,
+            run_id,
+            ai_ledger,
+            machine.status.value,
+            provider_error,
+        )
+        evidence.append(
+            provider_evidence
+        )
+        results.append(
+            AgentResult(
+                ResultStatus.FAIL,
+                (
+                    "Local provider retries exhausted "
+                    "inside governed run"
+                ),
+                [],
+                ["ev-provider-failure"],
+                [],
+                [],
+                "Retry or inspect local provider",
+            ).to_dict()
+        )
+
+        if machine.status != RunStatus.CLOSED:
+            machine.transition(
+                RunStatus.CLOSED
+            )
     except (
         AIDeveloperFormatError,
         AIDeveloperReferenceError,
