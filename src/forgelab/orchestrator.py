@@ -1519,9 +1519,11 @@ def _validate_ai_developer_candidate_syntax(
         )
 
         try:
-            ast.parse(
+            compile(
                 candidate.lstrip("\ufeff"),
-                filename=path,
+                path,
+                "exec",
+                dont_inherit=True,
             )
         except SyntaxError as error:
             location = (
