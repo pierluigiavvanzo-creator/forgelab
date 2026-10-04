@@ -183,8 +183,11 @@ class ModelRouter:
         provider = self.providers.get(route.provider)
         if provider is None:
             raise RouterError(f"provider is not configured: {route.provider}")
+        previous_transient_error: ProviderTransientError | None = None
+
         for attempt in range(1, route.max_retries + 2):
             attempt_timeout_seconds = timeout_seconds
+            attempt_prompt = prompt
 
             if (
                 route.provider == "ollama"
@@ -198,19 +201,36 @@ class ModelRouter:
                     ),
                 )
 
+                if (
+                    previous_transient_error is not None
+                    and "token repeat limit reached"
+                    in str(previous_transient_error).lower()
+                ):
+                    attempt_prompt = (
+                        prompt.rstrip()
+                        + "\n\nLOCAL PROVIDER RECOVERY:\n"
+                        + "- The previous generation was aborted because "
+                        "its output became repetitive.\n"
+                        + "- Produce one concise, non-repetitive answer.\n"
+                        + "- Do not restate sections, duplicate JSON "
+                        "objects, or repeat the same tokens.\n"
+                        + "- If structured output is requested, emit "
+                        "exactly one object matching the schema and stop."
+                    )
+
             started = time.monotonic()
 
             try:
                 response = (
                     provider.invoke(
                         route.model,
-                        prompt,
+                        attempt_prompt,
                         attempt_timeout_seconds,
                     )
                     if response_format is None
                     else provider.invoke(
                         route.model,
-                        prompt,
+                        attempt_prompt,
                         attempt_timeout_seconds,
                         response_format,
                     )
@@ -232,6 +252,7 @@ class ModelRouter:
                 ))
                 return response
             except ProviderTransientError as error:
+                previous_transient_error = error
                 latency = int((time.monotonic() - started) * 1000)
                 self.ledger.records.append(UsageRecord(
                     route.provider, route.model, task_class.value, agent_role, task_id,
