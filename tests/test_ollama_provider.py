@@ -104,6 +104,42 @@ class OllamaProviderTests(unittest.TestCase):
         )
 
     @patch("forgelab.ollama_provider.urlopen")
+    def test_repeat_limit_recovery_uses_anti_repeat_profile(
+        self,
+        mocked,
+    ):
+        mocked.return_value = FakeResponse({
+            "response": "{\"schema_version\": \"2.1\"}",
+            "prompt_eval_count": 12,
+            "eval_count": 8,
+        })
+
+        OllamaProvider().invoke(
+            "qwen2.5-coder:7b",
+            (
+                "repair prompt"
+                "\n\nLOCAL PROVIDER RECOVERY:\n"
+                "- concise retry"
+            ),
+            180,
+            "json",
+        )
+
+        request = mocked.call_args.args[0]
+        payload = json.loads(
+            request.data.decode("utf-8")
+        )
+        options = payload["options"]
+
+        self.assertEqual(payload["format"], "json")
+        self.assertEqual(options["num_ctx"], 4096)
+        self.assertEqual(options["num_predict"], 1536)
+        self.assertEqual(options["temperature"], 0.2)
+        self.assertEqual(options["repeat_last_n"], 128)
+        self.assertEqual(options["repeat_penalty"], 1.2)
+
+
+    @patch("forgelab.ollama_provider.urlopen")
     def test_structured_output_schema_is_sent_to_generate(
         self,
         mocked,
