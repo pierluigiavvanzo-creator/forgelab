@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-04
-**Checkpoint:** PR #33 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #34 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #33:
+Current canonical `main` before PR #34:
 
-`fb3188890573e484640b7a4c667c3f4703218685` (merge of PR #32)
+`dd027196182da4701dafc035806acffd194f125b` (merge of PR #33)
 
 Current remediation branch:
 
-`mvp1-semantic-repair-full-file-first`
+`mvp1-ollama-repeat-reset-retry`
 
 PR:
 
-`#33 — MVP-1: use full-file semantic repair from first attempt`
+`#34 — MVP-1: reset Ollama state before repeat-limit retry`
 
 Runtime/test candidate validated locally:
 
-`259666e04d118fc8ba4f57a13b12d8b688261e6e`
+`64ce31f1310b73076da74766c93968125c7ea3d7`
 
 ## 3. Product Owner contract
 
@@ -560,7 +560,45 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 30. Validation evidence
+## 30. Golden Path rerun after PR #33
+
+Run:
+
+`run-98f2c045a9f3`
+
+Observed:
+
+- initial deterministic tests passed 5 / 5;
+- semantic review blocked incomplete three-treatment and automatic-subtotal acceptance;
+- semantic repair task `review-repair-1` started;
+- Ollama returned HTTP 500 `prediction aborted, token repeat limit reached`;
+- the existing adaptive generation retry was exhausted;
+- PR #32 correctly emitted `ProviderFailure.json` and closed as `CLOSED / Repair required`;
+- no semantic repair candidate was produced, so PR #33 full-file-first repair behavior was not exercised in the real Golden Path.
+
+Current blocker:
+
+`OLLAMA_REPEAT_LIMIT_RETRY_REUSES_LOADED_MODEL_STATE`
+
+## 31. PR #34 remediation
+
+PR #34:
+
+- preserves Ollama and provider cost EUR 0;
+- preserves the configured generation retry count;
+- preserves the adaptive anti-repetition prompt;
+- resets/unloads local Ollama model state before the existing repeat-limit retry using an empty prompt and `keep_alive: 0`;
+- uses the same loopback provider endpoint;
+- proceeds with the existing generation retry even if the reset control call fails;
+- does not reset on ordinary transient failures;
+- preserves existing governed `ProviderFailure.json` behavior if generation retry still fails;
+- adds no paid fallback, extra generation retry, provider, agent, dependency or configuration expansion.
+
+Reuse status:
+
+`REUSE / ADAPT -> INTEGRATED CANDIDATE`
+
+## 32. Validation evidence
 
 Product Owner local validation reached:
 
@@ -589,11 +627,12 @@ Current evidence classification:
 - PR #30: **MERGED** at `081960cb6c0c696567010010dd387a49c6750114`
 - PR #31: **MERGED** at `af63c04cf401771499988b30a6c4f45fbef4c8b0`
 - PR #32: **MERGED** at `fb3188890573e484640b7a4c667c3f4703218685`
-- PR #33 runtime/test code: **TESTED locally** at `259666e04d118fc8ba4f57a13b12d8b688261e6e`
-- PR #33: **NOT MERGED**
-- Dental Quote after PR #33: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #33: **MERGED** at `dd027196182da4701dafc035806acffd194f125b`
+- PR #34 runtime/test code: **TESTED locally** at `64ce31f1310b73076da74766c93968125c7ea3d7`
+- PR #34: **NOT MERGED**
+- Dental Quote after PR #34: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 31. Out of scope until Dental Quote PASS
+## 33. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -609,7 +648,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 32. Generality proof after Dental Quote PASS
+## 34. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -617,15 +656,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 33. Current gate
+## 35. Current gate
 
-PR #33 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #34 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 34. Single next action
+## 36. Single next action
 
-Obtain explicit Product Owner approval for PR #33 merge.
+Obtain explicit Product Owner approval for PR #34 merge.
 
 After approved merge:
 
