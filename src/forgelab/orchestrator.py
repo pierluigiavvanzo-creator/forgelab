@@ -3476,6 +3476,451 @@ Return ONLY the required JSON object.
                     < request.max_repair_attempts
                 )
 
+                latest_semantic_repair_record = None
+                if (
+                    ai_developer_artifact is not None
+                    and ai_developer_artifact[
+                        "repair_attempts"
+                    ]
+                ):
+                    candidate_repair_record = (
+                        ai_developer_artifact[
+                            "repair_attempts"
+                        ][-1]
+                    )
+                    if (
+                        candidate_repair_record.get(
+                            "cause"
+                        )
+                        == "semantic_review"
+                    ):
+                        latest_semantic_repair_record = (
+                            candidate_repair_record
+                        )
+
+                semantic_rereview_correction_available = (
+                    not semantic_repair_available
+                    and semantic_review is not None
+                    and semantic_status == "FAIL"
+                    and deterministic_review[
+                        "status"
+                    ] == "PASS"
+                    and request.operation
+                    == "ai_generate"
+                    and latest_semantic_repair_record
+                    is not None
+                    and latest_semantic_repair_record.get(
+                        "semantic_review_correction_attempts",
+                        0,
+                    )
+                    < 1
+                )
+
+                if semantic_rereview_correction_available:
+                    machine.transition(
+                        RunStatus.REPAIRING
+                    )
+
+                    semantic_review_correction_id = (
+                        f"review-repair-{repair_attempts}"
+                        "-semantic-correction"
+                    )
+                    semantic_review_correction_source_texts = (
+                        _read_ai_developer_targets(
+                            workspace.path,  # type: ignore[arg-type]
+                            target_paths,
+                        )
+                    )
+                    semantic_review_correction_files = (
+                        "\n\n".join(
+                            (
+                                f"--- BEGIN FILE {path} ---\n"
+                                f"{semantic_review_correction_source_texts[path]}\n"
+                                f"--- END FILE {path} ---"
+                            )
+                            for path in target_paths
+                        )
+                    )
+
+                    semantic_review_correction_prompt = f"""
+You are the DEVELOPER agent in ForgeLab.
+
+The single top-level semantic-review repair has already been used and
+its deterministic tests PASS, but independent semantic re-review still
+FAILS the Product Owner objective.
+
+This is the ONE bounded semantic correction inside the SAME top-level
+repair attempt. It does NOT increase max_repair_attempts.
+
+Original objective:
+{request.objective}
+
+Project Manager binding acceptance contract:
+{plan_contract_text}
+
+Latest blocking semantic re-review:
+{json.dumps(semantic_review, indent=2, ensure_ascii=False)}
+
+Latest deterministic test evidence:
+stdout:
+{test.stdout[-2500:]}
+
+stderr:
+{test.stderr[-2500:]}
+
+Current complete authorized files:
+{semantic_review_correction_files}
+
+Current full candidate diff:
+{diff[-8000:]}
+
+Rules:
+- resolve every latest MISSING, PARTIAL, or UNVERIFIED objective
+  obligation that is actually supported by the objective and current
+  repository context;
+- inspect the complete current files before acting on Reviewer wording;
+  if the Reviewer describes present behavior as absent, preserve that
+  behavior and repair the real remaining gap rather than deleting or
+  duplicating working code;
+- preserve all currently passing deterministic tests and established
+  public contracts unless the Product Owner objective explicitly
+  requires a breaking change;
+- do not satisfy semantic review by weakening, deleting, bypassing, or
+  trivializing acceptance tests;
+- quantitative requirements such as exact counts require direct
+  implementation and direct quantitative test evidence;
+- user-visible requirements must be wired through the existing
+  interface or entry point when one exists;
+- prefer the smallest coherent end-to-end repair over helper-only
+  additions;
+- return COMPLETE replacement content only for the authorized file
+  subset that actually needs correction;
+- for Python files, return complete syntactically valid Python;
+- do not modify dependencies or configuration;
+- do not claim tests have run.
+
+Return ONLY the required JSON object.
+"""
+
+                    task_defs.append(
+                        _task(
+                            run_id,
+                            semantic_review_correction_id,
+                            Role.DEVELOPER,
+                            (
+                                "Correct remaining semantic "
+                                "re-review findings once"
+                            ),
+                            target_paths,
+                            ["repo_edit"],
+                            [
+                                latest_semantic_repair_record[
+                                    "developer_task_id"
+                                ]
+                            ],
+                        )
+                    )
+                    validate_task_graph(
+                        task_defs
+                    )
+
+                    semantic_review_correction_response = (
+                        ai_router.execute(
+                            TaskClass.S2,
+                            semantic_review_correction_prompt,
+                            semantic_review_correction_id,
+                            Role.DEVELOPER.value,
+                            (
+                                "Correct remaining semantic "
+                                "review findings once"
+                            ),
+                            request.timeout_seconds,
+                            response_format=(
+                                _ai_developer_full_file_response_schema(
+                                    target_paths
+                                )
+                            ),
+                        )
+                    )
+                    semantic_review_correction_route = (
+                        ai_router.route(
+                            TaskClass.S2
+                        )
+                    )
+
+                    semantic_review_correction_patch: (
+                        dict[str, Any] | None
+                    ) = None
+                    semantic_review_correction_error = ""
+
+                    try:
+                        semantic_review_correction_patch = (
+                            _validate_ai_developer_full_file_patch(
+                                semantic_review_correction_response.text,
+                                target_paths,
+                                semantic_review_correction_source_texts,
+                            )
+                        )
+                        _validate_ai_developer_candidate_syntax(
+                            semantic_review_correction_patch,
+                            semantic_review_correction_source_texts,
+                        )
+                    except ValueError as error:
+                        semantic_review_correction_error = str(
+                            error
+                        )
+                        semantic_review_correction_patch = None
+
+                    latest_semantic_repair_record[
+                        "semantic_review_correction_attempts"
+                    ] = 1
+
+                    if semantic_review_correction_patch is None:
+                        latest_semantic_repair_record[
+                            "semantic_review_correction"
+                        ] = {
+                            "developer_task_id":
+                                semantic_review_correction_id,
+                            "provider":
+                                semantic_review_correction_route.provider,
+                            "model":
+                                semantic_review_correction_route.model,
+                            "changed_paths": [],
+                            "patch": None,
+                            "validation_error":
+                                semantic_review_correction_error,
+                            "applied_by": None,
+                        }
+                        store.write_optional_json(
+                            "AIDeveloperPatch.json",
+                            ai_developer_artifact,
+                        )
+                        evidence.append({
+                            "evidence_id":
+                                (
+                                    "ev-semantic-review-correction-"
+                                    f"{repair_attempts}"
+                                ),
+                            "check_type":
+                                "semantic_review_correction",
+                            "command_or_tool":
+                                (
+                                    "ai_generate+"
+                                    "deterministic_prewrite_validation"
+                                ),
+                            "exit_status":
+                                1,
+                            "repair_attempt":
+                                repair_attempts,
+                            "summary":
+                                (
+                                    "Semantic re-review correction "
+                                    "rejected before write: "
+                                    + semantic_review_correction_error
+                                ),
+                        })
+                        results.append(
+                            _result(
+                                store,
+                                semantic_review_correction_id,
+                                ResultStatus.FAIL,
+                                (
+                                    "Semantic re-review correction "
+                                    "rejected before write"
+                                ),
+                                [diff_evidence_id],
+                                "Human repair required",
+                            )
+                        )
+                        machine.transition(
+                            RunStatus.CLOSED
+                        )
+                        break
+
+                    semantic_review_correction_changes = (
+                        _ai_patch_changes(
+                            semantic_review_correction_patch
+                        )
+                    )
+                    semantic_review_correction_changed_paths = [
+                        item["path"]
+                        for item in
+                        semantic_review_correction_changes
+                    ]
+
+                    for semantic_review_correction_change in (
+                        semantic_review_correction_changes
+                    ):
+                        gateway.edit_text(
+                            Role.DEVELOPER,
+                            workspace.path,  # type: ignore[arg-type]
+                            authorized_paths,
+                            semantic_review_correction_change[
+                                "path"
+                            ],
+                            semantic_review_correction_change[
+                                "old_text"
+                            ],
+                            semantic_review_correction_change[
+                                "new_text"
+                            ],
+                        )
+
+                    latest_semantic_repair_record[
+                        "semantic_review_correction"
+                    ] = {
+                        "developer_task_id":
+                            semantic_review_correction_id,
+                        "provider":
+                            semantic_review_correction_route.provider,
+                        "model":
+                            semantic_review_correction_route.model,
+                        "changed_paths":
+                            semantic_review_correction_changed_paths,
+                        "patch":
+                            semantic_review_correction_patch,
+                        "validation_error": None,
+                        "applied_by":
+                            "deterministic_tool_gateway",
+                    }
+                    store.write_optional_json(
+                        "AIDeveloperPatch.json",
+                        ai_developer_artifact,
+                    )
+
+                    results.append(
+                        _result(
+                            store,
+                            semantic_review_correction_id,
+                            ResultStatus.PASS,
+                            (
+                                "Remaining semantic re-review "
+                                "findings corrected once"
+                            ),
+                            [diff_evidence_id],
+                            "Rerun deterministic tests",
+                            changed=(
+                                semantic_review_correction_changed_paths
+                            ),
+                        )
+                    )
+
+                    diff = workspace.diff()
+                    semantic_review_correction_diff_id = (
+                        "ev-diff-semantic-review-correction-"
+                        f"{repair_attempts}"
+                    )
+                    store.write_text(
+                        "Changes.patch",
+                        diff,
+                    )
+                    evidence.append({
+                        "evidence_id":
+                            semantic_review_correction_diff_id,
+                        "check_type":
+                            "scope",
+                        "command_or_tool":
+                            "git diff",
+                        "exit_status":
+                            0,
+                        "summary":
+                            (
+                                "Patch refreshed after semantic "
+                                "re-review correction"
+                            ),
+                        "artifact_ref":
+                            "Changes.patch",
+                        "repair_attempt":
+                            repair_attempts,
+                        "repair_cause":
+                            (
+                                "semantic_review_"
+                                "rereview_correction"
+                            ),
+                    })
+
+                    machine.transition(
+                        RunStatus.TESTING
+                    )
+                    test = gateway.run_test(
+                        Role.TESTER,
+                        workspace.path,  # type: ignore[arg-type]
+                        request.test_command,
+                        request.timeout_seconds,
+                    )
+                    semantic_review_correction_test_id = (
+                        f"ev-test-{repair_attempts}"
+                        "-semantic-review-correction"
+                    )
+                    evidence.append({
+                        "evidence_id":
+                            semantic_review_correction_test_id,
+                        "check_type":
+                            "tests",
+                        "command_or_tool":
+                            request.test_command,
+                        "exit_status":
+                            test.exit_status,
+                        "summary":
+                            (
+                                "Tests passed"
+                                if test.exit_status == 0
+                                else "Tests failed"
+                            ),
+                        "stdout":
+                            test.stdout[-4000:],
+                        "stderr":
+                            test.stderr[-4000:],
+                        "repair_attempt":
+                            repair_attempts,
+                        "repair_cause":
+                            (
+                                "semantic_review_"
+                                "rereview_correction"
+                            ),
+                    })
+
+                    if test.exit_status != 0:
+                        final_test_passed = False
+                        results.append(
+                            _result(
+                                store,
+                                "test",
+                                ResultStatus.FAIL,
+                                (
+                                    "Tests failed after one "
+                                    "semantic re-review correction"
+                                ),
+                                [
+                                    semantic_review_correction_test_id
+                                ],
+                                "Human repair required",
+                            )
+                        )
+                        machine.transition(
+                            RunStatus.DIAGNOSING
+                        )
+                        break
+
+                    final_test_passed = True
+                    results.append(
+                        _result(
+                            store,
+                            "test",
+                            ResultStatus.PASS,
+                            (
+                                "Acceptance tests passed after "
+                                "semantic re-review correction"
+                            ),
+                            [
+                                semantic_review_correction_test_id
+                            ],
+                            "Re-run semantic review",
+                        )
+                    )
+                    review_round += 1
+                    continue
+
                 if not semantic_repair_available:
                     results.append(
                         _result(

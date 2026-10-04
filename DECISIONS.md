@@ -370,7 +370,7 @@ Exhausting a bounded recovery is an expected governed failure mode, not an excep
 ## D-017 — Semantic-review repair gets one bounded deterministic test correction inside the same repair attempt
 
 **Date:** 2026-10-04
-**Status:** Proposed in PR #30; becomes Accepted only if PR #30 is explicitly approved and merged
+**Status:** Accepted — PR #30 merged 2026-10-04
 
 Evidence:
 
@@ -397,3 +397,38 @@ Decision candidate:
 Rationale:
 
 A semantic-review repair is already the one authorized repair attempt. If that repair introduces a directly observable deterministic defect, one bounded internal correction improves autonomy without silently expanding the Product Owner-approved repair budget.
+
+
+---
+
+## D-018 — Failed semantic re-review gets one bounded correction inside the same repair attempt
+
+**Date:** 2026-10-04
+**Status:** Proposed in PR #31; becomes Accepted only if PR #31 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-7676d5c968dc` after PR #30 passed the initial deterministic suite, used the single semantic-review repair, passed deterministic retest 9 / 9, and then failed the second independent semantic review because the exact three-treatment end-to-end workflow was still incomplete. The run stopped in REVIEW because the single top-level repair budget had already been consumed.
+
+Root cause:
+
+`SEMANTIC_REPAIR_REVIEW_FAILURE_HAS_NO_IN_ATTEMPT_CORRECTION`
+
+Decision candidate:
+
+- keep `max_repair_attempts = 1`;
+- when the single semantic-review repair passes deterministic tests but the next independent semantic review still fails, allow exactly one semantic correction inside the same already-authorized repair attempt;
+- correction receives the original objective, binding acceptance contract, latest semantic review, latest passing deterministic evidence, complete current authorized files, and current full candidate diff;
+- correction must inspect complete current files before acting on Reviewer wording and must preserve existing valid behavior;
+- use complete-file replacement for only the authorized subset that needs correction;
+- deterministically validate scope and Python syntax before write;
+- rerun deterministic tests;
+- if tests pass, perform one further independent semantic review;
+- if correction validation fails, corrected tests fail, or the next review still fails, stop through the governed failure path;
+- record `semantic_review_correction_attempts = 1` separately from the top-level repair count;
+- refresh `Changes.patch` after the correction;
+- do not add agents, providers, dependencies, infrastructure, or top-level repair attempts.
+
+Rationale:
+
+A deterministically green semantic repair can still be semantically incomplete. One bounded correction inside that already-authorized repair reduces Product Owner debugging burden without expanding the explicit repair budget or weakening independent review.
