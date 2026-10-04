@@ -251,6 +251,13 @@ class ApiTests(unittest.TestCase):
             "not exposed",
             encoding="utf-8",
         )
+        (self.run / "RunFailure.json").write_text(
+            json.dumps({
+                "reason": "UNHANDLED_RUN_FAILURE",
+                "error_type": "ValueError",
+            }),
+            encoding="utf-8",
+        )
 
         with self.request(
             "/v1/runs/run-test123/artifacts"
@@ -265,6 +272,14 @@ class ApiTests(unittest.TestCase):
         self.assertNotIn(
             "private.txt",
             payload["artifacts"],
+        )
+        self.assertIn(
+            "RunFailure.json",
+            payload["artifacts"],
+        )
+        self.assertEqual(
+            payload["artifacts"]["RunFailure.json"]["reason"],
+            "UNHANDLED_RUN_FAILURE",
         )
 
         self.assertEqual(
