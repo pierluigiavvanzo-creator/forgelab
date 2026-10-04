@@ -8,7 +8,10 @@ from unittest.mock import patch
 from pathlib import Path
 
 from forgelab.domain import Role
-from forgelab.model_router import ProviderResponse
+from forgelab.model_router import (
+    ProviderResponse,
+    ProviderTransientError,
+)
 from forgelab.orchestrator import (
     MultiAgentRequest,
     TaskGraphError,
@@ -1784,6 +1787,207 @@ class MultiAgentTests(unittest.TestCase):
             parsed["requirements"][0]["status"],
             "PARTIAL",
         )
+
+
+    def test_planning_provider_repeat_limit_exhaustion_is_governed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            repeat_error = ProviderTransientError(
+                "Ollama HTTP 500: prediction aborted, "
+                "token repeat limit reached"
+            )
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=[
+                    repeat_error,
+                    ProviderTransientError(str(repeat_error)),
+                ],
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            provider_failure = json.loads(
+                (run_dir / "ProviderFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(summary["status"], "CLOSED")
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertEqual(summary["repair_attempts"], 0)
+            self.assertEqual(
+                provider_failure["reason"],
+                "PROVIDER_TRANSIENT_RETRY_EXHAUSTED",
+            )
+            self.assertEqual(
+                provider_failure["task_id"],
+                "plan",
+            )
+            self.assertEqual(
+                provider_failure["attempts"],
+                2,
+            )
+            self.assertIn(
+                "token repeat limit reached",
+                provider_failure["final_error"],
+            )
+            self.assertEqual(
+                [
+                    item["check_type"]
+                    for item in evidence["evidence"]
+                ],
+                ["provider_runtime"],
+            )
+            self.assertEqual(
+                [
+                    item["outcome"]
+                    for item in usage["records"]
+                ],
+                ["RETRY", "FAIL"],
+            )
+            self.assertEqual(len(invoke.call_args_list), 2)
+            self.assertIn(
+                "LOCAL PROVIDER RECOVERY",
+                invoke.call_args_list[1].args[1],
+            )
+            self.assertFalse(
+                (run_dir / "Changes.patch").exists()
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+    def test_implementation_provider_repeat_limit_exhaustion_is_governed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            repeat_error_text = (
+                "Ollama HTTP 500: prediction aborted, "
+                "token repeat limit reached"
+            )
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=[
+                    ProviderResponse(
+                        ai_plan(),
+                        10,
+                        5,
+                        actual_cost=Decimal("0"),
+                    ),
+                    ProviderTransientError(
+                        repeat_error_text
+                    ),
+                    ProviderTransientError(
+                        repeat_error_text
+                    ),
+                ],
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            provider_failure = json.loads(
+                (run_dir / "ProviderFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(summary["status"], "CLOSED")
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertEqual(
+                provider_failure["task_id"],
+                "implement",
+            )
+            self.assertEqual(
+                provider_failure["attempts"],
+                2,
+            )
+            self.assertEqual(
+                evidence["evidence"][-1]["check_type"],
+                "provider_runtime",
+            )
+            self.assertEqual(
+                [
+                    item["outcome"]
+                    for item in usage["records"]
+                ],
+                ["SUCCESS", "RETRY", "FAIL"],
+            )
+            self.assertEqual(len(invoke.call_args_list), 3)
+            self.assertIn(
+                "LOCAL PROVIDER RECOVERY",
+                invoke.call_args_list[2].args[1],
+            )
+            self.assertFalse(
+                (run_dir / "Changes.patch").exists()
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                "return a - b",
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
+            )
 
 
     def test_semantic_review_failure_uses_bounded_repair_and_rereview(self):

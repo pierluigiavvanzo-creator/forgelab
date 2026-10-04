@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #31: `081960cb6c0c696567010010dd387a49c6750114` (merge of PR #30).
+Current canonical `main` before PR #32: `af63c04cf401771499988b30a6c4f45fbef4c8b0` (merge of PR #31).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -594,18 +594,66 @@ Validation evidence:
 
 Evidence state:
 
-**PR #31 runtime/test code is TESTED locally; PR #31 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #31.**
+**PR #31 was TESTED locally and merged to `main` at `af63c04cf401771499988b30a6c4f45fbef4c8b0`.**
+
+## Golden Path rerun after PR #31
+
+Observed result:
+
+- ForgeLab started the same unchanged Dental Quote Golden Path;
+- execution terminated before product evaluation completed because the local Ollama provider returned HTTP 500 with `prediction aborted, token repeat limit reached`;
+- the failure surfaced as uncaught `ProviderTransientError` / `run execution failed`;
+- no Dental Quote acceptance result was reached, so this is a provider-runtime lifecycle failure rather than a product failure;
+- existing router policy already allowed one bounded retry, but the retry reused the same prompt and exhausted outside the governed run lifecycle.
+
+New blocker:
+
+`OLLAMA_REPEAT_LIMIT_RETRY_EXHAUSTION_ESCAPES_RUN_LIFECYCLE`
+
+## PR #32 — governed Ollama repeat-limit exhaustion
+
+Branch:
+
+`mvp1-govern-ollama-repeat-limit`
+
+Runtime/test candidate HEAD validated locally:
+
+`d57c727379b395ce3f353748d00cd8a191748c9b`
+
+PR:
+
+`#32 — MVP-1: govern Ollama repeat-limit exhaustion`
+
+Candidate behavior:
+
+- keeps Ollama as the zero-cost local provider;
+- keeps the configured retry count unchanged;
+- if an Ollama transient error contains `token repeat limit reached`, the existing retry becomes adaptive by appending a concise anti-repetition recovery instruction;
+- the original prompt and structured response schema are preserved;
+- the adaptive retry remains bounded by the existing timeout policy;
+- if the retry is exhausted, ForgeLab emits `ProviderFailure.json` with provider, model, task, attempt count, final error and zero-cost evidence;
+- planning-time provider exhaustion is converted into a governed `CLOSED / Repair required` run with normal terminal artifacts;
+- provider exhaustion after the isolated run begins is likewise converted into a governed terminal outcome;
+- no paid fallback, extra retry, new agent, dependency or configuration expansion was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #32 runtime/test code is TESTED locally; PR #32 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #32.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #31 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #32 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, semantic repair test correction, semantic re-review correction, and independent semantic blocking are working; PR #31 is locally TESTED.
+- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, semantic repair test correction, semantic re-review correction, independent semantic blocking, and governed provider retry exhaustion are working; PR #32 is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #31 and obtain explicit Product Owner approval before merge.
+Review PR #32 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.

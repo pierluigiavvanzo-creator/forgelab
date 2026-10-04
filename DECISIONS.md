@@ -404,7 +404,7 @@ A semantic-review repair is already the one authorized repair attempt. If that r
 ## D-018 — Failed semantic re-review gets one bounded correction inside the same repair attempt
 
 **Date:** 2026-10-04
-**Status:** Proposed in PR #31; becomes Accepted only if PR #31 is explicitly approved and merged
+**Status:** Accepted — PR #31 merged 2026-10-04
 
 Evidence:
 
@@ -432,3 +432,33 @@ Decision candidate:
 Rationale:
 
 A deterministically green semantic repair can still be semantically incomplete. One bounded correction inside that already-authorized repair reduces Product Owner debugging burden without expanding the explicit repair budget or weakening independent review.
+
+
+---
+
+## D-019 — Exhausted local-provider transient retries are governed run outcomes
+
+**Date:** 2026-10-04
+**Status:** Proposed in PR #32; becomes Accepted only if PR #32 is explicitly approved and merged
+
+Evidence:
+
+A fresh unchanged Dental Quote run after PR #31 terminated with `ProviderTransientError: Ollama HTTP 500: {"error":"prediction aborted, token repeat limit reached"}`. ForgeLab already classified the HTTP 5xx as transient and allowed one configured retry, but the retry reused the same prompt. When the retry also failed, the exception escaped as `run execution failed`.
+
+Root cause:
+
+`OLLAMA_REPEAT_LIMIT_RETRY_EXHAUSTION_ESCAPES_RUN_LIFECYCLE`
+
+Decision candidate:
+
+- keep Ollama as the zero-cost local provider;
+- keep the configured retry count unchanged;
+- when the prior Ollama transient error contains `token repeat limit reached`, make the existing retry adaptive by appending a concise anti-repetition instruction;
+- preserve the original prompt, structured response schema and bounded timeout policy;
+- if the bounded retry still fails, emit `ProviderFailure.json` with provider/model/task/attempt/final-error/cost evidence;
+- convert both planning-time and in-run provider retry exhaustion into a governed `CLOSED / Repair required` outcome with normal terminal artifacts;
+- do not add paid fallback, extra retries, providers, agents, dependencies or infrastructure.
+
+Rationale:
+
+A local-provider generation abort is an expected runtime failure mode. It should either recover within the already-authorized retry or end with explicit artifacts and state, never as an uncaught runtime exception that turns the Product Owner into the retry operator.
