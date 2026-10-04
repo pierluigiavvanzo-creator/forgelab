@@ -33,6 +33,9 @@ ARTIFACTS = (
     "AIReview.json",
     "AIDeveloperPatch.json",
     "PromotionResult.json",
+    "PrewriteRecoveryFailure.json",
+    "ProviderFailure.json",
+    "RunFailure.json",
     "HumanRepairRequest.json",
 )
 TEXT_ARTIFACTS = (
