@@ -337,7 +337,7 @@ A prompt-level instruction is not a reliable safety/control boundary when a loca
 ## D-016 — Exhausted pre-write recovery is a governed terminal outcome
 
 **Date:** 2026-10-04
-**Status:** Proposed in PR #29; becomes Accepted only if PR #29 is explicitly approved and merged
+**Status:** Accepted — PR #29 merged 2026-10-04
 
 Evidence:
 
@@ -363,3 +363,37 @@ Decision candidate:
 Rationale:
 
 Exhausting a bounded recovery is an expected governed failure mode, not an exceptional runtime crash. The system must preserve evidence, source integrity and a clear human decision state even when the local model cannot produce a valid candidate.
+
+
+---
+
+## D-017 — Semantic-review repair gets one bounded deterministic test correction inside the same repair attempt
+
+**Date:** 2026-10-04
+**Status:** Proposed in PR #30; becomes Accepted only if PR #30 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-81f814fa23f5` after PR #29 passed all initial deterministic tests, then correctly failed independent semantic review because the exact three-treatment workflow was incomplete. The single semantic-review repair introduced a direct treatment-validation test, but deterministic retest failed and the run stopped in DIAGNOSING with the top-level repair budget exhausted.
+
+Root cause:
+
+`SEMANTIC_REPAIR_TEST_FAILURE_HAS_NO_IN_ATTEMPT_RECOVERY`
+
+Decision candidate:
+
+- keep `max_repair_attempts = 1`;
+- when the single semantic-review repair fails deterministic tests, allow exactly one correction inside that same repair attempt;
+- correction receives the original objective, binding acceptance contract, blocking semantic review, pre-repair passing evidence, failed post-repair evidence, and complete current authorized files;
+- use complete-file replacement for only the authorized subset that needs correction;
+- deterministically validate scope and Python syntax before write;
+- rerun deterministic tests after correction;
+- if tests pass, re-enter independent semantic review;
+- if correction validation fails or corrected tests still fail, stop through the governed failure path;
+- record the internal correction separately as `semantic_test_correction_attempts = 1`;
+- refresh `Changes.patch` after semantic repair and correction so artifacts represent the actual current candidate;
+- do not add agents, providers, dependencies, infrastructure, or top-level repair attempts.
+
+Rationale:
+
+A semantic-review repair is already the one authorized repair attempt. If that repair introduces a directly observable deterministic defect, one bounded internal correction improves autonomy without silently expanding the Product Owner-approved repair budget.
