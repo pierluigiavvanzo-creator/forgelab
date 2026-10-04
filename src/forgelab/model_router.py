@@ -188,6 +188,7 @@ class ModelRouter:
         for attempt in range(1, route.max_retries + 2):
             attempt_timeout_seconds = timeout_seconds
             attempt_prompt = prompt
+            attempt_response_format = response_format
 
             if (
                 route.provider == "ollama"
@@ -237,8 +238,25 @@ class ModelRouter:
                         + "- Do not restate sections, duplicate JSON "
                         "objects, or repeat the same tokens.\n"
                         + "- If structured output is requested, emit "
-                        "exactly one object matching the schema and stop."
+                        "exactly one JSON object and stop.\n"
+                        + "- Preserve all required keys and values from "
+                        "the requested contract."
                     )
+
+                    if (
+                        task_class is TaskClass.S2
+                        and isinstance(
+                            response_format,
+                            dict,
+                        )
+                    ):
+                        # Structured Developer full-file payloads are the
+                        # repeat-limit hotspot seen in the real MVP-1 run.
+                        # Keep JSON mode on the one existing retry, then
+                        # rely on deterministic ForgeLab validators for
+                        # the exact schema instead of reusing the more
+                        # restrictive grammar that just looped.
+                        attempt_response_format = "json"
 
             started = time.monotonic()
 
@@ -249,12 +267,12 @@ class ModelRouter:
                         attempt_prompt,
                         attempt_timeout_seconds,
                     )
-                    if response_format is None
+                    if attempt_response_format is None
                     else provider.invoke(
                         route.model,
                         attempt_prompt,
                         attempt_timeout_seconds,
-                        response_format,
+                        attempt_response_format,
                     )
                 )
                 cost = _cost(response, route.pricing)
