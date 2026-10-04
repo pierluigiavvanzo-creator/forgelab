@@ -368,6 +368,10 @@ class ModelRouterTests(unittest.TestCase):
             [("model", 180)],
         )
         self.assertEqual(
+            provider.repeat_recovery_invocations,
+            [("model", 180, None)],
+        )
+        self.assertEqual(
             provider.timeouts,
             [60, 180],
         )
