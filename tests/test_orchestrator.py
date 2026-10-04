@@ -814,23 +814,59 @@ class MultiAgentTests(unittest.TestCase):
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
             ) as invoke:
-                with self.assertRaises(ValueError):
-                    run_multi_agent(
-                        request(
-                            repo,
-                            objective="Fix addition",
-                            operation="ai_generate",
-                            old_text="",
-                            new_text="",
-                            max_repair_attempts=0,
-                            allowed_paths=(
-                                "calculator.py",
-                                "test_calculator.py",
-                            ),
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective="Fix addition",
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                        allowed_paths=(
+                            "calculator.py",
+                            "test_calculator.py",
                         ),
-                        root / "runs",
-                    )
+                    ),
+                    root / "runs",
+                )
 
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            failure = json.loads(
+                (
+                    run_dir
+                    / "PrewriteRecoveryFailure.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "CLOSED",
+            )
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertEqual(
+                failure["reason"],
+                "PREWRITE_RECOVERY_EXHAUSTED",
+            )
+            self.assertEqual(
+                failure["final_error_type"],
+                "AIDeveloperFormatError",
+            )
+            self.assertIn(
+                "changes overlap",
+                failure["final_error"],
+            )
+            self.assertFalse(
+                failure["repository_write_performed"]
+            )
             self.assertEqual(
                 len(invoke.call_args_list),
                 3,
