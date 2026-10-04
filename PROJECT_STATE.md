@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #33: `fb3188890573e484640b7a4c667c3f4703218685` (merge of PR #32).
+Current canonical `main` before PR #34: `dd027196182da4701dafc035806acffd194f125b` (merge of PR #33).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -698,18 +698,73 @@ Validation evidence:
 
 Evidence state:
 
-**PR #33 runtime/test code is TESTED locally; PR #33 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #33.**
+**PR #33 was TESTED locally and merged to `main` at `dd027196182da4701dafc035806acffd194f125b`.**
+
+## Golden Path rerun after PR #33
+
+Run:
+
+`run-98f2c045a9f3`
+
+Observed result:
+
+- PR #32 governed provider failure correctly: no uncaught `run execution failed`;
+- initial deterministic tests passed 5 / 5;
+- independent semantic review blocked incomplete three-treatment / automatic-subtotal behavior;
+- semantic repair task `review-repair-1` started;
+- Ollama returned HTTP 500 `prediction aborted, token repeat limit reached`;
+- the existing adaptive generation retry was exhausted;
+- ForgeLab emitted `ProviderFailure.json` and closed as `CLOSED / Repair required`;
+- no semantic repair candidate was produced, so PR #33 full-file-first behavior was not exercised in the real Golden Path.
+
+New blocker:
+
+`OLLAMA_REPEAT_LIMIT_RETRY_REUSES_LOADED_MODEL_STATE`
+
+## PR #34 — reset Ollama state before repeat-limit retry
+
+Branch:
+
+`mvp1-ollama-repeat-reset-retry`
+
+Runtime/test candidate HEAD validated locally:
+
+`64ce31f1310b73076da74766c93968125c7ea3d7`
+
+PR:
+
+`#34 — MVP-1: reset Ollama state before repeat-limit retry`
+
+Candidate behavior:
+
+- keeps Ollama as the zero-cost local provider;
+- keeps the configured generation retry count unchanged;
+- keeps the existing anti-repetition adaptive retry prompt;
+- before the existing retry for `token repeat limit reached`, requests an Ollama model-state reset/unload through the loopback `/api/generate` endpoint using an empty prompt and `keep_alive: 0`;
+- then performs the same one bounded generation retry with the existing widened timeout;
+- if the reset control call itself fails, ForgeLab still proceeds with the already-authorized generation retry rather than consuming another retry or crashing;
+- ordinary transient retries do not trigger the reset;
+- if generation retry still fails, PR #32 governed `ProviderFailure.json` / `CLOSED / Repair required` behavior remains the final stop;
+- no paid fallback, extra generation retry, new provider, agent, dependency or configuration expansion was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #34 runtime/test code is TESTED locally; PR #34 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #34.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #33 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #34 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, full-file-first semantic repair, semantic repair test correction, semantic re-review correction, independent semantic blocking, and governed provider retry exhaustion are working; PR #33 is locally TESTED.
+- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, full-file-first semantic repair, semantic repair test correction, semantic re-review correction, independent semantic blocking, governed provider retry exhaustion, and repeat-limit model-state reset are working; PR #34 is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #33 and obtain explicit Product Owner approval before merge.
+Review PR #34 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
