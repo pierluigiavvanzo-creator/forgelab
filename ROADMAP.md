@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #28:
+Current canonical `main` before PR #29:
 
-`a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
+`718af139078537a29bbb93ed06089f52162f526a`
 
 ## NOW — A Product Critical
 
@@ -56,43 +56,36 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 PR #26 was merged to `main` at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 subsequently updated governance only.
 
-Fresh rerun `run-0a4726594909`:
-
-- syntax recovery worked and execution reached deterministic testing;
-- first test run: 4 PASS / 1 ERROR;
-- one bounded repair fixed the originally failing test;
-- the same repair regressed two tests that had been PASS;
-- repair changed established dictionary-return behavior into float-return behavior;
-- run stopped before semantic review.
+Fresh rerun after PR #28 failed before write after the single full-file syntax recovery also produced invalid Python.
 
 Current blocker:
 
-`PROMPT_ONLY_REGRESSION_CONSTRAINT_NOT_ENFORCED_DETERMINISTICALLY`
+`PREWRITE_RECOVERY_EXHAUSTION_NOT_GOVERNED`
 
-### Current remediation — PR #28
+### Current remediation — PR #29
 
-PR #28 implements the smallest product-relevant correction:
+PR #29 implements the smallest product-relevant correction:
 
-`FAILED TEST -> BOUNDED REPAIR -> DETERMINISTIC REGRESSION DIFF -> ROLLBACK -> ONE IN-ATTEMPT CORRECTION -> RETEST`
+`INVALID CANDIDATE -> ONE PRE-WRITE RECOVERY -> INVALID AGAIN -> GOVERNED CLOSED / REPAIR REQUIRED + ARTIFACTS`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It upgrades the existing prompt-level regression rule into a deterministic orchestration gate.
+It converts exhausted pre-write recovery from an uncaught exception into a normal governed terminal state.
 
-No new dependency, provider, agent role, top-level repair budget or broad infrastructure was added.
+No new dependency, provider, agent role, repair budget or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #28 exit gate
+### PR #29 exit gate
 
-PR #28 is not complete until:
+PR #29 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. a repair that breaks previously passing tests is deterministically detected, rolled back, and corrected once or safely blocked.
+4. exhausted pre-write recovery produces governed artifacts and never surfaces as `run execution failed`.
 
 ## NEXT — only after Dental Quote PASS
 
