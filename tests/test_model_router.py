@@ -19,6 +19,7 @@ class ScriptedProvider:
         self.timeouts = []
         self.prompts = []
         self.repeat_resets = []
+        self.repeat_recovery_invocations = []
 
     def invoke(
         self,
@@ -49,6 +50,23 @@ class ScriptedProvider:
     ):
         self.repeat_resets.append(
             (model, timeout_seconds)
+        )
+
+    def invoke_repeat_limit_recovery(
+        self,
+        model,
+        prompt,
+        timeout_seconds,
+        response_format=None,
+    ):
+        self.repeat_recovery_invocations.append(
+            (model, timeout_seconds, response_format)
+        )
+        return self.invoke(
+            model,
+            prompt,
+            timeout_seconds,
+            response_format,
         )
 
 
@@ -212,6 +230,10 @@ class ModelRouterTests(unittest.TestCase):
             [],
         )
         self.assertEqual(
+            provider.repeat_recovery_invocations,
+            [],
+        )
+        self.assertEqual(
             [
                 record.outcome
                 for record in ledger.records
@@ -286,6 +308,10 @@ class ModelRouterTests(unittest.TestCase):
         self.assertEqual(
             provider.repeat_resets,
             [("model", 180)],
+        )
+        self.assertEqual(
+            provider.repeat_recovery_invocations,
+            [("model", 180, schema)],
         )
         self.assertEqual(
             [
