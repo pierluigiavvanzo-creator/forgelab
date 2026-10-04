@@ -5574,9 +5574,14 @@ def _record_unhandled_run_failure(
         "repository":
             str(request.repository.resolve()),
         "plan": request.objective,
-        "tests": "FAIL",
-        "repair_attempts":
-            request.max_repair_attempts,
+        "tests": summary.get(
+            "tests",
+            "UNKNOWN",
+        ),
+        "repair_attempts": summary.get(
+            "repair_attempts",
+            None,
+        ),
         "risk": (
             "Unhandled run failure; source "
             "integrity requires verification"
