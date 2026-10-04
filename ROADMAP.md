@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #30:
+Current canonical `main` before PR #31:
 
-`02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14`
+`081960cb6c0c696567010010dd387a49c6750114`
 
 ## NOW — A Product Critical
 
@@ -56,45 +56,45 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 PR #26 was merged to `main` at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 subsequently updated governance only.
 
-Fresh rerun `run-81f814fa23f5` after PR #29:
+Fresh rerun `run-7676d5c968dc` after PR #30:
 
-- initial deterministic tests passed 5 / 5;
-- semantic review correctly blocked the incomplete exact three-treatment workflow;
+- initial deterministic tests passed 6 / 6;
 - one semantic-review repair was applied;
-- its deterministic retest failed on a newly-added treatment-validation test;
-- the top-level repair budget was already consumed, so the run stopped in DIAGNOSING;
-- the patch artifact remained stale relative to the semantic repair candidate.
+- deterministic retest passed 9 / 9;
+- the refreshed patch artifact represented the semantic repair candidate correctly;
+- second semantic review still failed because the exact three-treatment end-to-end workflow remained incomplete;
+- the single top-level repair budget was already consumed, so no further bounded semantic correction was available.
 
 Current blocker:
 
-`SEMANTIC_REPAIR_TEST_FAILURE_HAS_NO_IN_ATTEMPT_RECOVERY`
+`SEMANTIC_REPAIR_REVIEW_FAILURE_HAS_NO_IN_ATTEMPT_CORRECTION`
 
-### Current remediation — PR #30
+### Current remediation — PR #31
 
-PR #30 implements the smallest product-relevant correction:
+PR #31 implements the smallest product-relevant correction:
 
-`SEMANTIC REVIEW FAIL -> ONE TOP-LEVEL REPAIR -> TEST FAIL -> ONE IN-ATTEMPT CORRECTION -> RETEST -> RE-REVIEW`
+`SEMANTIC REVIEW FAIL -> ONE TOP-LEVEL REPAIR -> TEST PASS -> RE-REVIEW FAIL -> ONE IN-ATTEMPT SEMANTIC CORRECTION -> RETEST -> FINAL RE-REVIEW`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It preserves the top-level repair budget at one while giving a semantic-review repair one bounded internal chance to correct its own deterministic failure.
+It preserves the top-level repair budget at one while giving the already-authorized semantic repair one bounded chance to close remaining semantic acceptance gaps after a green deterministic retest.
 
-It also refreshes `Changes.patch` after semantic repair/correction so failure artifacts represent the current candidate.
+The correction uses complete current files, current diff and the latest review evidence, and explicitly guards against blindly acting on inaccurate Reviewer absence claims.
 
 No new dependency, provider, agent role, top-level repair budget or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #30 exit gate
+### PR #31 exit gate
 
-PR #30 is not complete until:
+PR #31 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. a semantic-review repair that fails deterministic tests is corrected once inside the same repair attempt or safely blocked, without increasing `max_repair_attempts`.
+4. a semantic repair that passes deterministic tests but fails semantic re-review is corrected once inside the same repair attempt or safely blocked, without increasing `max_repair_attempts`.
 
 ## NEXT — only after Dental Quote PASS
 
