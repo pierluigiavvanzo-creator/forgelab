@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #31:
+Current canonical `main` before PR #32:
 
-`081960cb6c0c696567010010dd387a49c6750114`
+`af63c04cf401771499988b30a6c4f45fbef4c8b0`
 
 ## NOW — A Product Critical
 
@@ -56,45 +56,43 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 PR #26 was merged to `main` at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 subsequently updated governance only.
 
-Fresh rerun `run-7676d5c968dc` after PR #30:
+Fresh Dental Quote rerun after PR #31:
 
-- initial deterministic tests passed 6 / 6;
-- one semantic-review repair was applied;
-- deterministic retest passed 9 / 9;
-- the refreshed patch artifact represented the semantic repair candidate correctly;
-- second semantic review still failed because the exact three-treatment end-to-end workflow remained incomplete;
-- the single top-level repair budget was already consumed, so no further bounded semantic correction was available.
+- the run did not reach product acceptance evaluation;
+- Ollama returned HTTP 500 with `prediction aborted, token repeat limit reached`;
+- the existing bounded retry was exhausted;
+- `ProviderTransientError` escaped as `run execution failed`.
 
 Current blocker:
 
-`SEMANTIC_REPAIR_REVIEW_FAILURE_HAS_NO_IN_ATTEMPT_CORRECTION`
+`OLLAMA_REPEAT_LIMIT_RETRY_EXHAUSTION_ESCAPES_RUN_LIFECYCLE`
 
-### Current remediation — PR #31
+### Current remediation — PR #32
 
-PR #31 implements the smallest product-relevant correction:
+PR #32 implements the smallest product-relevant correction:
 
-`SEMANTIC REVIEW FAIL -> ONE TOP-LEVEL REPAIR -> TEST PASS -> RE-REVIEW FAIL -> ONE IN-ATTEMPT SEMANTIC CORRECTION -> RETEST -> FINAL RE-REVIEW`
+`OLLAMA TRANSIENT REPEAT-LIMIT -> ONE ADAPTIVE EXISTING RETRY -> SUCCESS OR GOVERNED CLOSED / REPAIR REQUIRED`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It preserves the top-level repair budget at one while giving the already-authorized semantic repair one bounded chance to close remaining semantic acceptance gaps after a green deterministic retest.
+It keeps the same Ollama provider, zero-spend policy and configured retry count. The repeat-limit retry adds a concise anti-loop instruction while preserving the original prompt and response schema.
 
-The correction uses complete current files, current diff and the latest review evidence, and explicitly guards against blindly acting on inaccurate Reviewer absence claims.
+If the bounded retry still fails, ForgeLab emits `ProviderFailure.json` plus normal terminal artifacts and closes the run through the state machine instead of surfacing `run execution failed`.
 
-No new dependency, provider, agent role, top-level repair budget or broad infrastructure was added.
+No paid fallback, extra retry, new provider, agent, dependency or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #31 exit gate
+### PR #32 exit gate
 
-PR #31 is not complete until:
+PR #32 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. a semantic repair that passes deterministic tests but fails semantic re-review is corrected once inside the same repair attempt or safely blocked, without increasing `max_repair_attempts`.
+4. a repeat-limit provider failure either recovers through the existing adaptive retry or terminates as a governed run without uncaught exception.
 
 ## NEXT — only after Dental Quote PASS
 
