@@ -188,6 +188,7 @@ class ModelRouter:
         for attempt in range(1, route.max_retries + 2):
             attempt_timeout_seconds = timeout_seconds
             attempt_prompt = prompt
+            repeat_limit_recovery = False
 
             if (
                 route.provider == "ollama"
@@ -226,6 +227,7 @@ class ModelRouter:
                             # control call cannot complete.
                             pass
 
+                    repeat_limit_recovery = True
                     attempt_prompt = (
                         prompt.rstrip()
                         + "\n\nLOCAL PROVIDER RECOVERY:\n"
@@ -243,20 +245,36 @@ class ModelRouter:
             started = time.monotonic()
 
             try:
-                response = (
-                    provider.invoke(
-                        route.model,
-                        attempt_prompt,
-                        attempt_timeout_seconds,
-                    )
-                    if response_format is None
-                    else provider.invoke(
+                repeat_limit_invoke = getattr(
+                    provider,
+                    "invoke_repeat_limit_recovery",
+                    None,
+                )
+                if (
+                    repeat_limit_recovery
+                    and callable(repeat_limit_invoke)
+                ):
+                    response = repeat_limit_invoke(
                         route.model,
                         attempt_prompt,
                         attempt_timeout_seconds,
                         response_format,
                     )
-                )
+                else:
+                    response = (
+                        provider.invoke(
+                            route.model,
+                            attempt_prompt,
+                            attempt_timeout_seconds,
+                        )
+                        if response_format is None
+                        else provider.invoke(
+                            route.model,
+                            attempt_prompt,
+                            attempt_timeout_seconds,
+                            response_format,
+                        )
+                    )
                 cost = _cost(response, route.pricing)
                 latency = int((time.monotonic() - started) * 1000)
                 if cost > route.max_call_cost or cost > self.ledger.remaining:
