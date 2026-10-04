@@ -2356,6 +2356,312 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_semantic_rereview_failure_gets_one_in_attempt_correction(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            initial_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": "return a + b",
+                "summary": "Fix addition only",
+            })
+
+            original_test = (
+                "import unittest\n"
+                "from calculator import add\n\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_add(self): self.assertEqual(add(2, 3), 5)\n"
+            )
+            none_test = (
+                "import unittest\n"
+                "from calculator import add\n\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_add(self): self.assertEqual(add(2, 3), 5)\n"
+                "    def test_none_inputs(self):\n"
+                "        with self.assertRaises(ValueError):\n"
+                "            add(None, 3)\n"
+            )
+            final_test = (
+                "import unittest\n"
+                "from calculator import add\n\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_add(self): self.assertEqual(add(2, 3), 5)\n"
+                "    def test_none_inputs(self):\n"
+                "        with self.assertRaises(ValueError):\n"
+                "            add(None, 3)\n"
+                "    def test_negative_inputs(self):\n"
+                "        with self.assertRaises(ValueError):\n"
+                "            add(-1, 3)\n"
+            )
+
+            semantic_repair = json.dumps({
+                "schema_version": "2.0",
+                "summary": (
+                    "Implement None validation and direct tests"
+                ),
+                "changes": [
+                    {
+                        "path": "calculator.py",
+                        "old_text": (
+                            "def add(a, b):\n"
+                            "    return a + b\n"
+                        ),
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    if a is None or b is None:\n"
+                            "        raise ValueError("
+                            "\"inputs are required\""
+                            ")\n"
+                            "    return a + b\n"
+                        ),
+                        "summary": "Reject None inputs",
+                    },
+                    {
+                        "path": "test_calculator.py",
+                        "old_text": original_test,
+                        "new_text": none_test,
+                        "summary": "Test None validation",
+                    },
+                ],
+            })
+
+            semantic_rereview_correction = json.dumps({
+                "schema_version": "2.1",
+                "summary": (
+                    "Complete remaining negative-input validation"
+                ),
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    if a is None or b is None:\n"
+                            "        raise ValueError("
+                            "\"inputs are required\""
+                            ")\n"
+                            "    if a < 0 or b < 0:\n"
+                            "        raise ValueError("
+                            "\"inputs must be non-negative\""
+                            ")\n"
+                            "    return a + b\n"
+                        ),
+                        "summary": (
+                            "Preserve None validation and add "
+                            "negative-input validation"
+                        ),
+                    },
+                    {
+                        "path": "test_calculator.py",
+                        "new_text": final_test,
+                        "summary": (
+                            "Preserve passing tests and add direct "
+                            "negative-input coverage"
+                        ),
+                    },
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan([
+                        "Fix addition.",
+                        "Reject None inputs with ValueError.",
+                        "Reject negative inputs with ValueError.",
+                    ]),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_fail(
+                        "Reject invalid inputs",
+                        (
+                            "None and negative input validation are "
+                            "still required."
+                        ),
+                    ),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_repair,
+                    45,
+                    30,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_fail(
+                        "Reject negative inputs",
+                        (
+                            "None validation is now present, but "
+                            "negative-input validation is still "
+                            "missing."
+                        ),
+                    ),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_rereview_correction,
+                    55,
+                    35,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix addition, reject None inputs with "
+                            "ValueError, and reject negative inputs "
+                            "with ValueError."
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                        allowed_paths=(
+                            "calculator.py",
+                            "test_calculator.py",
+                        ),
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            ai_review = json.loads(
+                (run_dir / "AIReview.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(summary["repair_attempts"], 1)
+            self.assertEqual(review["status"], "PASS")
+            self.assertEqual(review["review_round"], 2)
+            self.assertEqual(len(ai_review["attempts"]), 3)
+            self.assertEqual(
+                [
+                    item["exit_status"]
+                    for item in evidence["evidence"]
+                    if item["check_type"] == "tests"
+                ],
+                [0, 0, 0],
+            )
+
+            repair = developer["repair_attempts"][0]
+            self.assertEqual(repair["cause"], "semantic_review")
+            self.assertEqual(
+                repair["semantic_review_correction_attempts"],
+                1,
+            )
+            self.assertEqual(
+                set(
+                    repair["semantic_review_correction"]
+                    ["changed_paths"]
+                ),
+                {"calculator.py", "test_calculator.py"},
+            )
+            self.assertIsNone(
+                repair["semantic_review_correction"]
+                ["validation_error"]
+            )
+
+            self.assertEqual(usage["llm_calls"], 7)
+            self.assertEqual(len(invoke.call_args_list), 7)
+
+            correction_prompt = (
+                invoke.call_args_list[5].args[1]
+            )
+            self.assertIn(
+                "ONE bounded semantic correction inside the SAME "
+                "top-level",
+                correction_prompt,
+            )
+            self.assertIn(
+                "does NOT increase max_repair_attempts",
+                correction_prompt,
+            )
+            self.assertIn(
+                "inspect the complete current files before acting",
+                correction_prompt,
+            )
+            self.assertIn(
+                "negative-input validation is still",
+                correction_prompt,
+            )
+            self.assertEqual(
+                invoke.call_args_list[5].args[3]
+                ["properties"]["schema_version"]["enum"],
+                ["2.1"],
+            )
+
+            patch_text = (
+                run_dir / "Changes.patch"
+            ).read_text(encoding="utf-8")
+            self.assertIn("a < 0 or b < 0", patch_text)
+            self.assertIn("test_negative_inputs", patch_text)
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                "return a - b",
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
+            )
+
+
     def test_semantic_review_failure_blocks_gate_when_repair_budget_is_zero(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
