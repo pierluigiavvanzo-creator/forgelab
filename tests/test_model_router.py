@@ -17,6 +17,7 @@ class ScriptedProvider:
         self.calls = 0
         self.response_formats = []
         self.timeouts = []
+        self.prompts = []
 
     def invoke(
         self,
@@ -30,6 +31,9 @@ class ScriptedProvider:
         )
         self.timeouts.append(
             timeout_seconds
+        )
+        self.prompts.append(
+            prompt
         )
         outcome = self.outcomes[self.calls]
         self.calls += 1
@@ -189,6 +193,78 @@ class ModelRouterTests(unittest.TestCase):
             timeout_seconds=60,
         )
 
+        self.assertEqual(
+            provider.timeouts,
+            [60, 180],
+        )
+        self.assertEqual(
+            [
+                record.outcome
+                for record in ledger.records
+            ],
+            ["RETRY", "SUCCESS"],
+        )
+
+    def test_ollama_repeat_limit_retry_uses_adaptive_prompt(self):
+        provider = ScriptedProvider([
+            ProviderTransientError(
+                "Ollama HTTP 500: prediction aborted, "
+                "token repeat limit reached"
+            ),
+            ProviderResponse(
+                "{\"value\": 1}",
+                1,
+                1,
+                actual_cost=Decimal("0"),
+            ),
+        ])
+        ledger = UsageLedger(Decimal("1"))
+        router = ModelRouter(
+            routes(
+                retries=1,
+                provider_name="ollama",
+            ),
+            {"ollama": provider},
+            ledger,
+        )
+        schema = {
+            "type": "object",
+            "properties": {
+                "value": {"type": "integer"},
+            },
+            "required": ["value"],
+        }
+
+        router.execute(
+            TaskClass.S2,
+            "original structured prompt",
+            "t-ollama-repeat",
+            "DEVELOPER",
+            "local structured repair",
+            timeout_seconds=60,
+            response_format=schema,
+        )
+
+        self.assertEqual(
+            provider.prompts[0],
+            "original structured prompt",
+        )
+        self.assertIn(
+            "original structured prompt",
+            provider.prompts[1],
+        )
+        self.assertIn(
+            "LOCAL PROVIDER RECOVERY",
+            provider.prompts[1],
+        )
+        self.assertIn(
+            "exactly one object matching the schema",
+            provider.prompts[1],
+        )
+        self.assertEqual(
+            provider.response_formats,
+            [schema, schema],
+        )
         self.assertEqual(
             provider.timeouts,
             [60, 180],
