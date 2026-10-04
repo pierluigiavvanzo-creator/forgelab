@@ -2584,6 +2584,22 @@ class MultiAgentTests(unittest.TestCase):
                 "test_none_inputs",
                 correction_prompt,
             )
+            self.assertIn(
+                'Required response schema:',
+                correction_prompt,
+            )
+            self.assertIn(
+                '"schema_version": "2.1"',
+                correction_prompt,
+            )
+            self.assertIn(
+                '"files": [',
+                correction_prompt,
+            )
+            self.assertIn(
+                '"new_text": "<COMPLETE replacement file content>"',
+                correction_prompt,
+            )
             self.assertEqual(
                 invoke.call_args_list[4].args[3]
                 ["properties"]["schema_version"]["enum"],

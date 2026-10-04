@@ -4733,6 +4733,20 @@ For Python files, return complete syntactically valid Python.
                         )
                     )
 
+                    semantic_test_correction_schema = """
+{
+  "schema_version": "2.1",
+  "summary": "<short overall correction summary>",
+  "files": [
+    {
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }
+  ]
+}
+"""
+
                     semantic_test_correction_prompt = f"""
 You are the DEVELOPER agent in ForgeLab.
 
@@ -4767,6 +4781,9 @@ stderr:
 
 Current complete authorized files AFTER the semantic repair:
 {semantic_test_correction_files}
+
+Required response schema:
+{semantic_test_correction_schema}
 
 Rules:
 - preserve every behavior and test that passed before the semantic repair;
