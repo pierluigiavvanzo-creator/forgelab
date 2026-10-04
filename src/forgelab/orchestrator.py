@@ -3509,6 +3509,7 @@ For Python files, return complete syntactically valid Python.
                     "repair_attempts"
                 ].append({
                     "attempt": repair_attempts + 1,
+                    "cause": "test_failure",
                     "test_evidence_ref": ev_id,
                     "support_task_id": support_id,
                     "developer_task_id": repair_id,
@@ -3811,7 +3812,7 @@ Return ONLY the required JSON object.
                     < request.max_repair_attempts
                 )
 
-                latest_semantic_repair_record = None
+                latest_top_level_repair_record = None
                 if (
                     ai_developer_artifact is not None
                     and ai_developer_artifact[
@@ -3823,13 +3824,13 @@ Return ONLY the required JSON object.
                             "repair_attempts"
                         ][-1]
                     )
-                    if (
-                        candidate_repair_record.get(
-                            "cause"
-                        )
-                        == "semantic_review"
-                    ):
-                        latest_semantic_repair_record = (
+                    if candidate_repair_record.get(
+                        "cause"
+                    ) in {
+                        "test_failure",
+                        "semantic_review",
+                    }:
+                        latest_top_level_repair_record = (
                             candidate_repair_record
                         )
 
@@ -3842,9 +3843,9 @@ Return ONLY the required JSON object.
                     ] == "PASS"
                     and request.operation
                     == "ai_generate"
-                    and latest_semantic_repair_record
+                    and latest_top_level_repair_record
                     is not None
-                    and latest_semantic_repair_record.get(
+                    and latest_top_level_repair_record.get(
                         "semantic_review_correction_attempts",
                         0,
                     )
@@ -3880,9 +3881,9 @@ Return ONLY the required JSON object.
                     semantic_review_correction_prompt = f"""
 You are the DEVELOPER agent in ForgeLab.
 
-The single top-level semantic-review repair has already been used and
-its deterministic tests PASS, but independent semantic re-review still
-FAILS the Product Owner objective.
+The single top-level repair has already been used and its deterministic
+tests PASS, but independent semantic review still FAILS the Product
+Owner objective.
 
 This is the ONE bounded semantic correction inside the SAME top-level
 repair attempt. It does NOT increase max_repair_attempts.
@@ -3893,7 +3894,7 @@ Original objective:
 Project Manager binding acceptance contract:
 {plan_contract_text}
 
-Latest blocking semantic re-review:
+Latest blocking semantic review:
 {json.dumps(semantic_review, indent=2, ensure_ascii=False)}
 
 Latest deterministic test evidence:
@@ -3949,7 +3950,7 @@ Return ONLY the required JSON object.
                             target_paths,
                             ["repo_edit"],
                             [
-                                latest_semantic_repair_record[
+                                latest_top_level_repair_record[
                                     "developer_task_id"
                                 ]
                             ],
@@ -4006,12 +4007,12 @@ Return ONLY the required JSON object.
                         )
                         semantic_review_correction_patch = None
 
-                    latest_semantic_repair_record[
+                    latest_top_level_repair_record[
                         "semantic_review_correction_attempts"
                     ] = 1
 
                     if semantic_review_correction_patch is None:
-                        latest_semantic_repair_record[
+                        latest_top_level_repair_record[
                             "semantic_review_correction"
                         ] = {
                             "developer_task_id":
@@ -4101,7 +4102,7 @@ Return ONLY the required JSON object.
                             ],
                         )
 
-                    latest_semantic_repair_record[
+                    latest_top_level_repair_record[
                         "semantic_review_correction"
                     ] = {
                         "developer_task_id":
