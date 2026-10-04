@@ -208,6 +208,10 @@ class ModelRouterTests(unittest.TestCase):
             [60, 180],
         )
         self.assertEqual(
+            provider.repeat_resets,
+            [],
+        )
+        self.assertEqual(
             [
                 record.outcome
                 for record in ledger.records
