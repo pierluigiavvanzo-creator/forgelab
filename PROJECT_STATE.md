@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #32: `af63c04cf401771499988b30a6c4f45fbef4c8b0` (merge of PR #31).
+Current canonical `main` before PR #33: `fb3188890573e484640b7a4c667c3f4703218685` (merge of PR #32).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -642,18 +642,74 @@ Validation evidence:
 
 Evidence state:
 
-**PR #32 runtime/test code is TESTED locally; PR #32 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #32.**
+**PR #32 was TESTED locally and merged to `main` at `fb3188890573e484640b7a4c667c3f4703218685`.**
+
+## Golden Path rerun after PR #32
+
+Run:
+
+`run-0960eae66316`
+
+Observed result:
+
+- PR #32 behaved as intended: no provider-runtime crash surfaced;
+- initial deterministic tests passed;
+- independent semantic review returned FAIL with the main requirement PARTIAL because three treatments and automatic subtotals were still missing;
+- semantic repair entered REPAIRING;
+- the first semantic repair candidate failed deterministic Python syntax validation;
+- the one bounded pre-write recovery also failed syntax validation;
+- ForgeLab emitted `PrewriteRecoveryFailure.json` and closed as `CLOSED / Repair required`;
+- final reported syntax error: `f-string: unmatched '['`;
+- this was a governed repair-generation failure rather than a provider lifecycle failure.
+
+New blocker:
+
+`SEMANTIC_REPAIR_FRAGMENT_SCHEMA_CAUSES_AVOIDABLE_SYNTAX_COMPOSITION_RISK`
+
+## PR #33 — full-file semantic repair from first attempt
+
+Branch:
+
+`mvp1-semantic-repair-full-file-first`
+
+Runtime/test candidate HEAD validated locally:
+
+`259666e04d118fc8ba4f57a13b12d8b688261e6e`
+
+PR:
+
+`#33 — MVP-1: use full-file semantic repair from first attempt`
+
+Candidate behavior:
+
+- keeps `max_repair_attempts = 1`;
+- keeps the one bounded pre-write correction unchanged;
+- starts the initial semantic-review repair directly in full-file schema `2.1` instead of snippet-based old_text/new_text patch composition;
+- returns complete replacement content only for the authorized subset that actually needs change;
+- validates complete Python files before any repository write;
+- if the initial full-file repair is invalid, the one bounded pre-write correction also remains full-file;
+- removes snippet-specific branching from the semantic-repair recovery path;
+- strengthens the repair prompt to inspect complete current files, preserve valid existing behavior, avoid duplicating behavior because of inaccurate Reviewer wording, require direct quantitative evidence, and wire user-visible requirements through the existing interface;
+- no new agent, provider, dependency, retry, infrastructure, or top-level repair-budget increase was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #33 runtime/test code is TESTED locally; PR #33 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #33.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #32 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #33 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, semantic repair test correction, semantic re-review correction, independent semantic blocking, and governed provider retry exhaustion are working; PR #32 is locally TESTED.
+- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, deterministic repair regression protection, full-file-first semantic repair, semantic repair test correction, semantic re-review correction, independent semantic blocking, and governed provider retry exhaustion are working; PR #33 is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #32 and obtain explicit Product Owner approval before merge.
+Review PR #33 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.

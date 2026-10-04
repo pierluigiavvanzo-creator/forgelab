@@ -4313,19 +4313,28 @@ Current complete authorized files AFTER the candidate:
 Current full candidate diff:
 {diff[-8000:]}
 
-Generate the smallest repair that resolves every MISSING or
-UNVERIFIED required behavior identified by the Reviewer.
+Generate the smallest coherent repair that resolves every MISSING,
+PARTIAL, or UNVERIFIED required behavior identified by the Reviewer
+and supported by the Product Owner objective.
+
+FULL-FILE SEMANTIC REPAIR MODE:
+Return COMPLETE replacement content only for each authorized file
+that actually needs to change. Do not return old_text snippets.
 
 Rules:
-- every path MUST stay inside the ORIGINAL authorized path set;
+- every returned path MUST stay inside the ORIGINAL authorized path set;
 - repair only the non-empty subset actually needed;
-- multiple changes may target the same file only when their old_text regions are disjoint;
-- use at most 4 changes per authorized path;
-- old_text MUST be copied verbatim from the current file;
-- old_text MUST occur exactly once;
+- omit unchanged files;
+- inspect the complete current files before acting on Reviewer wording;
+- preserve valid existing behavior instead of duplicating it;
 - do not weaken or delete valid tests merely to make them pass;
 - add or strengthen tests when the review identifies missing
   required behavior or missing objective coverage;
+- quantitative requirements require direct quantitative behavior
+  and direct quantitative test evidence;
+- user-visible requirements must be wired through the existing
+  interface or entry point when one exists;
+- for Python files, return complete syntactically valid Python;
 - do not modify dependencies or configuration unless the
   original objective explicitly requires it;
 - do not claim tests have run.
@@ -4345,9 +4354,8 @@ Return ONLY the required structured JSON object.
                         ),
                         request.timeout_seconds,
                         response_format=(
-                            _ai_developer_response_schema(
-                                target_paths,
-                                require_all_paths=False,
+                            _ai_developer_full_file_response_schema(
+                                target_paths
                             )
                         ),
                     )
@@ -4363,11 +4371,10 @@ Return ONLY the required structured JSON object.
 
                 try:
                     semantic_repair_patch = (
-                        _validate_ai_developer_patch(
+                        _validate_ai_developer_full_file_patch(
                             semantic_repair_response.text,
                             target_paths,
                             semantic_repair_source_texts,
-                            require_all_paths=False,
                         )
                     )
                     _validate_ai_developer_candidate_syntax(
@@ -4420,57 +4427,33 @@ Rules:
 - do not modify dependencies or configuration.
 """
 
-                    semantic_full_file_recovery = isinstance(
-                        semantic_prewrite_error,
-                        (
-                            AIDeveloperReferenceError,
-                            AIDeveloperSyntaxError,
-                        ),
-                    )
-
-                    if semantic_full_file_recovery:
-                        semantic_recovery_mode = (
-                            "REFERENCE RECOVERY MODE"
-                            if isinstance(
-                                semantic_prewrite_error,
-                                AIDeveloperReferenceError,
-                            )
-                            else "SYNTAX RECOVERY MODE"
-                        )
-                        semantic_prewrite_prompt += f"""
-
-{semantic_recovery_mode}:
-Return COMPLETE replacement content for each file that must
-change. Do not return old_text snippets.
+                    semantic_prewrite_prompt += """
+                        
+FULL-FILE SEMANTIC REPAIR RECOVERY MODE:
+Return COMPLETE replacement content only for each authorized file
+that actually needs to change. Do not return old_text snippets.
 
 Required recovery schema:
-{{
+{
   "schema_version": "2.1",
   "summary": "<short overall recovery summary>",
   "files": [
-    {{
+    {
       "path": "<one authorized path>",
       "new_text": "<COMPLETE replacement file content>",
       "summary": "<short per-file summary>"
-    }}
+    }
   ]
-}}
+}
 
 The current complete authorized files above are authoritative.
 For Python files, return complete syntactically valid Python.
 """
-                        semantic_response_format = (
-                            _ai_developer_full_file_response_schema(
-                                target_paths
-                            )
+                    semantic_response_format = (
+                        _ai_developer_full_file_response_schema(
+                            target_paths
                         )
-                    else:
-                        semantic_response_format = (
-                            _ai_developer_response_schema(
-                                target_paths,
-                                require_all_paths=False,
-                            )
-                        )
+                    )
 
                     prewrite_recovery_context = {
                         "phase": "semantic_review_repair",
@@ -4497,23 +4480,13 @@ For Python files, return complete syntactically valid Python.
                         )
                     )
 
-                    if semantic_full_file_recovery:
-                        semantic_repair_patch = (
-                            _validate_ai_developer_full_file_patch(
-                                semantic_repair_response.text,
-                                target_paths,
-                                semantic_repair_source_texts,
-                            )
+                    semantic_repair_patch = (
+                        _validate_ai_developer_full_file_patch(
+                            semantic_repair_response.text,
+                            target_paths,
+                            semantic_repair_source_texts,
                         )
-                    else:
-                        semantic_repair_patch = (
-                            _validate_ai_developer_patch(
-                                semantic_repair_response.text,
-                                target_paths,
-                                semantic_repair_source_texts,
-                                require_all_paths=False,
-                            )
-                        )
+                    )
 
                     _validate_ai_developer_candidate_syntax(
                         semantic_repair_patch,

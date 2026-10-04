@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-04
-**Checkpoint:** PR #32 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #33 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #32:
+Current canonical `main` before PR #33:
 
-`af63c04cf401771499988b30a6c4f45fbef4c8b0` (merge of PR #31)
+`fb3188890573e484640b7a4c667c3f4703218685` (merge of PR #32)
 
 Current remediation branch:
 
-`mvp1-govern-ollama-repeat-limit`
+`mvp1-semantic-repair-full-file-first`
 
 PR:
 
-`#32 — MVP-1: govern Ollama repeat-limit exhaustion`
+`#33 — MVP-1: use full-file semantic repair from first attempt`
 
 Runtime/test candidate validated locally:
 
-`d57c727379b395ce3f353748d00cd8a191748c9b`
+`259666e04d118fc8ba4f57a13b12d8b688261e6e`
 
 ## 3. Product Owner contract
 
@@ -521,7 +521,46 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 28. Validation evidence
+## 28. Golden Path rerun after PR #32
+
+Run:
+
+`run-0960eae66316`
+
+Observed:
+
+- PR #32 eliminated the uncaught provider failure path;
+- initial deterministic tests passed;
+- semantic review returned FAIL/PARTIAL for incomplete three-treatment and automatic-subtotal behavior;
+- semantic repair entered REPAIRING;
+- the first semantic repair candidate failed deterministic Python syntax validation;
+- the one bounded pre-write recovery also failed syntax validation;
+- ForgeLab emitted `PrewriteRecoveryFailure.json` and closed as `CLOSED / Repair required`;
+- final syntax error was `f-string: unmatched '['`.
+
+Current blocker:
+
+`SEMANTIC_REPAIR_FRAGMENT_SCHEMA_CAUSES_AVOIDABLE_SYNTAX_COMPOSITION_RISK`
+
+## 29. PR #33 remediation
+
+PR #33:
+
+- preserves `max repair attempts = 1`;
+- preserves the one bounded pre-write correction;
+- starts semantic-review repair directly in full-file schema `2.1`;
+- returns complete replacement content only for the authorized changed subset;
+- validates complete Python files before write;
+- keeps the one bounded pre-write correction in full-file mode;
+- removes snippet-specific recovery branching from this semantic-repair path;
+- strengthens repair grounding against inaccurate Reviewer wording and incomplete quantitative/user-visible acceptance;
+- adds no agent, provider, dependency, retry, infrastructure or top-level repair-budget increase.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 30. Validation evidence
 
 Product Owner local validation reached:
 
@@ -549,11 +588,12 @@ Current evidence classification:
 - PR #29: **MERGED** at `02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14`
 - PR #30: **MERGED** at `081960cb6c0c696567010010dd387a49c6750114`
 - PR #31: **MERGED** at `af63c04cf401771499988b30a6c4f45fbef4c8b0`
-- PR #32 runtime/test code: **TESTED locally** at `d57c727379b395ce3f353748d00cd8a191748c9b`
-- PR #32: **NOT MERGED**
-- Dental Quote after PR #32: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #32: **MERGED** at `fb3188890573e484640b7a4c667c3f4703218685`
+- PR #33 runtime/test code: **TESTED locally** at `259666e04d118fc8ba4f57a13b12d8b688261e6e`
+- PR #33: **NOT MERGED**
+- Dental Quote after PR #33: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 29. Out of scope until Dental Quote PASS
+## 31. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -569,7 +609,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 30. Generality proof after Dental Quote PASS
+## 32. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -577,15 +617,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 31. Current gate
+## 33. Current gate
 
-PR #32 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #33 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 32. Single next action
+## 34. Single next action
 
-Obtain explicit Product Owner approval for PR #32 merge.
+Obtain explicit Product Owner approval for PR #33 merge.
 
 After approved merge:
 

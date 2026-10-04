@@ -2004,19 +2004,24 @@ class MultiAgentTests(unittest.TestCase):
             })
 
             semantic_repair = json.dumps({
-                "schema_version": "1.0",
-                "path": "calculator.py",
-                "old_text": (
-                    "def add(a, b):\n"
-                    "    return a + b\n"
-                ),
-                "new_text": (
-                    "def add(a, b):\n"
-                    "    if a is None or b is None:\n"
-                    "        raise ValueError(\"inputs are required\")\n"
-                    "    return a + b\n"
-                ),
+                "schema_version": "2.1",
                 "summary": "Add the missing input validation",
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    if a is None or b is None:\n"
+                            "        raise ValueError("
+                            "\"inputs are required\""
+                            ")\n"
+                            "    return a + b\n"
+                        ),
+                        "summary": (
+                            "Add the missing input validation"
+                        ),
+                    }
+                ],
             })
 
             plan_marker = (
@@ -2266,6 +2271,15 @@ class MultiAgentTests(unittest.TestCase):
                 semantic_repair_prompt,
             )
             self.assertIn(
+                "FULL-FILE SEMANTIC REPAIR MODE",
+                semantic_repair_prompt,
+            )
+            self.assertEqual(
+                invoke.call_args_list[3].args[3]
+                ["properties"]["schema_version"]["enum"],
+                ["2.1"],
+            )
+            self.assertIn(
                 "PARTIAL whenever relevant implementation or tests "
                 "exist",
                 first_reviewer_prompt,
@@ -2319,14 +2333,21 @@ class MultiAgentTests(unittest.TestCase):
             )
 
             semantic_repair = json.dumps({
-                "schema_version": "1.0",
-                "path": "test_calculator.py",
-                "old_text": original_test,
-                "new_text": semantic_repair_test,
+                "schema_version": "2.1",
                 "summary": (
                     "Add direct coverage for required None "
                     "input validation"
                 ),
+                "files": [
+                    {
+                        "path": "test_calculator.py",
+                        "new_text": semantic_repair_test,
+                        "summary": (
+                            "Add direct coverage for required None "
+                            "input validation"
+                        ),
+                    }
+                ],
             })
 
             semantic_test_correction = json.dumps({
@@ -2602,17 +2623,13 @@ class MultiAgentTests(unittest.TestCase):
             )
 
             semantic_repair = json.dumps({
-                "schema_version": "2.0",
+                "schema_version": "2.1",
                 "summary": (
                     "Implement None validation and direct tests"
                 ),
-                "changes": [
+                "files": [
                     {
                         "path": "calculator.py",
-                        "old_text": (
-                            "def add(a, b):\n"
-                            "    return a + b\n"
-                        ),
                         "new_text": (
                             "def add(a, b):\n"
                             "    if a is None or b is None:\n"
@@ -2625,7 +2642,6 @@ class MultiAgentTests(unittest.TestCase):
                     },
                     {
                         "path": "test_calculator.py",
-                        "old_text": original_test,
                         "new_text": none_test,
                         "summary": "Test None validation",
                     },
