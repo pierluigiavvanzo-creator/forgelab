@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #28: `a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496` (PR #26 merged at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 then updated governance only).
+Current canonical `main` before PR #29: `718af139078537a29bbb93ed06089f52162f526a` (merge of PR #28).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -424,18 +424,70 @@ Validation evidence:
 
 Evidence state:
 
-**PR #28 runtime/test code is TESTED locally; PR #28 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #28.**
+**PR #28 was TESTED locally and merged to `main` at `718af139078537a29bbb93ed06089f52162f526a`.**
+
+## Golden Path rerun after PR #28
+
+Observed failure:
+
+`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 43: unterminated string literal`
+
+Observed behavior:
+
+- the initial invalid Python candidate was rejected before write;
+- full-file syntax recovery was attempted once;
+- the single bounded recovery also produced invalid Python;
+- the second pre-write validation error escaped and surfaced as `run execution failed`;
+- no validated candidate reached implementation/testing.
+
+New blocker:
+
+`PREWRITE_RECOVERY_EXHAUSTION_NOT_GOVERNED`
+
+## PR #29 — governed pre-write recovery exhaustion
+
+Branch:
+
+`mvp1-govern-prewrite-recovery-exhaustion`
+
+Runtime/test candidate HEAD validated locally:
+
+`ed6d0587173fc6fce4ed78e717d78275b938387a`
+
+PR:
+
+`#29 — MVP-1: govern exhausted prewrite recovery`
+
+Candidate behavior:
+
+- keeps exactly one bounded pre-write correction;
+- if the corrected candidate still fails deterministic pre-write validation, ForgeLab emits `PREWRITE_RECOVERY_EXHAUSTED` instead of raising an uncaught exception;
+- emits `PrewriteRecoveryFailure.json` plus normal terminal artifacts;
+- records explicit `prewrite_validation` evidence;
+- closes the run through the state machine with `CLOSED / Repair required`;
+- guarantees no repository write when pre-write recovery is exhausted;
+- applies the same terminal handling to initial implementation, test-failure repair, and semantic-review repair;
+- semantic syntax recovery reuses full-file recovery;
+- no new agent, provider, dependency, or repair-budget increase was added.
+
+Validation evidence:
+
+`=== FORGELAB VALIDATION PASS ===`
+
+Evidence state:
+
+**PR #29 runtime/test code is TESTED locally; PR #29 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #29.**
 
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
-- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #28 integration.
+- G2 Autonomy: improved but not PASS until the same Dental Quote objective succeeds after PR #29 integration.
 - G3 Real output: not yet PASS for the complete three-treatment objective.
-- G4 Quality: deterministic syntax validation, regression detection/rollback, and independent semantic blocking are working; PR #28 deterministic repair-regression gate is locally TESTED.
+- G4 Quality: deterministic syntax validation, governed pre-write exhaustion, regression detection/rollback, and independent semantic blocking are working; PR #29 is locally TESTED.
 - G5 Human control: PASS so far; no candidate or PR is merged/promoted without explicit Product Owner approval.
 
 ## Single next action
 
-Review PR #28 and obtain explicit Product Owner approval before merge.
+Review PR #29 and obtain explicit Product Owner approval before merge.
 
 After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
