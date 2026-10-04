@@ -2085,6 +2085,252 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_semantic_repair_test_failure_gets_one_in_attempt_correction(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            initial_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": "return a + b",
+                "summary": "Fix addition only",
+            })
+
+            original_test = (
+                "import unittest\n"
+                "from calculator import add\n\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_add(self): self.assertEqual(add(2, 3), 5)\n"
+            )
+            semantic_repair_test = (
+                "import unittest\n"
+                "from calculator import add\n\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_add(self): self.assertEqual(add(2, 3), 5)\n"
+                "    def test_none_inputs(self):\n"
+                "        with self.assertRaises(ValueError):\n"
+                "            add(None, 3)\n"
+            )
+
+            semantic_repair = json.dumps({
+                "schema_version": "1.0",
+                "path": "test_calculator.py",
+                "old_text": original_test,
+                "new_text": semantic_repair_test,
+                "summary": (
+                    "Add direct coverage for required None "
+                    "input validation"
+                ),
+            })
+
+            semantic_test_correction = json.dumps({
+                "schema_version": "2.1",
+                "summary": (
+                    "Implement None validation while preserving "
+                    "the passing addition contract"
+                ),
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    if a is None or b is None:\n"
+                            "        raise ValueError("
+                            "\"inputs are required\""
+                            ")\n"
+                            "    return a + b\n"
+                        ),
+                        "summary": (
+                            "Implement the behavior required by "
+                            "the new semantic acceptance test"
+                        ),
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan([
+                        "Fix addition.",
+                        "Reject None inputs with ValueError.",
+                    ]),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_fail(
+                        "Reject None inputs",
+                        (
+                            "Addition is fixed, but required None "
+                            "input validation is not implemented "
+                            "or directly tested."
+                        ),
+                    ),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_repair,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_test_correction,
+                    45,
+                    25,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix addition and reject None inputs "
+                            "with ValueError."
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                        allowed_paths=(
+                            "calculator.py",
+                            "test_calculator.py",
+                        ),
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(summary["repair_attempts"], 1)
+            self.assertEqual(review["status"], "PASS")
+            self.assertEqual(
+                [
+                    item["exit_status"]
+                    for item in evidence["evidence"]
+                    if item["check_type"] == "tests"
+                ],
+                [0, 1, 0],
+            )
+
+            repair = developer["repair_attempts"][0]
+            self.assertEqual(
+                repair["cause"],
+                "semantic_review",
+            )
+            self.assertEqual(
+                repair["semantic_test_correction_attempts"],
+                1,
+            )
+            self.assertEqual(
+                repair["semantic_test_correction"]
+                ["changed_paths"],
+                ["calculator.py"],
+            )
+            self.assertEqual(
+                repair["semantic_test_correction"]
+                ["validation_error"],
+                None,
+            )
+
+            self.assertEqual(usage["llm_calls"], 6)
+            self.assertEqual(len(invoke.call_args_list), 6)
+
+            correction_prompt = (
+                invoke.call_args_list[4].args[1]
+            )
+            self.assertIn(
+                "ONE bounded test correction inside the SAME "
+                "semantic repair attempt",
+                correction_prompt,
+            )
+            self.assertIn(
+                "does NOT increase max_repair_attempts",
+                correction_prompt,
+            )
+            self.assertIn(
+                "test_none_inputs",
+                correction_prompt,
+            )
+            self.assertEqual(
+                invoke.call_args_list[4].args[3]
+                ["properties"]["schema_version"]["enum"],
+                ["2.1"],
+            )
+
+            patch_text = (
+                run_dir / "Changes.patch"
+            ).read_text(encoding="utf-8")
+            self.assertIn(
+                "raise ValueError",
+                patch_text,
+            )
+            self.assertIn(
+                "test_none_inputs",
+                patch_text,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                "return a - b",
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
+            )
+
+
     def test_semantic_review_failure_blocks_gate_when_repair_budget_is_zero(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
