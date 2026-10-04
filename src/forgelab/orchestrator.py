@@ -4768,6 +4768,19 @@ stderr:
 Current complete authorized files AFTER the semantic repair:
 {semantic_test_correction_files}
 
+Required response schema:
+{
+  "schema_version": "2.1",
+  "summary": "<short overall correction summary>",
+  "files": [
+    {
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }
+  ]
+}
+
 Rules:
 - preserve every behavior and test that passed before the semantic repair;
 - fix the current deterministic failure without weakening, deleting,
