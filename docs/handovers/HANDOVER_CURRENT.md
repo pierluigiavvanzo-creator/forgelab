@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-04  
-**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #43  
+**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #44  
 **Status:** PRE-MVP / product-critical validation  
 **Commercial evidence level:** C0 — Hypothesis  
 **Canonical repository:** `pierluigiavvanzo-creator/forgelab`
@@ -304,86 +304,106 @@ Regression target:
 
 This closes the exact orchestration gap exposed by the unchanged PR #41 rerun.
 
-## 7. Real-run evidence at current PR #41 HEAD
+### PR #44 — deterministic malformed f-string stabilization
 
-### Run A — pre-write variability
+Branch:
 
-Run:
+`mvp1-deterministic-fstring-recovery-stabilizer`
+
+HEAD:
+
+`252dc530455c086f1f3f9b9f2da22f7d3509d240`
+
+Base:
+
+PR #43 branch.
+
+Purpose:
+
+- address repeated initial full-file recovery failures caused by malformed f-string quoting/braces;
+- use no extra AI retry;
+- when full-file recovery fails syntax specifically on an f-string, restore the unique matching f-string statement from the authoritative source baseline;
+- rerun deterministic Python syntax validation afterward;
+- record `deterministic_fstring_stabilized_paths` for auditability;
+- leave non-f-string syntax failures governed and unchanged.
+
+Regression target:
+
+A malformed recovery f-string is repaired from baseline while the intended non-f-string code change remains intact.
+
+## 7. Real-run evidence after PR #41
+
+### Run A — PR #41 pre-write failure
 
 `run-291a8c57536f`
 
-Observed:
+- initial reference failure;
+- one full-file pre-write recovery;
+- recovery produced invalid Python;
+- governed `PrewriteRecoveryFailure.json`;
+- source CLEAN;
+- EUR 0.
 
-- CLI exit 0;
-- initial Developer candidate failed deterministic reference validation;
-- the one full-file pre-write recovery then produced invalid Python with an unterminated string literal;
-- ForgeLab emitted `PrewriteRecoveryFailure.json`;
-- repository write performed: false;
-- Dental Quote source remained CLEAN;
-- estimated/spent provider cost remained EUR 0.
-
-Interpretation:
-
-This run did not reach PR #41's target phase and showed that local-model output can fail early while the governed safety envelope remains intact.
-
-### Run B — unchanged rerun required by prior handover
-
-Run:
+### Run B — unchanged PR #41 rerun
 
 `run-827c3464862e`
 
+- initial tests: 5 PASS / 1 ERROR;
+- one bounded test repair;
+- repaired tests: 6 / 6 PASS;
+- Reviewer correctly blocked missing three-treatment / automatic-subtotal behavior;
+- run stopped in REVIEW because the only top-level repair budget had already been consumed by test repair;
+- source CLEAN;
+- EUR 0.
+
+This exposed the PR #43 orchestration gap.
+
+### Run C — PR #43 real run
+
+`run-7ca3466ed4a7`
+
 ForgeLab HEAD:
 
-`a8fa650ee48b7660ddf47a62a6b4bee00dae4399`
+`a5e375dab9fdfb87cf441c5841044ace25d354a2`
 
 Observed:
 
 - CLI exit 0;
-- planning completed with explicit acceptance criteria for three treatments, automatic subtotal, discount, final total, input validation, tests and scope limits;
-- initial deterministic tests ran and failed 1 / 6 because `test_multiple_treatments` attempted to add two dictionary results;
-- Support diagnosed the deterministic failure;
-- the single bounded top-level repair was used;
-- deterministic retest then passed 6 / 6;
-- independent semantic Reviewer correctly found that the repaired candidate still did not implement the required three-treatment / automatic-subtotal behavior;
-- run stopped in `REVIEW` with `tests: PASS`, `repair_attempts: 1` and decision `Repair required`;
-- no further semantic correction started;
-- source repository remained CLEAN;
-- 7 local Ollama calls were recorded at estimated/spent cost EUR 0.
+- first implementation candidate failed syntax with `f-string: single '}' is not allowed`;
+- the one full-file pre-write recovery also failed syntax with `f-string: unmatched '['`;
+- ForgeLab emitted `PrewriteRecoveryFailure.json`;
+- repository write performed: false;
+- run closed `CLOSED / Repair required`;
+- Dental Quote source remained CLEAN;
+- 3 local Ollama calls;
+- estimated/spent cost EUR 0.
 
-Important interpretation:
+Interpretation:
 
-The earlier pre-write failure is **not reproducible as the deterministic current blocker**. The unchanged rerun progressed through the pre-write layer and exposed a repeatable orchestration rule instead.
+PR #43's new post-test semantic-correction behavior was not exercised because the run stopped earlier. Repeated malformed f-string generation is now frequent enough to warrant a deterministic recovery guard instead of another prompt-only change or extra retry.
 
 ## 8. Current product diagnosis
 
-The real rerun proves that ForgeLab can already execute:
+Two independent blockers are now represented by stacked candidates:
 
-`PLAN -> IMPLEMENT -> TEST FAIL -> BOUNDED TEST REPAIR -> RETEST PASS -> INDEPENDENT SEMANTIC REVIEW FAIL`
+1. PR #43 fixes the orchestration gap after a successful deterministic test repair when semantic acceptance still fails.
+2. PR #44 fixes repeated malformed f-string syntax during initial full-file pre-write recovery without adding an AI retry.
 
-The remaining orchestration defect is that the deterministic test repair consumes the only top-level repair budget. After retest PASS, semantic review cannot start a normal semantic repair because:
+The desired uninterrupted proof remains:
 
-`repair_attempts == max_repair_attempts == 1`
-
-The existing PR #31 in-attempt semantic correction can operate after a semantic-review repair, but not after an ordinary deterministic-test repair.
-
-This creates a false stopping point: deterministic tests are green, the Reviewer correctly detects missing Product Owner behavior, but ForgeLab cannot use the already-designed in-attempt semantic correction path.
+`PLAN -> IMPLEMENT -> TEST -> BOUNDED REPAIR IF NEEDED -> TEST PASS -> SEMANTIC REVIEW -> IN-ATTEMPT SEMANTIC CORRECTION IF NEEDED -> RETEST -> RE-REVIEW -> READY_FOR_DECISION`
 
 ## 9. Current blocker
 
 Current blocker classification:
 
-`TEST_FAILURE_REPAIR_CONSUMES_ONLY_TOP_LEVEL_BUDGET_BEFORE_SEMANTIC_ACCEPTANCE`
+`MALFORMED_FSTRING_REGENERATION_BLOCKS_PREWRITE_BEFORE_PR43_CAN_BE_EXERCISED`
 
 Smallest remediation:
 
-PR #43 extends the existing in-attempt semantic correction to either top-level repair cause:
+PR #44 deterministically restores the unique matching valid f-string statement from the authoritative source file during full-file recovery, then reruns syntax validation.
 
-- `test_failure`;
-- `semantic_review`.
-
-The top-level repair budget remains exactly `1`.
-
-No additional retry, provider, model, paid fallback, agent, dependency or write scope is introduced.
+No additional AI retry, model, provider, paid fallback, agent, dependency or scope expansion is introduced.
 
 ## 10. PR / merge state
 
@@ -395,8 +415,9 @@ No additional retry, provider, model, paid fallback, agent, dependency or write 
 - PR #40: **OPEN / stacked on #39 / not merged**.
 - PR #41: **OPEN / stacked on #40 / not merged**.
 - PR #43: **OPEN / stacked on #41 / not merged**.
+- PR #44: **OPEN / stacked on #43 / not merged**.
 
-No explicit approval has been given to merge PR #37–#43.
+No explicit approval has been given to merge PR #37–#44.
 
 ## 11. Out of scope until Golden Path 1 passes
 
@@ -416,13 +437,13 @@ Only a concrete blocker from the unchanged Dental Quote flow may justify another
 
 ## 12. Single next action
 
-`VALIDATE_PR43_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
+`VALIDATE_PR44_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
 
 Use exactly:
 
-- ForgeLab candidate HEAD: `a5e375dab9fdfb87cf441c5841044ace25d354a2`;
+- ForgeLab candidate HEAD: `252dc530455c086f1f3f9b9f2da22f7d3509d240`;
 - same Dental Quote repository;
-- same Product Owner objective;
+- same objective;
 - same two authorized files;
 - same test command;
 - same `max_repair_attempts = 1`;
@@ -432,18 +453,13 @@ Use exactly:
 
 Required sequence:
 
-1. run the standard ForgeLab validation harness against the exact PR #43 HEAD;
-2. only if validation PASS, rerun the unchanged Dental Quote once;
-3. verify that a test-failure repair followed by PASS tests can enter the one in-attempt semantic correction when Reviewer still FAILS;
-4. require deterministic retest and independent re-review after that correction;
-5. only a final `READY_FOR_DECISION` with tests/review/security PASS can justify considering merge/promotion.
+1. run standard ForgeLab validation harness on exact PR #44 HEAD;
+2. only if validation PASS, rerun unchanged Dental Quote once;
+3. verify whether malformed recovery f-strings are stabilized without an additional AI call;
+4. if the run later reaches test-repair -> semantic FAIL, verify PR #43 can perform the in-attempt semantic correction;
+5. require final tests, independent semantic review and security PASS before `READY_FOR_DECISION`.
 
-Decision rule:
-
-- validation FAIL -> repair PR #43 only;
-- governed runtime blocker -> fix only that blocker;
-- `READY_FOR_DECISION` -> inspect final candidate and human gate;
-- do not merge PR #37–#43 before decision-ready real-run evidence.
+Do not merge PR #37–#44 before decision-ready real-run evidence.
 
 ## 13. Resume protocol for the next chat
 
@@ -455,7 +471,7 @@ Before changing code:
 4. read `ROADMAP.md`;
 5. read `DECISIONS.md`;
 6. read this `docs/handovers/HANDOVER_CURRENT.md`;
-7. verify live GitHub `main` and PR #37–#43 heads/states;
+7. verify live GitHub `main` and PR #37–#44 heads/states;
 8. do not infer local checkout state from this handover.
 
 Then execute only the Single Next Action unless new evidence invalidates it.
