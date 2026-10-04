@@ -272,12 +272,16 @@ class ModelRouterTests(unittest.TestCase):
             provider.prompts[1],
         )
         self.assertIn(
-            "exactly one object matching the schema",
+            "exactly one JSON object",
+            provider.prompts[1],
+        )
+        self.assertIn(
+            "Preserve all required keys and values",
             provider.prompts[1],
         )
         self.assertEqual(
             provider.response_formats,
-            [schema, schema],
+            [schema, "json"],
         )
         self.assertEqual(
             provider.timeouts,
@@ -294,6 +298,51 @@ class ModelRouterTests(unittest.TestCase):
             ],
             ["RETRY", "SUCCESS"],
         )
+
+    def test_ollama_repeat_limit_non_developer_keeps_schema(self):
+        provider = ScriptedProvider([
+            ProviderTransientError(
+                "Ollama HTTP 500: prediction aborted, "
+                "token repeat limit reached"
+            ),
+            ProviderResponse(
+                "{\"value\": 1}",
+                1,
+                1,
+                actual_cost=Decimal("0"),
+            ),
+        ])
+        router = ModelRouter(
+            routes(
+                retries=1,
+                provider_name="ollama",
+            ),
+            {"ollama": provider},
+            UsageLedger(Decimal("1")),
+        )
+        schema = {
+            "type": "object",
+            "properties": {
+                "value": {"type": "integer"},
+            },
+            "required": ["value"],
+        }
+
+        router.execute(
+            TaskClass.S1,
+            "review prompt",
+            "t-review-repeat",
+            "REVIEWER",
+            "blocking semantic review",
+            timeout_seconds=60,
+            response_format=schema,
+        )
+
+        self.assertEqual(
+            provider.response_formats,
+            [schema, schema],
+        )
+
 
     def test_ollama_repeat_limit_retry_continues_when_reset_fails(self):
         provider = ScriptedProvider([
