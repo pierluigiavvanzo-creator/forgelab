@@ -439,7 +439,7 @@ A deterministically green semantic repair can still be semantically incomplete. 
 ## D-019 — Exhausted local-provider transient retries are governed run outcomes
 
 **Date:** 2026-10-04
-**Status:** Proposed in PR #32; becomes Accepted only if PR #32 is explicitly approved and merged
+**Status:** Accepted — PR #32 merged 2026-10-04
 
 Evidence:
 
@@ -462,3 +462,35 @@ Decision candidate:
 Rationale:
 
 A local-provider generation abort is an expected runtime failure mode. It should either recover within the already-authorized retry or end with explicit artifacts and state, never as an uncaught runtime exception that turns the Product Owner into the retry operator.
+
+
+---
+
+## D-020 — Semantic-review repair uses full-file replacement from the first attempt
+
+**Date:** 2026-10-04
+**Status:** Proposed in PR #33; becomes Accepted only if PR #33 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-0960eae66316` after PR #32 passed the initial deterministic suite and reached semantic repair. The initial semantic repair used snippet composition, failed Python syntax validation, and then consumed its one full-file pre-write recovery, which also failed with `f-string: unmatched '['`. ForgeLab closed correctly with `PrewriteRecoveryFailure.json`.
+
+Root cause:
+
+`SEMANTIC_REPAIR_FRAGMENT_SCHEMA_CAUSES_AVOIDABLE_SYNTAX_COMPOSITION_RISK`
+
+Decision candidate:
+
+- keep `max_repair_attempts = 1`;
+- keep the one bounded pre-write correction;
+- make the first semantic-review repair use full-file schema `2.1`;
+- return complete replacement content only for the authorized subset that actually needs change;
+- validate complete Python files before write;
+- keep the one bounded pre-write correction in full-file mode;
+- remove snippet-specific branching from this semantic-repair recovery path;
+- require the repair to inspect complete current files, preserve valid existing behavior, avoid duplicating present behavior because of Reviewer wording, preserve direct tests, and satisfy quantitative/user-visible acceptance end-to-end;
+- do not add agents, providers, dependencies, retries, infrastructure, or top-level repair attempts.
+
+Rationale:
+
+The semantic repair already has complete current authorized files available. Generating complete changed files directly avoids fragile old_text/new_text composition and reduces avoidable syntax/reference failure without expanding the authorized repair budget.
