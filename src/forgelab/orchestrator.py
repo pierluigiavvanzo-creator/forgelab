@@ -1685,8 +1685,13 @@ def _render_governed_context(context_bundle: dict[str, object]) -> str:
     return "\n\n".join(sections)
 
 
-def run_multi_agent(request: MultiAgentRequest, output_root: Path) -> Path:
-    run_id = f"run-{uuid4().hex[:12]}"
+def _run_multi_agent_impl(
+    request: MultiAgentRequest,
+    output_root: Path,
+    *,
+    run_id: str | None = None,
+) -> Path:
+    run_id = run_id or f"run-{uuid4().hex[:12]}"
     run_dir = output_root.resolve() / run_id
     store = ArtifactStore(run_dir)
     machine = RunStateMachine()
@@ -5342,3 +5347,295 @@ Return ONLY the required JSON object.
         "scope": "Review multi-agent artifacts and Changes.patch", "timestamp": now,
     })
     return run_dir
+
+
+def _record_unhandled_run_failure(
+    request: MultiAgentRequest,
+    output_root: Path,
+    run_id: str,
+    error: Exception,
+) -> Path:
+    """Convert an otherwise uncaught run error into terminal artifacts."""
+
+    run_dir = output_root.resolve() / run_id
+    store = ArtifactStore(run_dir)
+    now = datetime.now(timezone.utc).isoformat()
+
+    existing_artifacts = sorted(
+        path.name
+        for path in run_dir.iterdir()
+        if path.is_file()
+    ) if run_dir.is_dir() else []
+
+    if (run_dir / "ExecutionPlan.json").is_file():
+        phase_hint = "POST_PLAN_OR_EXECUTION"
+    elif (run_dir / "AIPlan.json").is_file():
+        phase_hint = "PLANNING"
+    elif (
+        (run_dir / "MemorySnapshot.json").is_file()
+        or (run_dir / "ContextBundle.json").is_file()
+    ):
+        phase_hint = "PRECHECK_OR_PLANNING"
+    else:
+        phase_hint = "INITIALIZATION"
+
+    failure = {
+        "run_id": run_id,
+        "status": "FAIL",
+        "reason": "UNHANDLED_RUN_FAILURE",
+        "phase_hint": phase_hint,
+        "error_type": type(error).__name__,
+        "error": str(error),
+        "repository": str(request.repository.resolve()),
+        "change_operation": request.operation,
+        "allowed_paths": list(request.target_paths),
+        "max_repair_attempts": request.max_repair_attempts,
+        "source_repository_unchanged": None,
+        "existing_artifacts_before_terminalization": existing_artifacts,
+        "created_at": now,
+    }
+    store.write_optional_json(
+        "RunFailure.json",
+        failure,
+    )
+
+    if not (run_dir / "ExecutionPlan.json").is_file():
+        store.write(
+            "ExecutionPlan.json",
+            {
+                "run_id": run_id,
+                "objective": request.objective,
+                "repository": str(
+                    request.repository.resolve()
+                ),
+                "tasks": [],
+                "selected_roles": [],
+                "selection_reason": (
+                    "Run failed before a complete governed "
+                    "execution plan was available"
+                ),
+                "max_repair_attempts":
+                    request.max_repair_attempts,
+                "test_command":
+                    request.test_command,
+                "change_operation":
+                    request.operation,
+                "allowed_paths":
+                    list(request.target_paths),
+                "timeout_seconds":
+                    request.timeout_seconds,
+                "requires_human_gate": True,
+            },
+        )
+
+    if not (run_dir / "AgentResult.json").is_file():
+        store.write(
+            "AgentResult.json",
+            {
+                "run_id": run_id,
+                "status": "FAIL",
+                "results": [
+                    AgentResult(
+                        ResultStatus.FAIL,
+                        (
+                            "Unhandled run failure was "
+                            "terminalized safely"
+                        ),
+                        ["RunFailure.json"],
+                        ["ev-unhandled-run-failure"],
+                        [],
+                        [],
+                        "Repair required",
+                    ).to_dict()
+                ],
+                "task_result_root": "tasks/",
+            },
+        )
+
+    if not (run_dir / "TestEvidence.json").is_file():
+        store.write(
+            "TestEvidence.json",
+            {
+                "run_id": run_id,
+                "evidence": [
+                    {
+                        "evidence_id":
+                            "ev-unhandled-run-failure",
+                        "check_type":
+                            "run_lifecycle",
+                        "command_or_tool":
+                            "run_multi_agent",
+                        "exit_status": 1,
+                        "summary":
+                            (
+                                "Unhandled run failure: "
+                                + type(error).__name__
+                                + ": "
+                                + str(error)
+                            ),
+                        "artifact_ref":
+                            "RunFailure.json",
+                        "phase":
+                            phase_hint,
+                    }
+                ],
+            },
+        )
+
+    if not (run_dir / "ReviewReport.json").is_file():
+        store.write(
+            "ReviewReport.json",
+            {
+                "run_id": run_id,
+                "status": "FAIL",
+                "changed_paths": [],
+                "findings": [
+                    {
+                        "severity": "BLOCKER",
+                        "category": "run_lifecycle",
+                        "description": (
+                            "Run stopped before a complete "
+                            "decision-ready review"
+                        ),
+                    }
+                ],
+                "deterministic_status": "NOT_RUN",
+                "semantic_status": "NOT_RUN",
+                "semantic_requirements": [],
+                "semantic_summary":
+                    "Review incomplete because the run failed.",
+                "review_round": 0,
+            },
+        )
+
+    if not (run_dir / "SecurityReport.json").is_file():
+        store.write(
+            "SecurityReport.json",
+            {
+                "run_id": run_id,
+                "status": "NOT_RUN",
+                "findings": [],
+                "source_repository_unchanged": None,
+                "source_integrity_status": "UNVERIFIED",
+                "network_used": False,
+                "tool_policy_denials": 0,
+            },
+        )
+
+    if not (run_dir / "UsageReport.json").is_file():
+        store.write(
+            "UsageReport.json",
+            {
+                "run_id": run_id,
+                "status":
+                    "INCOMPLETE_DUE_TO_UNHANDLED_FAILURE",
+                "llm_calls": None,
+                "attempts": None,
+                "estimated_cost": "0",
+                "runtime": (
+                    "hybrid_local_ai"
+                    if (
+                        request.ai_mode
+                        or request.operation
+                        == "ai_generate"
+                    )
+                    else "direct_deterministic"
+                ),
+                "provider_mode": (
+                    "local_zero_spend"
+                    if (
+                        request.ai_mode
+                        or request.operation
+                        == "ai_generate"
+                    )
+                    else "none"
+                ),
+            },
+        )
+
+    summary: dict[str, Any] = {}
+    summary_path = run_dir / "RunSummary.json"
+
+    if summary_path.is_file():
+        try:
+            loaded = json.loads(
+                summary_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+            if isinstance(loaded, dict):
+                summary.update(loaded)
+        except Exception:
+            pass
+
+    summary.update({
+        "run_id": run_id,
+        "status": "CLOSED",
+        "repository":
+            str(request.repository.resolve()),
+        "plan": request.objective,
+        "tests": summary.get(
+            "tests",
+            "UNKNOWN",
+        ),
+        "repair_attempts": summary.get(
+            "repair_attempts",
+            None,
+        ),
+        "risk": (
+            "Unhandled run failure; source "
+            "integrity requires verification"
+        ),
+        "model_usage": (
+            "Ollama local"
+            if (
+                request.ai_mode
+                or request.operation == "ai_generate"
+            )
+            else "None"
+        ),
+        "decision": "Repair required",
+        "created_at": now,
+        "change_operation": request.operation,
+        "terminal_failure_ref": "RunFailure.json",
+    })
+    store.write(
+        "RunSummary.json",
+        summary,
+    )
+
+    store.write(
+        "GateDecision.json",
+        {
+            "gate_type": "G3_PROMOTE",
+            "actor": "SYSTEM",
+            "decision": "REPAIR",
+            "scope": (
+                "Unhandled run failure; promotion blocked"
+            ),
+            "timestamp": now,
+        },
+    )
+    return run_dir
+
+
+def run_multi_agent(
+    request: MultiAgentRequest,
+    output_root: Path,
+) -> Path:
+    run_id = f"run-{uuid4().hex[:12]}"
+
+    try:
+        return _run_multi_agent_impl(
+            request,
+            output_root,
+            run_id=run_id,
+        )
+    except Exception as error:
+        return _record_unhandled_run_failure(
+            request,
+            output_root,
+            run_id,
+            error,
+        )
+

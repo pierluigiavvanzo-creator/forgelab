@@ -2982,6 +2982,75 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_invalid_ai_plan_is_terminalized_before_workspace(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                return_value=ProviderResponse(
+                    "{}",
+                    10,
+                    2,
+                    actual_cost=Decimal("0"),
+                ),
+            ):
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                    ),
+                    root / "runs",
+                )
+
+            failure = json.loads(
+                (run_dir / "RunFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                failure["reason"],
+                "UNHANDLED_RUN_FAILURE",
+            )
+            self.assertEqual(
+                failure["phase_hint"],
+                "PRECHECK_OR_PLANNING",
+            )
+            self.assertEqual(
+                failure["error_type"],
+                "ValueError",
+            )
+            self.assertIn(
+                "AI Project Manager missing fields",
+                failure["error"],
+            )
+            self.assertEqual(
+                summary["status"],
+                "CLOSED",
+            )
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertTrue(
+                (run_dir / "GateDecision.json").is_file()
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_ai_developer_rejects_path_expansion(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -3014,20 +3083,39 @@ class MultiAgentTests(unittest.TestCase):
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
             ) as invoke:
-                with self.assertRaises(
-                    ValueError
-                ):
-                    run_multi_agent(
-                        request(
-                            repo,
-                            operation="ai_generate",
-                            old_text="",
-                            new_text="",
-                            max_repair_attempts=0,
-                        ),
-                        root / "runs",
-                    )
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                    ),
+                    root / "runs",
+                )
 
+            failure = json.loads(
+                (run_dir / "RunFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                failure["reason"],
+                "UNHANDLED_RUN_FAILURE",
+            )
+            self.assertIn(
+                "path expansion",
+                failure["error"],
+            )
+            self.assertEqual(
+                summary["status"],
+                "CLOSED",
+            )
             self.assertEqual(
                 len(invoke.call_args_list),
                 2,
@@ -3271,22 +3359,34 @@ class MultiAgentTests(unittest.TestCase):
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
             ):
-                with self.assertRaises(ValueError):
-                    run_multi_agent(
-                        request(
-                            repo,
-                            operation="ai_generate",
-                            old_text="",
-                            new_text="",
-                            max_repair_attempts=0,
-                            allowed_paths=(
-                                "calculator.py",
-                                "operation.py",
-                            ),
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                        allowed_paths=(
+                            "calculator.py",
+                            "operation.py",
                         ),
-                        root / "runs",
-                    )
+                    ),
+                    root / "runs",
+                )
 
+            failure = json.loads(
+                (run_dir / "RunFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                failure["reason"],
+                "UNHANDLED_RUN_FAILURE",
+            )
+            self.assertIn(
+                "path expansion",
+                failure["error"],
+            )
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
                 "",
@@ -4300,18 +4400,61 @@ class MultiAgentTests(unittest.TestCase):
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
             ):
-                with self.assertRaises(ValueError):
-                    run_multi_agent(
-                        request(
-                            repo,
-                            operation="ai_generate",
-                            old_text="",
-                            new_text="",
-                            max_repair_attempts=1,
-                        ),
-                        root / "runs",
-                    )
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                    ),
+                    root / "runs",
+                )
 
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            failure = json.loads(
+                (run_dir / "RunFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "CLOSED",
+            )
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertEqual(
+                summary["terminal_failure_ref"],
+                "RunFailure.json",
+            )
+            self.assertEqual(
+                failure["reason"],
+                "UNHANDLED_RUN_FAILURE",
+            )
+            self.assertEqual(
+                failure["error_type"],
+                "ValueError",
+            )
+            self.assertIn(
+                "path expansion",
+                failure["error"],
+            )
+            self.assertTrue(
+                (run_dir / "GateDecision.json").is_file()
+            )
+            self.assertTrue(
+                (run_dir / "AgentResult.json").is_file()
+            )
+            self.assertTrue(
+                (run_dir / "TestEvidence.json").is_file()
+            )
             self.assertEqual(git(repo, "status", "--porcelain"), "")
             self.assertFalse((root / "outside.py").exists())
 
