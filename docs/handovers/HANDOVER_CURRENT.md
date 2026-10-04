@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-04  
-**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #44  
+**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #45  
 **Status:** PRE-MVP / product-critical validation  
 **Commercial evidence level:** C0 — Hypothesis  
 **Canonical repository:** `pierluigiavvanzo-creator/forgelab`
@@ -331,16 +331,39 @@ Regression target:
 
 A malformed recovery f-string is repaired from baseline while the intended non-f-string code change remains intact.
 
-## 7. Real-run evidence after PR #41
+### PR #45 — compile Python candidates before repository write
 
-### Run A — PR #41 pre-write failure
+Branch:
+
+`mvp1-python-compile-prewrite-gate`
+
+HEAD:
+
+`d57df27b6649d62578a20d98b2c0e6147751a94b`
+
+Base:
+
+PR #44 branch.
+
+Purpose:
+
+- strengthen final Python pre-write validation from AST-only parsing to actual Python compilation with `compile(..., "exec")`;
+- catch compile-time constraints such as module-level `return` before any repository/workspace write reaches deterministic tests;
+- keep PR #44's AST-based f-string stabilizer only for locating malformed f-string lines;
+- route compile-time failures through the existing single bounded pre-write recovery;
+- add no retry, provider, model, paid API, agent or scope expansion.
+
+Regression target:
+
+A candidate that `ast.parse()` accepts but Python compilation rejects must be stopped pre-write and recovered through the existing one full-file recovery.
+
+## 7. Latest real-run evidence
+
+### Run A — PR #41 pre-write variability
 
 `run-291a8c57536f`
 
-- initial reference failure;
-- one full-file pre-write recovery;
-- recovery produced invalid Python;
-- governed `PrewriteRecoveryFailure.json`;
+- governed pre-write recovery exhaustion;
 - source CLEAN;
 - EUR 0.
 
@@ -348,62 +371,69 @@ A malformed recovery f-string is repaired from baseline while the intended non-f
 
 `run-827c3464862e`
 
-- initial tests: 5 PASS / 1 ERROR;
+- deterministic test failure;
 - one bounded test repair;
-- repaired tests: 6 / 6 PASS;
-- Reviewer correctly blocked missing three-treatment / automatic-subtotal behavior;
-- run stopped in REVIEW because the only top-level repair budget had already been consumed by test repair;
-- source CLEAN;
-- EUR 0.
+- repaired tests 6 / 6 PASS;
+- independent semantic review correctly blocked missing three-treatment / automatic-subtotal behavior;
+- exposed the PR #43 post-test semantic-correction orchestration gap.
 
-This exposed the PR #43 orchestration gap.
-
-### Run C — PR #43 real run
+### Run C — PR #43
 
 `run-7ca3466ed4a7`
 
+- initial and recovery candidates both failed on malformed f-string syntax;
+- no repository write;
+- source CLEAN;
+- exposed repeated f-string regeneration and motivated PR #44.
+
+### Run D — PR #44
+
+`run-f07b2ecb940a`
+
 ForgeLab HEAD:
 
-`a5e375dab9fdfb87cf441c5841044ace25d354a2`
+`252dc530455c086f1f3f9b9f2da22f7d3509d240`
 
 Observed:
 
 - CLI exit 0;
-- first implementation candidate failed syntax with `f-string: single '}' is not allowed`;
-- the one full-file pre-write recovery also failed syntax with `f-string: unmatched '['`;
-- ForgeLab emitted `PrewriteRecoveryFailure.json`;
-- repository write performed: false;
-- run closed `CLOSED / Repair required`;
-- Dental Quote source remained CLEAN;
-- 3 local Ollama calls;
-- estimated/spent cost EUR 0.
+- initial AI Developer candidate was accepted pre-write and applied in isolated workspace;
+- deterministic tests then failed during import with `SyntaxError: 'return' outside function`;
+- Support diagnosed the syntax failure;
+- repair candidate and its one pre-write correction both collapsed to no-op output;
+- ForgeLab emitted `PrewriteRecoveryFailure.json` for phase `test_failure_repair`;
+- run closed safely;
+- source repository remained CLEAN;
+- `deterministic_fstring_stabilized_paths` was empty because this failure was not an f-string error;
+- 5 local Ollama calls, EUR 0.
 
-Interpretation:
+Root cause learned from Run D:
 
-PR #43's new post-test semantic-correction behavior was not exercised because the run stopped earlier. Repeated malformed f-string generation is now frequent enough to warrant a deterministic recovery guard instead of another prompt-only change or extra retry.
+The final pre-write Python validator used `ast.parse()`. That parser accepts some constructs which Python later rejects at compile/import time, including module-level `return`. The pre-write gate therefore did not validate the same constraint enforced by the real test/import runtime.
 
 ## 8. Current product diagnosis
 
-Two independent blockers are now represented by stacked candidates:
+The stacked candidates now address three distinct proven gaps:
 
-1. PR #43 fixes the orchestration gap after a successful deterministic test repair when semantic acceptance still fails.
-2. PR #44 fixes repeated malformed f-string syntax during initial full-file pre-write recovery without adding an AI retry.
+1. PR #43: semantic correction remains available after the one top-level repair was consumed by a deterministic test failure.
+2. PR #44: repeated malformed f-string recovery can be deterministically stabilized from the authoritative source baseline.
+3. PR #45: every final Python candidate is compiled pre-write, not merely AST-parsed.
 
-The desired uninterrupted proof remains:
+The intended uninterrupted proof remains:
 
-`PLAN -> IMPLEMENT -> TEST -> BOUNDED REPAIR IF NEEDED -> TEST PASS -> SEMANTIC REVIEW -> IN-ATTEMPT SEMANTIC CORRECTION IF NEEDED -> RETEST -> RE-REVIEW -> READY_FOR_DECISION`
+`PLAN -> IMPLEMENT -> PREWRITE COMPILE GATE -> TEST -> BOUNDED REPAIR IF NEEDED -> TEST PASS -> SEMANTIC REVIEW -> IN-ATTEMPT SEMANTIC CORRECTION IF NEEDED -> RETEST -> RE-REVIEW -> READY_FOR_DECISION`
 
 ## 9. Current blocker
 
 Current blocker classification:
 
-`MALFORMED_FSTRING_REGENERATION_BLOCKS_PREWRITE_BEFORE_PR43_CAN_BE_EXERCISED`
+`AST_ONLY_PREWRITE_GATE_ALLOWS_COMPILE_INVALID_PYTHON_TO_REACH_TEST_RUNNER`
 
 Smallest remediation:
 
-PR #44 deterministically restores the unique matching valid f-string statement from the authoritative source file during full-file recovery, then reruns syntax validation.
+PR #45 replaces final Python AST-only validation with non-executing compilation before write.
 
-No additional AI retry, model, provider, paid fallback, agent, dependency or scope expansion is introduced.
+Do not address the downstream no-op repair separately until PR #45 real-run evidence shows it remains independently reproducible after compile-invalid candidates are stopped earlier.
 
 ## 10. PR / merge state
 
@@ -416,8 +446,9 @@ No additional AI retry, model, provider, paid fallback, agent, dependency or sco
 - PR #41: **OPEN / stacked on #40 / not merged**.
 - PR #43: **OPEN / stacked on #41 / not merged**.
 - PR #44: **OPEN / stacked on #43 / not merged**.
+- PR #45: **OPEN / stacked on #44 / not merged**.
 
-No explicit approval has been given to merge PR #37–#44.
+No explicit approval has been given to merge PR #37–#45.
 
 ## 11. Out of scope until Golden Path 1 passes
 
@@ -437,11 +468,11 @@ Only a concrete blocker from the unchanged Dental Quote flow may justify another
 
 ## 12. Single next action
 
-`VALIDATE_PR44_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
+`VALIDATE_PR45_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
 
 Use exactly:
 
-- ForgeLab candidate HEAD: `252dc530455c086f1f3f9b9f2da22f7d3509d240`;
+- ForgeLab candidate HEAD: `d57df27b6649d62578a20d98b2c0e6147751a94b`;
 - same Dental Quote repository;
 - same objective;
 - same two authorized files;
@@ -453,13 +484,13 @@ Use exactly:
 
 Required sequence:
 
-1. run standard ForgeLab validation harness on exact PR #44 HEAD;
+1. run standard ForgeLab validation harness on exact PR #45 HEAD;
 2. only if validation PASS, rerun unchanged Dental Quote once;
-3. verify whether malformed recovery f-strings are stabilized without an additional AI call;
-4. if the run later reaches test-repair -> semantic FAIL, verify PR #43 can perform the in-attempt semantic correction;
-5. require final tests, independent semantic review and security PASS before `READY_FOR_DECISION`.
+3. verify compile-invalid Python is rejected before test execution;
+4. if the run reaches test repair and semantic review, verify PR #43 remains reachable after repaired tests PASS;
+5. require final deterministic tests, independent semantic review, security PASS and source CLEAN before `READY_FOR_DECISION`.
 
-Do not merge PR #37–#44 before decision-ready real-run evidence.
+Do not merge PR #37–#45 before decision-ready real-run evidence.
 
 ## 13. Resume protocol for the next chat
 
@@ -471,7 +502,7 @@ Before changing code:
 4. read `ROADMAP.md`;
 5. read `DECISIONS.md`;
 6. read this `docs/handovers/HANDOVER_CURRENT.md`;
-7. verify live GitHub `main` and PR #37–#44 heads/states;
+7. verify live GitHub `main` and PR #37–#45 heads/states;
 8. do not infer local checkout state from this handover.
 
 Then execute only the Single Next Action unless new evidence invalidates it.
