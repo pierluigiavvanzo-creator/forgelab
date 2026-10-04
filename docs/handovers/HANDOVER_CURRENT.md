@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-04  
-**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #41  
+**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #43  
 **Status:** PRE-MVP / product-critical validation  
 **Commercial evidence level:** C0 — Hypothesis  
 **Canonical repository:** `pierluigiavvanzo-creator/forgelab`
@@ -274,80 +274,116 @@ Important branch history:
 - current PR #41 HEAD is `a8fa650ee48b7660ddf47a62a6b4bee00dae4399`;
 - the schema now lives in a literal string outside the f-string and is inserted as a variable.
 
-## 7. Latest real run at current PR #41 HEAD
+### PR #43 — semantic correction after bounded test repair
+
+Branch:
+
+`mvp1-post-test-repair-semantic-correction`
+
+HEAD:
+
+`a5e375dab9fdfb87cf441c5841044ace25d354a2`
+
+Base:
+
+PR #41 branch.
+
+Purpose:
+
+- tag ordinary bounded deterministic-test repairs with `cause: test_failure`;
+- reuse the existing one in-attempt semantic correction when the only top-level repair was consumed by a deterministic test failure;
+- allow that correction only after repaired deterministic tests PASS and independent semantic review still FAILS;
+- preserve `max_repair_attempts = 1`;
+- rerun deterministic tests after the correction;
+- require another independent semantic review before decision readiness;
+- add no agent, provider, dependency, paid fallback or scope expansion.
+
+Regression target:
+
+`test FAIL -> repair -> tests PASS -> semantic review FAIL -> one in-attempt semantic correction -> tests PASS -> re-review PASS`
+
+This closes the exact orchestration gap exposed by the unchanged PR #41 rerun.
+
+## 7. Real-run evidence at current PR #41 HEAD
+
+### Run A — pre-write variability
 
 Run:
 
 `run-291a8c57536f`
 
+Observed:
+
+- CLI exit 0;
+- initial Developer candidate failed deterministic reference validation;
+- the one full-file pre-write recovery then produced invalid Python with an unterminated string literal;
+- ForgeLab emitted `PrewriteRecoveryFailure.json`;
+- repository write performed: false;
+- Dental Quote source remained CLEAN;
+- estimated/spent provider cost remained EUR 0.
+
+Interpretation:
+
+This run did not reach PR #41's target phase and showed that local-model output can fail early while the governed safety envelope remains intact.
+
+### Run B — unchanged rerun required by prior handover
+
+Run:
+
+`run-827c3464862e`
+
 ForgeLab HEAD:
 
 `a8fa650ee48b7660ddf47a62a6b4bee00dae4399`
 
-Observed result:
+Observed:
 
 - CLI exit 0;
-- Project Manager succeeded;
-- initial Developer response succeeded at provider level;
-- deterministic pre-write validation rejected the initial candidate because `old_text` did not occur exactly once;
-- the one full-file pre-write recovery executed;
-- recovery again produced syntactically invalid Python:
-  `unterminated string literal (detected at line 42)`;
-- ForgeLab emitted `PrewriteRecoveryFailure.json`;
-- run closed `CLOSED / Repair required`;
-- repository write performed: false;
-- Dental Quote source repository remained CLEAN;
-- security/source-preservation evidence passed;
-- 3 local Ollama calls were recorded;
-- estimated/spent model cost remained EUR 0.
+- planning completed with explicit acceptance criteria for three treatments, automatic subtotal, discount, final total, input validation, tests and scope limits;
+- initial deterministic tests ran and failed 1 / 6 because `test_multiple_treatments` attempted to add two dictionary results;
+- Support diagnosed the deterministic failure;
+- the single bounded top-level repair was used;
+- deterministic retest then passed 6 / 6;
+- independent semantic Reviewer correctly found that the repaired candidate still did not implement the required three-treatment / automatic-subtotal behavior;
+- run stopped in `REVIEW` with `tests: PASS`, `repair_attempts: 1` and decision `Repair required`;
+- no further semantic correction started;
+- source repository remained CLEAN;
+- 7 local Ollama calls were recorded at estimated/spent cost EUR 0.
 
 Important interpretation:
 
-This latest failure occurred **before** the semantic test-correction code added by PR #41 was reached.
-
-Therefore:
-
-- it is not evidence that the corrected PR #41 schema contract failed;
-- it is evidence that initial Developer/pre-write output from `qwen2.5-coder:7b` remains variable enough to prevent stable end-to-end completion;
-- the current safety/governance layers handled the failure correctly.
+The earlier pre-write failure is **not reproducible as the deterministic current blocker**. The unchanged rerun progressed through the pre-write layer and exposed a repeatable orchestration rule instead.
 
 ## 8. Current product diagnosis
 
-The system has now demonstrated all of the following separately in real runs:
+The real rerun proves that ForgeLab can already execute:
 
-- governed planning;
-- bounded two-file implementation;
-- deterministic Windows test execution;
-- 6 / 6 test PASS;
-- independent semantic review catching false confidence from passing tests;
-- semantic repair activation;
-- Ollama repeat-limit recovery on the existing retry;
-- post-repair deterministic retest;
-- in-attempt semantic test-correction activation;
-- safe terminalization of unexpected failures;
-- safe terminalization of exhausted pre-write recovery;
-- source repository preservation;
-- zero paid model/API spend.
+`PLAN -> IMPLEMENT -> TEST FAIL -> BOUNDED TEST REPAIR -> RETEST PASS -> INDEPENDENT SEMANTIC REVIEW FAIL`
 
-What ForgeLab has **not yet demonstrated in one uninterrupted real Dental Quote run**:
+The remaining orchestration defect is that the deterministic test repair consumes the only top-level repair budget. After retest PASS, semantic review cannot start a normal semantic repair because:
 
-`PLAN -> IMPLEMENT -> TEST -> SEMANTIC REVIEW -> REPAIR -> RETEST -> CORRECTION/REREVIEW IF NEEDED -> FINAL PASS -> READY_FOR_DECISION`
+`repair_attempts == max_repair_attempts == 1`
 
-That uninterrupted end-to-end proof remains the MVP-1 gate.
+The existing PR #31 in-attempt semantic correction can operate after a semantic-review repair, but not after an ordinary deterministic-test repair.
+
+This creates a false stopping point: deterministic tests are green, the Reviewer correctly detects missing Product Owner behavior, but ForgeLab cannot use the already-designed in-attempt semantic correction path.
 
 ## 9. Current blocker
 
 Current blocker classification:
 
-`LOCAL_MODEL_PREWRITE_VARIANCE_PREVENTS_STABLE_END_TO_END_GOLDEN_PATH`
+`TEST_FAILURE_REPAIR_CONSUMES_ONLY_TOP_LEVEL_BUDGET_BEFORE_SEMANTIC_ACCEPTANCE`
 
-More specifically, the latest real run failed at:
+Smallest remediation:
 
-`INITIAL IMPLEMENTATION -> REFERENCE FAILURE -> ONE FULL-FILE PREWRITE RECOVERY -> PYTHON SYNTAX FAILURE`
+PR #43 extends the existing in-attempt semantic correction to either top-level repair cause:
 
-This is a governed product reliability failure, not a repository corruption event.
+- `test_failure`;
+- `semantic_review`.
 
-Do not increase retries automatically. Do not add paid fallback. Do not broaden infrastructure.
+The top-level repair budget remains exactly `1`.
+
+No additional retry, provider, model, paid fallback, agent, dependency or write scope is introduced.
 
 ## 10. PR / merge state
 
@@ -358,8 +394,9 @@ Do not increase retries automatically. Do not add paid fallback. Do not broaden 
 - PR #39: **OPEN / stacked on #38 / not merged**.
 - PR #40: **OPEN / stacked on #39 / not merged**.
 - PR #41: **OPEN / stacked on #40 / not merged**.
+- PR #43: **OPEN / stacked on #41 / not merged**.
 
-No explicit approval has been given to merge PR #37–#41.
+No explicit approval has been given to merge PR #37–#43.
 
 ## 11. Out of scope until Golden Path 1 passes
 
@@ -379,13 +416,13 @@ Only a concrete blocker from the unchanged Dental Quote flow may justify another
 
 ## 12. Single next action
 
-`RERUN_UNCHANGED_DENTAL_QUOTE_ON_PR41_HEAD_ONCE`
+`VALIDATE_PR43_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
 
 Use exactly:
 
-- ForgeLab HEAD: `a8fa650ee48b7660ddf47a62a6b4bee00dae4399`;
+- ForgeLab candidate HEAD: `a5e375dab9fdfb87cf441c5841044ace25d354a2`;
 - same Dental Quote repository;
-- same objective;
+- same Product Owner objective;
 - same two authorized files;
 - same test command;
 - same `max_repair_attempts = 1`;
@@ -393,17 +430,20 @@ Use exactly:
 - no paid fallback;
 - no configuration expansion.
 
-Reason:
+Required sequence:
 
-The latest run failed before PR #41's target phase was exercised. One unchanged rerun is the smallest valid experiment to distinguish stochastic local-model output from a deterministic remaining runtime defect.
+1. run the standard ForgeLab validation harness against the exact PR #43 HEAD;
+2. only if validation PASS, rerun the unchanged Dental Quote once;
+3. verify that a test-failure repair followed by PASS tests can enter the one in-attempt semantic correction when Reviewer still FAILS;
+4. require deterministic retest and independent re-review after that correction;
+5. only a final `READY_FOR_DECISION` with tests/review/security PASS can justify considering merge/promotion.
 
-Decision rule after that one rerun:
+Decision rule:
 
-1. If the run reaches semantic test correction, evaluate PR #41 on its intended behavior.
-2. If the run reaches `READY_FOR_DECISION`, inspect final tests, independent review, security, diff and source cleanliness before any merge/promotion.
-3. If pre-write recovery is exhausted again before testing, classify the issue as reproducible pre-write reliability failure and implement the smallest deterministic remediation rather than adding retries.
-4. If another governed blocker appears, fix only that blocker.
-5. Do not merge the stacked PRs before a real decision-ready Golden Path result.
+- validation FAIL -> repair PR #43 only;
+- governed runtime blocker -> fix only that blocker;
+- `READY_FOR_DECISION` -> inspect final candidate and human gate;
+- do not merge PR #37–#43 before decision-ready real-run evidence.
 
 ## 13. Resume protocol for the next chat
 
@@ -415,7 +455,7 @@ Before changing code:
 4. read `ROADMAP.md`;
 5. read `DECISIONS.md`;
 6. read this `docs/handovers/HANDOVER_CURRENT.md`;
-7. verify live GitHub `main` and PR #37–#41 heads/states;
+7. verify live GitHub `main` and PR #37–#43 heads/states;
 8. do not infer local checkout state from this handover.
 
 Then execute only the Single Next Action unless new evidence invalidates it.
