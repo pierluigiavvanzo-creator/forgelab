@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-10-02
-**Checkpoint:** PR #28 locally TESTED / explicit merge approval pending
+**Checkpoint date:** 2026-10-04
+**Checkpoint:** PR #29 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,23 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #28:
+Current canonical `main` before PR #29:
 
-`a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
-
-PR #26 merged at `97f25bdb358adaa050735d463000495bafcf0b85`. PR #27 subsequently changed only `AGENTS_MASTER.md`.
+`718af139078537a29bbb93ed06089f52162f526a` (merge of PR #28)
 
 Current remediation branch:
 
-`mvp1-deterministic-repair-regression-gate`
+`mvp1-govern-prewrite-recovery-exhaustion`
 
 PR:
 
-`#28 — MVP-1: enforce repair regression constraints deterministically`
+`#29 — MVP-1: govern exhausted prewrite recovery`
 
 Runtime/test candidate validated locally:
 
-`356eef408926e8c97139b2fa3c9c0b18143093d2`
+`ed6d0587173fc6fce4ed78e717d78275b938387a`
 
 ## 3. Product Owner contract
 
@@ -367,7 +365,44 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 20. Validation evidence
+## 20. Golden Path rerun after PR #28
+
+Observed failure:
+
+`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 43: unterminated string literal`
+
+Observed:
+
+- initial syntax validation blocked invalid Python before write;
+- the single full-file syntax recovery was attempted;
+- the recovery also produced invalid Python;
+- second pre-write validation failure escaped as `run execution failed`;
+- no validated candidate reached implementation/testing.
+
+Current blocker:
+
+`PREWRITE_RECOVERY_EXHAUSTION_NOT_GOVERNED`
+
+## 21. PR #29 remediation
+
+PR #29:
+
+- keeps exactly one pre-write correction;
+- converts second recoverable pre-write validation failure into `PREWRITE_RECOVERY_EXHAUSTED`;
+- emits `PrewriteRecoveryFailure.json`;
+- records explicit pre-write validation evidence;
+- closes as `CLOSED / Repair required`;
+- writes the normal terminal artifacts even without a candidate patch;
+- guarantees no repository write on exhausted pre-write recovery;
+- applies the same handling to implementation, test-failure repair and semantic-review repair;
+- extends semantic syntax recovery to full-file mode;
+- adds no new agent, provider, dependency or repair-budget increase.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 22. Validation evidence
 
 Product Owner local validation reached:
 
@@ -391,11 +426,12 @@ Current evidence classification:
 - PR #25: **MERGED** at `2eaa2f0399b4080e54633357bc9668cd6975e96e`
 - PR #26: **MERGED** at `97f25bdb358adaa050735d463000495bafcf0b85`
 - PR #27: **MERGED** governance-only update to `AGENTS_MASTER.md`; canonical main advanced to `a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
-- PR #28 runtime/test code: **TESTED locally** at `356eef408926e8c97139b2fa3c9c0b18143093d2`
-- PR #28: **NOT MERGED**
-- Dental Quote after PR #28: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #28: **MERGED** at `718af139078537a29bbb93ed06089f52162f526a`
+- PR #29 runtime/test code: **TESTED locally** at `ed6d0587173fc6fce4ed78e717d78275b938387a`
+- PR #29: **NOT MERGED**
+- Dental Quote after PR #29: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 21. Out of scope until Dental Quote PASS
+## 23. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -411,7 +447,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 22. Generality proof after Dental Quote PASS
+## 24. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -419,15 +455,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 23. Current gate
+## 25. Current gate
 
-PR #28 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #29 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 24. Single next action
+## 26. Single next action
 
-Obtain explicit Product Owner approval for PR #28 merge.
+Obtain explicit Product Owner approval for PR #29 merge.
 
 After approved merge:
 
