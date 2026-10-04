@@ -18,6 +18,7 @@ class ScriptedProvider:
         self.response_formats = []
         self.timeouts = []
         self.prompts = []
+        self.repeat_resets = []
 
     def invoke(
         self,
@@ -40,6 +41,15 @@ class ScriptedProvider:
         if isinstance(outcome, Exception):
             raise outcome
         return outcome
+
+    def reset_after_repeat_limit(
+        self,
+        model,
+        timeout_seconds,
+    ):
+        self.repeat_resets.append(
+            (model, timeout_seconds)
+        )
 
 
 def routes(
@@ -198,6 +208,10 @@ class ModelRouterTests(unittest.TestCase):
             [60, 180],
         )
         self.assertEqual(
+            provider.repeat_resets,
+            [],
+        )
+        self.assertEqual(
             [
                 record.outcome
                 for record in ledger.records
@@ -264,6 +278,68 @@ class ModelRouterTests(unittest.TestCase):
         self.assertEqual(
             provider.response_formats,
             [schema, schema],
+        )
+        self.assertEqual(
+            provider.timeouts,
+            [60, 180],
+        )
+        self.assertEqual(
+            provider.repeat_resets,
+            [("model", 180)],
+        )
+        self.assertEqual(
+            [
+                record.outcome
+                for record in ledger.records
+            ],
+            ["RETRY", "SUCCESS"],
+        )
+
+    def test_ollama_repeat_limit_retry_continues_when_reset_fails(self):
+        provider = ScriptedProvider([
+            ProviderTransientError(
+                "Ollama HTTP 500: prediction aborted, "
+                "token repeat limit reached"
+            ),
+            ProviderResponse(
+                "ok",
+                1,
+                1,
+                actual_cost=Decimal("0"),
+            ),
+        ])
+
+        def failing_reset(model, timeout_seconds):
+            provider.repeat_resets.append(
+                (model, timeout_seconds)
+            )
+            raise ProviderTransientError(
+                "reset unavailable"
+            )
+
+        provider.reset_after_repeat_limit = failing_reset
+        ledger = UsageLedger(Decimal("1"))
+        router = ModelRouter(
+            routes(
+                retries=1,
+                provider_name="ollama",
+            ),
+            {"ollama": provider},
+            ledger,
+        )
+
+        router.execute(
+            TaskClass.S2,
+            "prompt",
+            "t-ollama-repeat-reset-failure",
+            "DEVELOPER",
+            "local structured repair",
+            timeout_seconds=60,
+        )
+
+        self.assertEqual(
+            provider.repeat_resets,
+            [("model", 180)],
         )
         self.assertEqual(
             provider.timeouts,

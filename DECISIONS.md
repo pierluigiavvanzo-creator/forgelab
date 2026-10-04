@@ -469,7 +469,7 @@ A local-provider generation abort is an expected runtime failure mode. It should
 ## D-020 — Semantic-review repair uses full-file replacement from the first attempt
 
 **Date:** 2026-10-04
-**Status:** Proposed in PR #33; becomes Accepted only if PR #33 is explicitly approved and merged
+**Status:** Accepted — PR #33 merged 2026-10-04
 
 Evidence:
 
@@ -494,3 +494,35 @@ Decision candidate:
 Rationale:
 
 The semantic repair already has complete current authorized files available. Generating complete changed files directly avoids fragile old_text/new_text composition and reduces avoidable syntax/reference failure without expanding the authorized repair budget.
+
+
+---
+
+## D-021 — Reset local Ollama model state before the existing repeat-limit retry
+
+**Date:** 2026-10-04
+**Status:** Proposed in PR #34; becomes Accepted only if PR #34 is explicitly approved and merged
+
+Evidence:
+
+Dental Quote run `run-98f2c045a9f3` after PR #33 passed initial deterministic tests and reached semantic repair, but task `review-repair-1` exhausted the existing adaptive Ollama retry with `prediction aborted, token repeat limit reached`. PR #32 correctly governed the failure with `ProviderFailure.json`, but no semantic repair candidate was produced, so PR #33 full-file repair behavior was not exercised.
+
+Root cause:
+
+`OLLAMA_REPEAT_LIMIT_RETRY_REUSES_LOADED_MODEL_STATE`
+
+Decision candidate:
+
+- keep Ollama as the zero-cost local provider;
+- keep the configured generation retry count unchanged;
+- keep the existing anti-repetition retry prompt;
+- before the existing retry for `token repeat limit reached`, request a local model unload/reset through Ollama `/api/generate` using the same model, an empty prompt, `stream: false`, and `keep_alive: 0`;
+- then perform the same one bounded generation retry with the existing widened timeout;
+- if the reset control call fails, still proceed with the existing generation retry and do not add another retry;
+- ordinary transient retries must not trigger repeat-limit reset;
+- if generation still fails, preserve the existing governed provider-failure terminal path;
+- do not add paid fallback, providers, agents, dependencies, configuration expansion, or generation retries.
+
+Rationale:
+
+The provider already exposes a local unload/reset capability. Reusing that capability before the same authorized retry is lower-cost and more bounded than adding retries, paid fallback, or new infrastructure, while targeting the observed repeat-limit failure mode directly.
