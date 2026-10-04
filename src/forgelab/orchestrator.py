@@ -2372,6 +2372,85 @@ Rules:
                     )
                 )
 
+                full_file_recovery = isinstance(
+                    prewrite_error,
+                    (
+                        AIDeveloperReferenceError,
+                        AIDeveloperSyntaxError,
+                    ),
+                )
+
+                if full_file_recovery:
+                    recovery_mode = (
+                        "REFERENCE RECOVERY MODE"
+                        if isinstance(
+                            prewrite_error,
+                            AIDeveloperReferenceError,
+                        )
+                        else "SYNTAX RECOVERY MODE"
+                    )
+                    recovery_contract = f"""
+{recovery_mode}:
+Return COMPLETE replacement content only for authorized files
+that actually need modification. Do not return old_text
+snippets or the normal patch schema.
+
+Required schema:
+{{
+  "schema_version": "2.1",
+  "summary": "<short overall recovery summary>",
+  "files": [
+    {{
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }}
+  ]
+}}
+"""
+                    recovery_rules = """
+- the complete current files shown above are the authoritative baseline.
+- preserve all unchanged behavior and text unless the objective requires
+  a change; make the smallest sufficient edits inside the complete file.
+- every returned path MUST be one of the authorized target paths.
+- omit authorized files that do not actually need modification.
+- do not reference text introduced only by a prior candidate or repair.
+- for Python files, return one complete syntactically valid module.
+- before returning Python, check quote, bracket and parenthesis balance.
+- never emit an invalid f-string; prefer simpler string construction when
+  interpolation would make quoting or indexing ambiguous.
+- do not modify any other file.
+- do not claim tests have run.
+- do not create dependencies.
+"""
+                    prewrite_response_format = (
+                        _ai_developer_full_file_response_schema(
+                            target_paths
+                        )
+                    )
+                else:
+                    recovery_contract = f"""
+Required schema:
+{schema_instructions}
+"""
+                    recovery_rules = """
+- every path MUST be one of the authorized target paths.
+- authorized paths define the maximum write scope, not mandatory edits.
+- return one or more changes only for files that actually need modification.
+- never emit a no-op change: old_text and new_text must differ; omit
+  any unchanged file or region instead.
+- multiple changes may target the same file only when their old_text regions are disjoint.
+- use at most 4 changes per authorized path.
+- old_text MUST be copied verbatim from the current complete authorized file shown above.
+- old_text MUST occur exactly once in its corresponding current file.
+- do not reference text introduced only by a prior candidate or prior repair.
+- choose the smallest sufficient replacement for each file.
+- do not modify any other file.
+- do not claim tests have run.
+- do not create dependencies.
+"""
+                    prewrite_response_format = developer_schema
+
                 prewrite_repair_prompt = f"""
 You are the DEVELOPER agent in ForgeLab.
 
@@ -2396,73 +2475,12 @@ Current complete authorized files:
 Return ONLY one corrected JSON object.
 No Markdown. No prose outside JSON.
 
-Required schema:
-{schema_instructions}
+{recovery_contract}
 
 Rules:
 - this is the ONE bounded pre-write repair attempt.
-- every path MUST be one of the authorized target paths.
-- authorized paths define the maximum write scope, not mandatory edits.
-- return one or more changes only for files that actually need modification.
-- never emit a no-op change: old_text and new_text must differ; omit
-  any unchanged file or region instead.
-- multiple changes may target the same file only when their old_text regions are disjoint.
-- use at most 4 changes per authorized path.
-- old_text MUST be copied verbatim from the current complete authorized file shown above.
-- old_text MUST occur exactly once in its corresponding current file.
-- do not reference text introduced only by a prior candidate or prior repair.
-- choose the smallest sufficient replacement for each file.
-- do not modify any other file.
-- do not claim tests have run.
-- do not create dependencies.
+{recovery_rules}
 """
-
-                full_file_recovery = isinstance(
-                    prewrite_error,
-                    (
-                        AIDeveloperReferenceError,
-                        AIDeveloperSyntaxError,
-                    ),
-                )
-
-                if full_file_recovery:
-                    recovery_mode = (
-                        "REFERENCE RECOVERY MODE"
-                        if isinstance(
-                            prewrite_error,
-                            AIDeveloperReferenceError,
-                        )
-                        else "SYNTAX RECOVERY MODE"
-                    )
-                    prewrite_repair_prompt += f"""
-
-{recovery_mode}:
-Return COMPLETE replacement content for each file that must
-change. Do not return old_text snippets.
-
-Required recovery schema:
-{{
-  "schema_version": "2.1",
-  "summary": "<short overall recovery summary>",
-  "files": [
-    {{
-      "path": "<one authorized path>",
-      "new_text": "<COMPLETE replacement file content>",
-      "summary": "<short per-file summary>"
-    }}
-  ]
-}}
-
-The current complete authorized files above are authoritative.
-For Python files, return complete syntactically valid Python.
-"""
-                    prewrite_response_format = (
-                        _ai_developer_full_file_response_schema(
-                            target_paths
-                        )
-                    )
-                else:
-                    prewrite_response_format = developer_schema
 
                 prewrite_recovery_context = {
                     "phase": "implementation",
