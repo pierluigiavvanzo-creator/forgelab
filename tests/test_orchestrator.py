@@ -2257,7 +2257,13 @@ class MultiAgentTests(unittest.TestCase):
                 [item["exit_status"] for item in test_evidence],
                 [0, 1, 0],
                 msg=json.dumps(
-                    test_evidence,
+                    {
+                        "summary": summary,
+                        "all_evidence": evidence["evidence"],
+                        "developer": developer,
+                        "llm_call_count":
+                            len(invoke.call_args_list),
+                    },
                     indent=2,
                     ensure_ascii=False,
                 ),
