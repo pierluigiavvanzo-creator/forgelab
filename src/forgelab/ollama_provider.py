@@ -128,17 +128,30 @@ class OllamaProvider:
         response_format: dict[str, object] | str | None = None,
     ) -> ProviderResponse:
 
+        options: dict[str, object] = {
+            "temperature": 0.1,
+            "num_ctx": 4096,
+            # Bounded but large enough for structured
+            # multi-file AI Developer JSON patches.
+            "num_predict": 2048,
+        }
+
+        if "\n\nLOCAL PROVIDER RECOVERY:\n" in prompt:
+            options.update({
+                # The real MVP-1 semantic-repair retry repeated after
+                # a clean unload. Use supported Ollama anti-repetition
+                # controls only for that one existing bounded retry.
+                "temperature": 0.2,
+                "num_predict": 1536,
+                "repeat_last_n": 128,
+                "repeat_penalty": 1.2,
+            })
+
         request_payload: dict[str, object] = {
             "model": model,
             "prompt": prompt,
             "stream": False,
-            "options": {
-                "temperature": 0.1,
-                "num_ctx": 4096,
-                # Bounded but large enough for structured
-                # multi-file AI Developer JSON patches.
-                "num_predict": 2048,
-            },
+            "options": options,
         }
 
         if response_format is not None:
