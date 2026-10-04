@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #34:
+Current canonical `main` after PR #34:
 
-`dd027196182da4701dafc035806acffd194f125b`
+`5f83844a36063722c2979dae19576d57c0f06c5a`
 
 ## NOW — A Product Critical
 
@@ -70,7 +70,7 @@ Current blocker:
 
 `OLLAMA_REPEAT_LIMIT_RETRY_REUSES_LOADED_MODEL_STATE`
 
-### Current remediation — PR #34
+### Current remediation — PR #34 MERGED / real Golden Path revalidation pending
 
 PR #34 implements the smallest product-relevant correction:
 
@@ -90,12 +90,14 @@ Local validation reached `FORGELAB VALIDATION PASS`.
 
 ### PR #34 exit gate
 
-PR #34 is not complete until:
+PR #34 is merged to `main` at `5f83844a36063722c2979dae19576d57c0f06c5a`.
 
-1. Product Owner explicitly approves merge;
-2. exact approved PR HEAD is merged to `main`;
-3. the same unchanged Dental Quote Golden Path is rerun;
-4. repeat-limit recovery either succeeds after model reset or terminates through existing governed provider failure, without extra retries or manual Product Owner retry orchestration.
+The remaining product gate is:
+
+1. align the local ForgeLab checkout to canonical `main`;
+2. rerun the same unchanged Dental Quote Golden Path;
+3. verify repeat-limit recovery either succeeds after model reset or terminates through existing governed provider failure, without extra retries or manual Product Owner retry orchestration;
+4. require the complete Dental Quote objective to pass deterministic tests and independent semantic review before Golden Path 2 begins.
 
 ## NEXT — only after Dental Quote PASS
 
