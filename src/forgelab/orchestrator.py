@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -1418,6 +1419,88 @@ def _ai_patch_changes(
     }]
 
 
+def _fstring_statement_prefix(line: str) -> str | None:
+    match = re.search(
+        r"(?<![A-Za-z0-9_])(?:[fF][rR]?|[rR][fF])['\"]",
+        line,
+    )
+    if match is None:
+        return None
+    return "".join(line[:match.start()].split())
+
+
+def _stabilize_malformed_python_fstrings_from_source(
+    payload: dict[str, Any],
+    source_texts: dict[str, str],
+) -> list[str]:
+    stabilized_paths: list[str] = []
+
+    for change in _ai_patch_changes(payload):
+        path = change["path"]
+
+        if (
+            not path.lower().endswith(".py")
+            or change["old_text"] != source_texts[path]
+        ):
+            continue
+
+        source = source_texts[path]
+        candidate = change["new_text"]
+        changed = False
+
+        for _ in range(4):
+            try:
+                ast.parse(
+                    candidate.lstrip("\ufeff"),
+                    filename=path,
+                )
+                break
+            except SyntaxError as error:
+                if (
+                    error.lineno is None
+                    or "f-string" not in error.msg.lower()
+                ):
+                    break
+
+                candidate_lines = candidate.splitlines(
+                    keepends=True
+                )
+                source_lines = source.splitlines(
+                    keepends=True
+                )
+                index = error.lineno - 1
+
+                if not 0 <= index < len(candidate_lines):
+                    break
+
+                prefix = _fstring_statement_prefix(
+                    candidate_lines[index]
+                )
+                if prefix is None:
+                    break
+
+                matches = [
+                    source_line
+                    for source_line in source_lines
+                    if _fstring_statement_prefix(
+                        source_line
+                    ) == prefix
+                ]
+
+                if len(matches) != 1:
+                    break
+
+                candidate_lines[index] = matches[0]
+                candidate = "".join(candidate_lines)
+                changed = True
+
+        if changed and candidate != source:
+            change["new_text"] = candidate
+            stabilized_paths.append(path)
+
+    return stabilized_paths
+
+
 def _validate_ai_developer_candidate_syntax(
     payload: dict[str, Any],
     source_texts: dict[str, str],
@@ -2162,6 +2245,7 @@ Return ONLY the required structured JSON object.
     reference_repair_attempts = 0
     syntax_repair_attempts = 0
     prewrite_repair_attempts = 0
+    deterministic_fstring_stabilized_paths: list[str] = []
     prewrite_recovery_context: dict[str, str] | None = None
     semantic_review_history: list[dict[str, Any]] = []
     source_unchanged = False
@@ -2505,6 +2589,12 @@ Rules:
                             source_texts,
                         )
                     )
+                    deterministic_fstring_stabilized_paths = (
+                        _stabilize_malformed_python_fstrings_from_source(
+                            generated_patch,
+                            source_texts,
+                        )
+                    )
                 else:
                     generated_patch = (
                         _validate_ai_developer_patch(
@@ -2549,6 +2639,8 @@ Rules:
                     reference_repair_attempts,
                 "syntax_repair_attempts":
                     syntax_repair_attempts,
+                "deterministic_fstring_stabilized_paths":
+                    deterministic_fstring_stabilized_paths,
                 "repair_attempts": [],
                 "context_bundle_ref": "ContextBundle.json",
                 "context_selection_sha256": context_bundle["selection_sha256"],
