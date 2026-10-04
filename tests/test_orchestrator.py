@@ -1257,7 +1257,23 @@ class MultiAgentTests(unittest.TestCase):
                 retry_prompt,
             )
             self.assertIn(
-                "complete syntactically valid Python",
+                "complete syntactically valid module",
+                retry_prompt,
+            )
+            self.assertIn(
+                '"schema_version": "2.1"',
+                retry_prompt,
+            )
+            self.assertNotIn(
+                '"schema_version": "1.0"',
+                retry_prompt,
+            )
+            self.assertNotIn(
+                "Required recovery schema:",
+                retry_prompt,
+            )
+            self.assertIn(
+                "never emit an invalid f-string",
                 retry_prompt,
             )
             self.assertEqual(
@@ -1742,6 +1758,22 @@ class MultiAgentTests(unittest.TestCase):
             )
             self.assertIn(
                 "COMPLETE replacement file content",
+                retry_prompt,
+            )
+            self.assertIn(
+                '"schema_version": "2.1"',
+                retry_prompt,
+            )
+            self.assertNotIn(
+                '"schema_version": "1.0"',
+                retry_prompt,
+            )
+            self.assertNotIn(
+                '"schema_version": "2.0"',
+                retry_prompt,
+            )
+            self.assertNotIn(
+                "old_text and new_text must differ",
                 retry_prompt,
             )
 
