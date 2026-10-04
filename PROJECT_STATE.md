@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #34: `dd027196182da4701dafc035806acffd194f125b` (merge of PR #33).
+Current canonical `main`: `5f83844a36063722c2979dae19576d57c0f06c5a` (merge of PR #34).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -753,7 +753,7 @@ Validation evidence:
 
 Evidence state:
 
-**PR #34 runtime/test code is TESTED locally; PR #34 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #34.**
+**PR #34 runtime/test code was TESTED locally and PR #34 is MERGED to `main` at `5f83844a36063722c2979dae19576d57c0f06c5a`; Dental Quote has NOT yet been rerun after the merge.**
 
 ## MVP gates
 
@@ -765,6 +765,4 @@ Evidence state:
 
 ## Single next action
 
-Review PR #34 and obtain explicit Product Owner approval before merge.
-
-After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
+Rerun the **same unchanged Dental Quote Golden Path** on canonical `main` `5f83844a36063722c2979dae19576d57c0f06c5a` with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.

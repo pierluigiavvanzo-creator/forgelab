@@ -501,7 +501,7 @@ The semantic repair already has complete current authorized files available. Gen
 ## D-021 — Reset local Ollama model state before the existing repeat-limit retry
 
 **Date:** 2026-10-04
-**Status:** Proposed in PR #34; becomes Accepted only if PR #34 is explicitly approved and merged
+**Status:** Accepted — PR #34 merged 2026-10-04 at `5f83844a36063722c2979dae19576d57c0f06c5a`
 
 Evidence:
 
