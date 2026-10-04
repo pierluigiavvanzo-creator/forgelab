@@ -3,6 +3,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from forgelab.runner import RunRequest, run_isolated
@@ -24,6 +25,35 @@ class IsolatedRunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             with self.assertRaises(ToolPolicyError):
                 run_bounded(["sh", "-c", "echo unsafe"], Path(folder))
+
+    def test_windows_py_launcher_is_allowlisted(self):
+        completed = subprocess.CompletedProcess(
+            ["py", "-3.11", "-m", "unittest"],
+            0,
+            stdout="ok",
+            stderr="",
+        )
+
+        with tempfile.TemporaryDirectory() as folder:
+            with (
+                patch("forgelab.tools.os.name", "nt"),
+                patch(
+                    "forgelab.tools.subprocess.run",
+                    return_value=completed,
+                ) as run,
+            ):
+                evidence = run_bounded(
+                    ["py", "-3.11", "-m", "unittest"],
+                    Path(folder),
+                )
+
+        self.assertEqual(evidence.exit_status, 0)
+        self.assertEqual(evidence.stdout, "ok")
+        run.assert_called_once()
+        self.assertEqual(
+            run.call_args.args[0],
+            ["py", "-3.11", "-m", "unittest"],
+        )
 
     def test_real_change_runs_tests_and_preserves_source(self):
         with tempfile.TemporaryDirectory() as folder:

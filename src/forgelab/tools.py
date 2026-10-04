@@ -49,6 +49,8 @@ def run_bounded(command: list[str], cwd: Path, timeout: int = 60) -> CommandEvid
     if not command:
         raise ToolPolicyError("command must not be empty")
     allowed = {"python", "python3", Path(sys.executable).name}
+    if os.name == "nt":
+        allowed.update({"py", "py.exe"})
     if Path(command[0]).name not in allowed:
         raise ToolPolicyError(f"executable is not allowed in M1: {command[0]}")
     try:
