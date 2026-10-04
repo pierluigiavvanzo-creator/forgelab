@@ -2248,20 +2248,35 @@ class MultiAgentTests(unittest.TestCase):
                 )
             )
 
+            test_evidence = [
+                item
+                for item in evidence["evidence"]
+                if item["check_type"] == "tests"
+            ]
+            self.assertEqual(
+                [item["exit_status"] for item in test_evidence],
+                [0, 1, 0],
+                msg=json.dumps(
+                    test_evidence,
+                    indent=2,
+                    ensure_ascii=False,
+                ),
+            )
             self.assertEqual(
                 summary["status"],
                 "READY_FOR_DECISION",
+                msg=json.dumps(
+                    {
+                        "summary": summary,
+                        "review": review,
+                        "test_evidence": test_evidence,
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                ),
             )
             self.assertEqual(summary["repair_attempts"], 1)
             self.assertEqual(review["status"], "PASS")
-            self.assertEqual(
-                [
-                    item["exit_status"]
-                    for item in evidence["evidence"]
-                    if item["check_type"] == "tests"
-                ],
-                [0, 1, 0],
-            )
 
             repair = developer["repair_attempts"][0]
             self.assertEqual(
