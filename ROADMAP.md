@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #29:
+Current canonical `main` before PR #30:
 
-`718af139078537a29bbb93ed06089f52162f526a`
+`02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14`
 
 ## NOW — A Product Critical
 
@@ -56,36 +56,45 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 PR #26 was merged to `main` at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 subsequently updated governance only.
 
-Fresh rerun after PR #28 failed before write after the single full-file syntax recovery also produced invalid Python.
+Fresh rerun `run-81f814fa23f5` after PR #29:
+
+- initial deterministic tests passed 5 / 5;
+- semantic review correctly blocked the incomplete exact three-treatment workflow;
+- one semantic-review repair was applied;
+- its deterministic retest failed on a newly-added treatment-validation test;
+- the top-level repair budget was already consumed, so the run stopped in DIAGNOSING;
+- the patch artifact remained stale relative to the semantic repair candidate.
 
 Current blocker:
 
-`PREWRITE_RECOVERY_EXHAUSTION_NOT_GOVERNED`
+`SEMANTIC_REPAIR_TEST_FAILURE_HAS_NO_IN_ATTEMPT_RECOVERY`
 
-### Current remediation — PR #29
+### Current remediation — PR #30
 
-PR #29 implements the smallest product-relevant correction:
+PR #30 implements the smallest product-relevant correction:
 
-`INVALID CANDIDATE -> ONE PRE-WRITE RECOVERY -> INVALID AGAIN -> GOVERNED CLOSED / REPAIR REQUIRED + ARTIFACTS`
+`SEMANTIC REVIEW FAIL -> ONE TOP-LEVEL REPAIR -> TEST FAIL -> ONE IN-ATTEMPT CORRECTION -> RETEST -> RE-REVIEW`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It converts exhausted pre-write recovery from an uncaught exception into a normal governed terminal state.
+It preserves the top-level repair budget at one while giving a semantic-review repair one bounded internal chance to correct its own deterministic failure.
 
-No new dependency, provider, agent role, repair budget or broad infrastructure was added.
+It also refreshes `Changes.patch` after semantic repair/correction so failure artifacts represent the current candidate.
+
+No new dependency, provider, agent role, top-level repair budget or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #29 exit gate
+### PR #30 exit gate
 
-PR #29 is not complete until:
+PR #30 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. exhausted pre-write recovery produces governed artifacts and never surfaces as `run execution failed`.
+4. a semantic-review repair that fails deterministic tests is corrected once inside the same repair attempt or safely blocked, without increasing `max_repair_attempts`.
 
 ## NEXT — only after Dental Quote PASS
 
