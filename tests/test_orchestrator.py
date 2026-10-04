@@ -4300,18 +4300,61 @@ class MultiAgentTests(unittest.TestCase):
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
             ):
-                with self.assertRaises(ValueError):
-                    run_multi_agent(
-                        request(
-                            repo,
-                            operation="ai_generate",
-                            old_text="",
-                            new_text="",
-                            max_repair_attempts=1,
-                        ),
-                        root / "runs",
-                    )
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                    ),
+                    root / "runs",
+                )
 
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            failure = json.loads(
+                (run_dir / "RunFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "CLOSED",
+            )
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertEqual(
+                summary["terminal_failure_ref"],
+                "RunFailure.json",
+            )
+            self.assertEqual(
+                failure["reason"],
+                "UNHANDLED_RUN_FAILURE",
+            )
+            self.assertEqual(
+                failure["error_type"],
+                "ValueError",
+            )
+            self.assertIn(
+                "path expansion",
+                failure["error"],
+            )
+            self.assertTrue(
+                (run_dir / "GateDecision.json").is_file()
+            )
+            self.assertTrue(
+                (run_dir / "AgentResult.json").is_file()
+            )
+            self.assertTrue(
+                (run_dir / "TestEvidence.json").is_file()
+            )
             self.assertEqual(git(repo, "status", "--porcelain"), "")
             self.assertFalse((root / "outside.py").exists())
 
