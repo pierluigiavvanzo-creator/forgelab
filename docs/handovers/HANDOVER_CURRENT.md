@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-04
-**Checkpoint:** PR #31 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #32 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #31:
+Current canonical `main` before PR #32:
 
-`081960cb6c0c696567010010dd387a49c6750114` (merge of PR #30)
+`af63c04cf401771499988b30a6c4f45fbef4c8b0` (merge of PR #31)
 
 Current remediation branch:
 
-`mvp1-semantic-rereview-in-attempt-correction`
+`mvp1-govern-ollama-repeat-limit`
 
 PR:
 
-`#31 — MVP-1: correct failed semantic rereview within repair`
+`#32 — MVP-1: govern Ollama repeat-limit exhaustion`
 
 Runtime/test candidate validated locally:
 
-`8595a2c756f1db63b0e9eea9c425d72bbcbf40d4`
+`d57c727379b395ce3f353748d00cd8a191748c9b`
 
 ## 3. Product Owner contract
 
@@ -488,7 +488,40 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 26. Validation evidence
+## 26. Golden Path rerun after PR #31
+
+Observed:
+
+- the unchanged Dental Quote run did not reach product acceptance evaluation;
+- local Ollama returned HTTP 500 with `prediction aborted, token repeat limit reached`;
+- the configured bounded retry was exhausted;
+- the transient provider error escaped the governed run lifecycle as `run execution failed`;
+- this is a provider-runtime lifecycle blocker, not evidence that the Dental Quote candidate itself failed acceptance.
+
+Current blocker:
+
+`OLLAMA_REPEAT_LIMIT_RETRY_EXHAUSTION_ESCAPES_RUN_LIFECYCLE`
+
+## 27. PR #32 remediation
+
+PR #32:
+
+- keeps Ollama and provider cost EUR 0;
+- keeps the configured retry count unchanged;
+- makes the existing retry adaptive only for `token repeat limit reached`;
+- preserves the original prompt and response schema while appending a concise anti-loop recovery instruction;
+- preserves the existing bounded timeout widening;
+- emits `ProviderFailure.json` when the bounded retry is exhausted;
+- converts planning-time provider exhaustion into `CLOSED / Repair required` with normal terminal artifacts;
+- converts in-run provider exhaustion into the same governed outcome;
+- records provider-runtime evidence and usage RETRY/FAIL outcomes;
+- adds no paid fallback, extra retry, provider, agent, dependency or infrastructure.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 28. Validation evidence
 
 Product Owner local validation reached:
 
@@ -515,11 +548,12 @@ Current evidence classification:
 - PR #28: **MERGED** at `718af139078537a29bbb93ed06089f52162f526a`
 - PR #29: **MERGED** at `02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14`
 - PR #30: **MERGED** at `081960cb6c0c696567010010dd387a49c6750114`
-- PR #31 runtime/test code: **TESTED locally** at `8595a2c756f1db63b0e9eea9c425d72bbcbf40d4`
-- PR #31: **NOT MERGED**
-- Dental Quote after PR #31: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #31: **MERGED** at `af63c04cf401771499988b30a6c4f45fbef4c8b0`
+- PR #32 runtime/test code: **TESTED locally** at `d57c727379b395ce3f353748d00cd8a191748c9b`
+- PR #32: **NOT MERGED**
+- Dental Quote after PR #32: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 27. Out of scope until Dental Quote PASS
+## 29. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -535,7 +569,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 28. Generality proof after Dental Quote PASS
+## 30. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -543,15 +577,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 29. Current gate
+## 31. Current gate
 
-PR #31 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #32 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 30. Single next action
+## 32. Single next action
 
-Obtain explicit Product Owner approval for PR #31 merge.
+Obtain explicit Product Owner approval for PR #32 merge.
 
 After approved merge:
 
