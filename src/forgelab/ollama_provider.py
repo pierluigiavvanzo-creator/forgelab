@@ -38,6 +38,88 @@ class OllamaProvider:
 
         self.endpoint = endpoint
 
+    def reset_after_repeat_limit(
+        self,
+        model: str,
+        timeout_seconds: int,
+    ) -> None:
+        """Unload the local model before the existing bounded retry."""
+
+        payload = json.dumps({
+            "model": model,
+            "prompt": "",
+            "stream": False,
+            "keep_alive": 0,
+        }).encode("utf-8")
+
+        request = Request(
+            f"{self.endpoint}/api/generate",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with urlopen(
+                request,
+                timeout=timeout_seconds,
+            ) as response:
+                raw = response.read()
+
+        except HTTPError as error:
+            try:
+                detail = error.read().decode(
+                    "utf-8",
+                    errors="replace",
+                )
+            except Exception:
+                detail = str(error)
+
+            if error.code >= 500:
+                raise ProviderTransientError(
+                    "Ollama repeat-limit reset failed "
+                    f"with HTTP {error.code}: {detail}"
+                ) from error
+
+            raise ProviderPermanentError(
+                "Ollama repeat-limit reset failed "
+                f"with HTTP {error.code}: {detail}"
+            ) from error
+
+        except (
+            URLError,
+            TimeoutError,
+            socket.timeout,
+            ConnectionError,
+        ) as error:
+            raise ProviderTransientError(
+                "Ollama repeat-limit reset unavailable: "
+                f"{error}"
+            ) from error
+
+        try:
+            result = json.loads(
+                raw.decode("utf-8")
+            )
+        except Exception as error:
+            raise ProviderPermanentError(
+                "Ollama repeat-limit reset returned invalid JSON"
+            ) from error
+
+        if not isinstance(result, dict):
+            raise ProviderPermanentError(
+                "Ollama repeat-limit reset response "
+                "is not an object"
+            )
+
+        if result.get("error"):
+            raise ProviderPermanentError(
+                "Ollama repeat-limit reset failed: "
+                + str(result["error"])
+            )
+
     def invoke(
         self,
         model: str,
