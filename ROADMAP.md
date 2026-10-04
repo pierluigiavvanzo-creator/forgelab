@@ -32,9 +32,9 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #32:
+Current canonical `main` before PR #33:
 
-`af63c04cf401771499988b30a6c4f45fbef4c8b0`
+`fb3188890573e484640b7a4c667c3f4703218685`
 
 ## NOW — A Product Critical
 
@@ -56,43 +56,46 @@ ForgeLab produces the complete requested three-treatment application without Cha
 
 PR #26 was merged to `main` at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 subsequently updated governance only.
 
-Fresh Dental Quote rerun after PR #31:
+Fresh Dental Quote rerun `run-0960eae66316` after PR #32:
 
-- the run did not reach product acceptance evaluation;
-- Ollama returned HTTP 500 with `prediction aborted, token repeat limit reached`;
-- the existing bounded retry was exhausted;
-- `ProviderTransientError` escaped as `run execution failed`.
+- provider lifecycle completed normally;
+- initial deterministic tests passed;
+- semantic review correctly remained blocking because three-treatment/autosubtotal acceptance was incomplete;
+- semantic repair entered REPAIRING;
+- the initial snippet-based semantic repair candidate failed syntax validation;
+- the one bounded full-file pre-write recovery also failed syntax validation;
+- ForgeLab closed normally with `PrewriteRecoveryFailure.json`.
 
 Current blocker:
 
-`OLLAMA_REPEAT_LIMIT_RETRY_EXHAUSTION_ESCAPES_RUN_LIFECYCLE`
+`SEMANTIC_REPAIR_FRAGMENT_SCHEMA_CAUSES_AVOIDABLE_SYNTAX_COMPOSITION_RISK`
 
-### Current remediation — PR #32
+### Current remediation — PR #33
 
-PR #32 implements the smallest product-relevant correction:
+PR #33 implements the smallest product-relevant correction:
 
-`OLLAMA TRANSIENT REPEAT-LIMIT -> ONE ADAPTIVE EXISTING RETRY -> SUCCESS OR GOVERNED CLOSED / REPAIR REQUIRED`
+`SEMANTIC REVIEW FAIL -> FULL-FILE REPAIR FROM FIRST ATTEMPT -> PREWRITE VALIDATION -> OPTIONAL ONE FULL-FILE PREWRITE CORRECTION`
 
 Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-It keeps the same Ollama provider, zero-spend policy and configured retry count. The repeat-limit retry adds a concise anti-loop instruction while preserving the original prompt and response schema.
+It keeps the same repair and recovery budgets while eliminating snippet composition from the initial semantic-review repair path.
 
-If the bounded retry still fails, ForgeLab emits `ProviderFailure.json` plus normal terminal artifacts and closes the run through the state machine instead of surfacing `run execution failed`.
+The first semantic repair now uses schema `2.1` with complete replacement content only for changed authorized files. If that candidate fails pre-write validation, the single bounded correction remains full-file.
 
-No paid fallback, extra retry, new provider, agent, dependency or broad infrastructure was added.
+No new dependency, provider, agent role, retry, top-level repair budget or broad infrastructure was added.
 
 Local validation reached `FORGELAB VALIDATION PASS`.
 
-### PR #32 exit gate
+### PR #33 exit gate
 
-PR #32 is not complete until:
+PR #33 is not complete until:
 
 1. Product Owner explicitly approves merge;
 2. exact approved PR HEAD is merged to `main`;
 3. the same unchanged Dental Quote Golden Path is rerun;
-4. a repeat-limit provider failure either recovers through the existing adaptive retry or terminates as a governed run without uncaught exception.
+4. semantic repair either produces a valid full-file candidate or terminates through the existing governed pre-write failure path without reverting to snippet composition.
 
 ## NEXT — only after Dental Quote PASS
 
