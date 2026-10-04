@@ -2311,8 +2311,12 @@ class MultiAgentTests(unittest.TestCase):
                 invoke.call_args_list[4].args[1]
             )
             self.assertIn(
-                "ONE bounded test correction inside the SAME "
-                "semantic repair attempt",
+                "ONE bounded test correction inside the SAME semantic",
+                correction_prompt,
+            )
+            self.assertIn(
+                "repair attempt. It does NOT increase "
+                "max_repair_attempts",
                 correction_prompt,
             )
             self.assertIn(
