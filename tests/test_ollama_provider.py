@@ -104,6 +104,65 @@ class OllamaProviderTests(unittest.TestCase):
         )
 
     @patch("forgelab.ollama_provider.urlopen")
+    def test_repeat_limit_recovery_uses_explicit_anti_repeat_sampling(
+        self,
+        mocked,
+    ):
+        mocked.return_value = FakeResponse({
+            "response": "{\"schema_version\": \"2.1\"}",
+            "prompt_eval_count": 12,
+            "eval_count": 8,
+        })
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "schema_version": {
+                    "type": "string",
+                    "enum": ["2.1"],
+                },
+            },
+            "required": ["schema_version"],
+        }
+
+        OllamaProvider().invoke_repeat_limit_recovery(
+            "qwen2.5-coder:7b",
+            "return one structured object",
+            180,
+            schema,
+        )
+
+        request = mocked.call_args.args[0]
+        payload = json.loads(
+            request.data.decode("utf-8")
+        )
+
+        self.assertEqual(
+            payload["format"],
+            schema,
+        )
+        self.assertEqual(
+            payload["options"]["repeat_penalty"],
+            1.1,
+        )
+        self.assertEqual(
+            payload["options"]["repeat_last_n"],
+            128,
+        )
+        self.assertEqual(
+            payload["options"]["temperature"],
+            0.1,
+        )
+        self.assertEqual(
+            payload["options"]["num_ctx"],
+            4096,
+        )
+        self.assertEqual(
+            payload["options"]["num_predict"],
+            2048,
+        )
+
+    @patch("forgelab.ollama_provider.urlopen")
     def test_structured_output_schema_is_sent_to_generate(
         self,
         mocked,
