@@ -1286,6 +1286,142 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_initial_full_file_recovery_restores_malformed_fstring_from_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            (repo / "calculator.py").write_text(
+                (
+                    "def add(a, b):\n"
+                    "    return a - b\n\n"
+                    "def render(value):\n"
+                    "    return f\"Value: {value}\"\n"
+                ),
+                encoding="utf-8",
+            )
+            git(repo, "add", "calculator.py")
+            subprocess.run(
+                [
+                    "git", "-C", str(repo),
+                    "-c", "user.name=Test",
+                    "-c", "user.email=test@local",
+                    "commit", "-m", "add render baseline",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            invalid_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": 'return "unterminated',
+                "summary": "Malformed initial candidate",
+            })
+
+            malformed_recovery = json.dumps({
+                "schema_version": "2.1",
+                "summary": "Fix addition while preserving render",
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    return a + b\n\n"
+                            "def render(value):\n"
+                            "    return f\"Value: }\"\n"
+                        ),
+                        "summary": (
+                            "Fix addition; malformed render line "
+                            "must be restored deterministically"
+                        ),
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    invalid_patch,
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    malformed_recovery,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            patch_text = (
+                run_dir / "Changes.patch"
+            ).read_text(encoding="utf-8")
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                developer[
+                    "deterministic_fstring_stabilized_paths"
+                ],
+                ["calculator.py"],
+            )
+            self.assertEqual(len(invoke.call_args_list), 4)
+            self.assertIn("return a + b", patch_text)
+            self.assertIn(
+                'return f"Value: {value}"',
+                developer["changes"][0]["new_text"],
+            )
+            self.assertNotIn(
+                'return f"Value: }"',
+                developer["changes"][0]["new_text"],
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_ai_developer_exhausted_syntax_recovery_returns_governed_failure(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
