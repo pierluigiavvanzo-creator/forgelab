@@ -206,11 +206,33 @@ class ModelRouter:
                     and "token repeat limit reached"
                     in str(previous_transient_error).lower()
                 ):
+                    reset_after_repeat_limit = getattr(
+                        provider,
+                        "reset_after_repeat_limit",
+                        None,
+                    )
+                    if callable(reset_after_repeat_limit):
+                        try:
+                            reset_after_repeat_limit(
+                                route.model,
+                                attempt_timeout_seconds,
+                            )
+                        except (
+                            ProviderTransientError,
+                            ProviderPermanentError,
+                        ):
+                            # The bounded generation retry is still
+                            # valuable even when the cache/model reset
+                            # control call cannot complete.
+                            pass
+
                     attempt_prompt = (
                         prompt.rstrip()
                         + "\n\nLOCAL PROVIDER RECOVERY:\n"
                         + "- The previous generation was aborted because "
                         "its output became repetitive.\n"
+                        + "- The local model state was reset before this "
+                        "retry when the provider supported it.\n"
                         + "- Produce one concise, non-repetitive answer.\n"
                         + "- Do not restate sections, duplicate JSON "
                         "objects, or repeat the same tokens.\n"
