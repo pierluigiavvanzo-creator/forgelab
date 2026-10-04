@@ -305,7 +305,7 @@ When syntax failure is caused by composing partial text fragments, retrying with
 ## D-015 — Previously passing tests are deterministic repair constraints
 
 **Date:** 2026-10-02
-**Status:** Proposed in PR #28; becomes Accepted only if PR #28 is explicitly approved and merged
+**Status:** Accepted — PR #28 merged 2026-10-02
 
 Evidence:
 
@@ -330,3 +330,36 @@ Decision candidate:
 Rationale:
 
 A prompt-level instruction is not a reliable safety/control boundary when a local model can ignore it. Previously passing deterministic behavior must be enforced by orchestration logic rather than model compliance alone.
+
+
+---
+
+## D-016 — Exhausted pre-write recovery is a governed terminal outcome
+
+**Date:** 2026-10-04
+**Status:** Proposed in PR #29; becomes Accepted only if PR #29 is explicitly approved and merged
+
+Evidence:
+
+A fresh Dental Quote run after PR #28 produced an invalid Python candidate. ForgeLab correctly attempted the single full-file syntax recovery, but that recovery also produced invalid Python. The second deterministic pre-write validation error escaped as `run execution failed`.
+
+Root cause:
+
+`PREWRITE_RECOVERY_EXHAUSTION_NOT_GOVERNED`
+
+Decision candidate:
+
+- preserve exactly one bounded pre-write correction;
+- if the corrected candidate still fails with a recoverable format/reference/syntax error, do not request another model attempt;
+- emit `PrewriteRecoveryFailure.json` with first error, final error, phase and confirmation that no repository write occurred;
+- emit explicit `prewrite_validation` evidence;
+- close the run through the normal state machine as `CLOSED / Repair required`;
+- still emit the normal terminal run artifacts;
+- emit no `Changes.patch` when no validated candidate was written;
+- apply the same exhaustion handling to initial implementation, test-failure repair and semantic-review repair;
+- semantic syntax recovery uses the same full-file recovery strategy as other syntax-recovery paths;
+- no repair-budget increase is introduced.
+
+Rationale:
+
+Exhausting a bounded recovery is an expected governed failure mode, not an exceptional runtime crash. The system must preserve evidence, source integrity and a clear human decision state even when the local model cannot produce a valid candidate.

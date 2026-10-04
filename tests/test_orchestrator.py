@@ -814,23 +814,59 @@ class MultiAgentTests(unittest.TestCase):
                 "forgelab.orchestrator.OllamaProvider.invoke",
                 side_effect=scripted,
             ) as invoke:
-                with self.assertRaises(ValueError):
-                    run_multi_agent(
-                        request(
-                            repo,
-                            objective="Fix addition",
-                            operation="ai_generate",
-                            old_text="",
-                            new_text="",
-                            max_repair_attempts=0,
-                            allowed_paths=(
-                                "calculator.py",
-                                "test_calculator.py",
-                            ),
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective="Fix addition",
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                        allowed_paths=(
+                            "calculator.py",
+                            "test_calculator.py",
                         ),
-                        root / "runs",
-                    )
+                    ),
+                    root / "runs",
+                )
 
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            failure = json.loads(
+                (
+                    run_dir
+                    / "PrewriteRecoveryFailure.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "CLOSED",
+            )
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertEqual(
+                failure["reason"],
+                "PREWRITE_RECOVERY_EXHAUSTED",
+            )
+            self.assertEqual(
+                failure["final_error_type"],
+                "AIDeveloperFormatError",
+            )
+            self.assertIn(
+                "changes overlap",
+                failure["final_error"],
+            )
+            self.assertFalse(
+                failure["repository_write_performed"]
+            )
             self.assertEqual(
                 len(invoke.call_args_list),
                 3,
@@ -1228,6 +1264,146 @@ class MultiAgentTests(unittest.TestCase):
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
                 "",
+            )
+
+
+    def test_ai_developer_exhausted_syntax_recovery_returns_governed_failure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            invalid_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": 'return "unterminated',
+                "summary": "Malformed Python candidate",
+            })
+
+            invalid_full_file = json.dumps({
+                "schema_version": "2.1",
+                "summary": "Still malformed Python",
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            '    return "still unterminated\n'
+                        ),
+                        "summary": "Malformed recovery",
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    invalid_patch,
+                    20,
+                    10,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    invalid_full_file,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            failure = json.loads(
+                (
+                    run_dir
+                    / "PrewriteRecoveryFailure.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(summary["status"], "CLOSED")
+            self.assertEqual(summary["tests"], "FAIL")
+            self.assertEqual(
+                summary["decision"],
+                "Repair required",
+            )
+            self.assertEqual(summary["repair_attempts"], 0)
+            self.assertEqual(
+                failure["reason"],
+                "PREWRITE_RECOVERY_EXHAUSTED",
+            )
+            self.assertEqual(
+                failure["phase"],
+                "implementation",
+            )
+            self.assertEqual(
+                failure["final_error_type"],
+                "AIDeveloperSyntaxError",
+            )
+            self.assertFalse(
+                failure["repository_write_performed"]
+            )
+            self.assertEqual(
+                [
+                    item["check_type"]
+                    for item in evidence["evidence"]
+                ],
+                ["prewrite_validation"],
+            )
+            self.assertEqual(review["status"], "FAIL")
+            self.assertEqual(usage["llm_calls"], 3)
+            self.assertEqual(len(invoke.call_args_list), 3)
+            self.assertFalse(
+                (run_dir / "Changes.patch").exists()
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+            self.assertIn(
+                "return a - b",
+                (repo / "calculator.py").read_text(
+                    encoding="utf-8"
+                ),
             )
 
 

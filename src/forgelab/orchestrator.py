@@ -1845,6 +1845,7 @@ Return ONLY the required structured JSON object.
     reference_repair_attempts = 0
     syntax_repair_attempts = 0
     prewrite_repair_attempts = 0
+    prewrite_recovery_context: dict[str, str] | None = None
     semantic_review_history: list[dict[str, Any]] = []
     source_unchanged = False
     final_test_passed = False
@@ -2146,6 +2147,11 @@ For Python files, return complete syntactically valid Python.
                 else:
                     prewrite_response_format = developer_schema
 
+                prewrite_recovery_context = {
+                    "phase": "implementation",
+                    "first_error": str(prewrite_error),
+                }
+
                 developer_response = ai_router.execute(
                     TaskClass.S2,
                     prewrite_repair_prompt,
@@ -2178,6 +2184,7 @@ For Python files, return complete syntactically valid Python.
                     generated_patch,
                     source_texts,
                 )
+                prewrite_recovery_context = None
 
             generated_changes = (
                 _ai_patch_changes(
@@ -3048,6 +3055,13 @@ For Python files, return complete syntactically valid Python.
                             )
                         )
 
+                    prewrite_recovery_context = {
+                        "phase": "test_failure_repair",
+                        "first_error": str(
+                            repair_prewrite_error
+                        ),
+                    }
+
                     repair_response = ai_router.execute(
                         TaskClass.S2,
                         repair_prewrite_prompt,
@@ -3080,6 +3094,7 @@ For Python files, return complete syntactically valid Python.
                         repair_patch,
                         repair_source_texts,
                     )
+                    prewrite_recovery_context = None
 
                 repair_payload_key = json.dumps(
                     repair_patch,
@@ -3642,15 +3657,26 @@ Rules:
 - do not modify dependencies or configuration.
 """
 
-                    semantic_reference_recovery = isinstance(
+                    semantic_full_file_recovery = isinstance(
                         semantic_prewrite_error,
-                        AIDeveloperReferenceError,
+                        (
+                            AIDeveloperReferenceError,
+                            AIDeveloperSyntaxError,
+                        ),
                     )
 
-                    if semantic_reference_recovery:
+                    if semantic_full_file_recovery:
+                        semantic_recovery_mode = (
+                            "REFERENCE RECOVERY MODE"
+                            if isinstance(
+                                semantic_prewrite_error,
+                                AIDeveloperReferenceError,
+                            )
+                            else "SYNTAX RECOVERY MODE"
+                        )
                         semantic_prewrite_prompt += f"""
 
-REFERENCE RECOVERY MODE:
+{semantic_recovery_mode}:
 Return COMPLETE replacement content for each file that must
 change. Do not return old_text snippets.
 
@@ -3668,6 +3694,7 @@ Required recovery schema:
 }}
 
 The current complete authorized files above are authoritative.
+For Python files, return complete syntactically valid Python.
 """
                         semantic_response_format = (
                             _ai_developer_full_file_response_schema(
@@ -3681,6 +3708,13 @@ The current complete authorized files above are authoritative.
                                 require_all_paths=False,
                             )
                         )
+
+                    prewrite_recovery_context = {
+                        "phase": "semantic_review_repair",
+                        "first_error": str(
+                            semantic_prewrite_error
+                        ),
+                    }
 
                     semantic_repair_response = (
                         ai_router.execute(
@@ -3700,7 +3734,7 @@ The current complete authorized files above are authoritative.
                         )
                     )
 
-                    if semantic_reference_recovery:
+                    if semantic_full_file_recovery:
                         semantic_repair_patch = (
                             _validate_ai_developer_full_file_patch(
                                 semantic_repair_response.text,
@@ -3722,6 +3756,7 @@ The current complete authorized files above are authoritative.
                         semantic_repair_patch,
                         semantic_repair_source_texts,
                     )
+                    prewrite_recovery_context = None
 
                 semantic_repair_payload_key = (
                     json.dumps(
@@ -3986,6 +4021,75 @@ The current complete authorized files above are authoritative.
                     machine.transition(
                         RunStatus.READY_FOR_DECISION
                     )
+    except (
+        AIDeveloperFormatError,
+        AIDeveloperReferenceError,
+        AIDeveloperSyntaxError,
+    ) as exhausted_prewrite_error:
+        failure_context = (
+            prewrite_recovery_context
+            or {
+                "phase": machine.status.value,
+                "first_error": "",
+            }
+        )
+        failure_artifact = {
+            "run_id": run_id,
+            "status": "FAIL",
+            "reason": "PREWRITE_RECOVERY_EXHAUSTED",
+            "phase": failure_context["phase"],
+            "first_error": failure_context["first_error"],
+            "final_error_type": type(
+                exhausted_prewrite_error
+            ).__name__,
+            "final_error": str(
+                exhausted_prewrite_error
+            ),
+            "prewrite_repair_attempts": 1,
+            "repository_write_performed": False,
+        }
+        store.write_optional_json(
+            "PrewriteRecoveryFailure.json",
+            failure_artifact,
+        )
+        evidence.append({
+            "evidence_id":
+                "ev-prewrite-recovery-exhausted",
+            "check_type":
+                "prewrite_validation",
+            "command_or_tool":
+                "ai_generate+deterministic_prewrite_validation",
+            "exit_status":
+                1,
+            "summary":
+                (
+                    "Bounded pre-write recovery exhausted: "
+                    + str(exhausted_prewrite_error)
+                ),
+            "artifact_ref":
+                "PrewriteRecoveryFailure.json",
+            "phase":
+                failure_context["phase"],
+        })
+        results.append(
+            AgentResult(
+                ResultStatus.FAIL,
+                (
+                    "Bounded pre-write recovery exhausted "
+                    "without repository write"
+                ),
+                [],
+                ["ev-prewrite-recovery-exhausted"],
+                [],
+                [],
+                "Human repair required",
+            ).to_dict()
+        )
+
+        if machine.status != RunStatus.CLOSED:
+            machine.transition(
+                RunStatus.CLOSED
+            )
     finally:
         source_unchanged = workspace.verify_source_unchanged() if workspace.base_head else False
         workspace.close()
