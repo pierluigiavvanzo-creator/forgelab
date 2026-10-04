@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-04
-**Checkpoint:** PR #29 locally TESTED / explicit merge approval pending
+**Checkpoint:** PR #30 locally TESTED / explicit merge approval pending
 **Status:** PRE-MVP / Golden Path 1 blocker remediation
 
 ## 1. Strategic operating model
@@ -34,21 +34,21 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #29:
+Current canonical `main` before PR #30:
 
-`718af139078537a29bbb93ed06089f52162f526a` (merge of PR #28)
+`02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14` (merge of PR #29)
 
 Current remediation branch:
 
-`mvp1-govern-prewrite-recovery-exhaustion`
+`mvp1-semantic-repair-test-correction`
 
 PR:
 
-`#29 — MVP-1: govern exhausted prewrite recovery`
+`#30 — MVP-1: recover failed semantic repair tests within attempt`
 
 Runtime/test candidate validated locally:
 
-`ed6d0587173fc6fce4ed78e717d78275b938387a`
+`8ca4bdbc744bdebaed004491cd6bd52acc4b90b6`
 
 ## 3. Product Owner contract
 
@@ -402,7 +402,49 @@ Reuse status:
 
 `ADAPT -> INTEGRATED CANDIDATE`
 
-## 22. Validation evidence
+## 22. Golden Path rerun after PR #29
+
+Run:
+
+`run-81f814fa23f5`
+
+Observed:
+
+- PR #29 eliminated the uncaught pre-write lifecycle crash;
+- initial deterministic tests passed 5 / 5;
+- independent semantic review correctly blocked the incomplete exact three-treatment workflow;
+- one semantic-review repair was applied;
+- the repair added a direct treatment-validation test;
+- deterministic retest failed because the expected `ValueError` was not raised;
+- the run stopped in DIAGNOSING with `repair_attempts=1`;
+- `Changes.patch` remained stale relative to the semantic repair candidate;
+- Reviewer overall FAIL was correct, but its wording understated partial existing treatment/subtotal/final-total implementation.
+
+Current blocker:
+
+`SEMANTIC_REPAIR_TEST_FAILURE_HAS_NO_IN_ATTEMPT_RECOVERY`
+
+## 23. PR #30 remediation
+
+PR #30:
+
+- preserves `max repair attempts = 1`;
+- allows one deterministic test correction inside the same semantic-review repair attempt;
+- supplies the correction with objective, PM contract, semantic findings, before/after test evidence, and complete current authorized files;
+- uses full-file replacement for only the authorized subset;
+- validates scope and syntax before write;
+- reruns tests after correction;
+- re-enters semantic review only after tests pass;
+- safely blocks if correction is invalid or retest still fails;
+- records `semantic_test_correction_attempts = 1` separately;
+- refreshes `Changes.patch` after semantic repair and after correction;
+- adds no agent, provider, dependency, infrastructure, or top-level repair-budget increase.
+
+Reuse status:
+
+`ADAPT -> INTEGRATED CANDIDATE`
+
+## 24. Validation evidence
 
 Product Owner local validation reached:
 
@@ -427,11 +469,12 @@ Current evidence classification:
 - PR #26: **MERGED** at `97f25bdb358adaa050735d463000495bafcf0b85`
 - PR #27: **MERGED** governance-only update to `AGENTS_MASTER.md`; canonical main advanced to `a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
 - PR #28: **MERGED** at `718af139078537a29bbb93ed06089f52162f526a`
-- PR #29 runtime/test code: **TESTED locally** at `ed6d0587173fc6fce4ed78e717d78275b938387a`
-- PR #29: **NOT MERGED**
-- Dental Quote after PR #29: **NOT YET REAL-WORKFLOW VALIDATED**
+- PR #29: **MERGED** at `02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14`
+- PR #30 runtime/test code: **TESTED locally** at `8ca4bdbc744bdebaed004491cd6bd52acc4b90b6`
+- PR #30: **NOT MERGED**
+- Dental Quote after PR #30: **NOT YET REAL-WORKFLOW VALIDATED**
 
-## 23. Out of scope until Dental Quote PASS
+## 25. Out of scope until Dental Quote PASS
 
 Do not prioritize:
 
@@ -447,7 +490,7 @@ Do not prioritize:
 
 Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
-## 24. Generality proof after Dental Quote PASS
+## 26. Generality proof after Dental Quote PASS
 
 1. Dental Quote — calculator/business logic.
 2. Small CRUD SaaS — records/users/workflow.
@@ -455,15 +498,15 @@ Only a concrete Golden Path blocker may justify additional ForgeLab development.
 
 Do not begin #2 or #3 until #1 passes.
 
-## 25. Current gate
+## 27. Current gate
 
-PR #29 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #30 is locally TESTED and awaits explicit Product Owner merge approval.
 
 Do not merge, force-update, rebase or promote without explicit approval.
 
-## 26. Single next action
+## 28. Single next action
 
-Obtain explicit Product Owner approval for PR #29 merge.
+Obtain explicit Product Owner approval for PR #30 merge.
 
 After approved merge:
 
