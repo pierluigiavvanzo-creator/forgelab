@@ -143,6 +143,46 @@ class OllamaProviderTests(unittest.TestCase):
         )
 
     @patch("forgelab.ollama_provider.urlopen")
+    def test_repeat_limit_reset_unloads_local_model(
+        self,
+        mocked,
+    ):
+        mocked.return_value = FakeResponse({
+            "model": "qwen2.5-coder:7b",
+            "response": "",
+            "done": True,
+            "done_reason": "unload",
+        })
+
+        OllamaProvider().reset_after_repeat_limit(
+            "qwen2.5-coder:7b",
+            180,
+        )
+
+        request = mocked.call_args.args[0]
+        payload = json.loads(
+            request.data.decode("utf-8")
+        )
+
+        self.assertEqual(
+            request.full_url,
+            "http://127.0.0.1:11434/api/generate",
+        )
+        self.assertEqual(
+            payload,
+            {
+                "model": "qwen2.5-coder:7b",
+                "prompt": "",
+                "stream": False,
+                "keep_alive": 0,
+            },
+        )
+        self.assertEqual(
+            mocked.call_args.kwargs["timeout"],
+            180,
+        )
+
+    @patch("forgelab.ollama_provider.urlopen")
     def test_connection_failure_is_transient(
         self,
         mocked,
