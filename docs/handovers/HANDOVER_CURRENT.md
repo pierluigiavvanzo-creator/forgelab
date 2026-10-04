@@ -629,7 +629,7 @@ Current evidence classification:
 - PR #32: **MERGED** at `fb3188890573e484640b7a4c667c3f4703218685`
 - PR #33: **MERGED** at `dd027196182da4701dafc035806acffd194f125b`
 - PR #34 runtime/test code: **TESTED locally** at `64ce31f1310b73076da74766c93968125c7ea3d7`
-- PR #34: **NOT MERGED**
+- PR #34: **MERGED** at `5f83844a36063722c2979dae19576d57c0f06c5a`
 - Dental Quote after PR #34: **NOT YET REAL-WORKFLOW VALIDATED**
 
 ## 33. Out of scope until Dental Quote PASS
@@ -658,18 +658,16 @@ Do not begin #2 or #3 until #1 passes.
 
 ## 35. Current gate
 
-PR #34 is locally TESTED and awaits explicit Product Owner merge approval.
+PR #34 is merged to canonical `main` at `5f83844a36063722c2979dae19576d57c0f06c5a`.
 
-Do not merge, force-update, rebase or promote without explicit approval.
+No additional infrastructure milestone is authorized by current evidence.
 
 ## 36. Single next action
 
-Obtain explicit Product Owner approval for PR #34 merge.
+`FORGELAB_MVP_1_REAL_APPLICATION_TEST`
 
-After approved merge:
-
-1. verify exact merged HEAD on `main`;
-2. align local ForgeLab checkout;
-3. rerun the same unchanged Dental Quote objective;
-4. evaluate the real output through deterministic tests and independent semantic review;
-5. only after Dental Quote PASS proceed to Golden Path 2.
+1. align the local ForgeLab checkout to canonical `main` `5f83844a36063722c2979dae19576d57c0f06c5a`;
+2. rerun the same unchanged Dental Quote objective;
+3. evaluate deterministic tests, independent semantic review and provider-recovery evidence;
+4. if the objective passes, proceed to Product Owner decision/promotion and then Golden Path 2;
+5. if it fails, identify the single concrete blocker and make only the smallest safe correction.
