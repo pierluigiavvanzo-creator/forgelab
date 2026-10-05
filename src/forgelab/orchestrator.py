@@ -4407,6 +4407,20 @@ Return ONLY the required JSON object.
                     test.stderr
                 )
 
+                semantic_repair_schema = """
+{
+  "schema_version": "2.1",
+  "summary": "<short overall semantic-repair summary>",
+  "files": [
+    {
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }
+  ]
+}
+"""
+
                 semantic_repair_prompt = f"""
 You are the DEVELOPER agent in ForgeLab.
 
@@ -4438,6 +4452,9 @@ and supported by the Product Owner objective.
 FULL-FILE SEMANTIC REPAIR MODE:
 Return COMPLETE replacement content only for each authorized file
 that actually needs to change. Do not return old_text snippets.
+
+Required response schema:
+{semantic_repair_schema}
 
 Rules:
 - every returned path MUST stay inside the ORIGINAL authorized path set;
@@ -4486,6 +4503,7 @@ Return ONLY the required structured JSON object.
                 )
 
                 semantic_prewrite_attempts = 0
+                semantic_repair_stabilized_paths: list[str] = []
 
                 try:
                     semantic_repair_patch = (
@@ -4606,6 +4624,13 @@ For Python files, return complete syntactically valid Python.
                         )
                     )
 
+                    semantic_repair_stabilized_paths = (
+                        _stabilize_malformed_python_fstrings_from_source(
+                            semantic_repair_patch,
+                            semantic_repair_source_texts,
+                        )
+                    )
+
                     _validate_ai_developer_candidate_syntax(
                         semantic_repair_patch,
                         semantic_repair_source_texts,
@@ -4718,6 +4743,12 @@ For Python files, return complete syntactically valid Python.
                         semantic_repair_patch,
                     "prewrite_repair_attempts":
                         semantic_prewrite_attempts,
+                    "deterministic_fstring_stabilized_paths":
+                        (
+                            semantic_repair_stabilized_paths
+                            if semantic_prewrite_attempts
+                            else []
+                        ),
                     "applied_by":
                         "deterministic_tool_gateway",
                 })
