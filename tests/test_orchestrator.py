@@ -2567,6 +2567,18 @@ class MultiAgentTests(unittest.TestCase):
                 "FULL-FILE SEMANTIC REPAIR MODE",
                 semantic_repair_prompt,
             )
+            self.assertIn(
+                "Required response schema:",
+                semantic_repair_prompt,
+            )
+            self.assertIn(
+                '"schema_version": "2.1"',
+                semantic_repair_prompt,
+            )
+            self.assertIn(
+                '"files": [',
+                semantic_repair_prompt,
+            )
             self.assertEqual(
                 invoke.call_args_list[3].args[3]
                 ["properties"]["schema_version"]["enum"],
@@ -2590,6 +2602,215 @@ class MultiAgentTests(unittest.TestCase):
                 second_reviewer_prompt,
             )
 
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
+    def test_semantic_repair_prewrite_recovery_stabilizes_fstring(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            (repo / "calculator.py").write_text(
+                (
+                    "def add(a, b):\n"
+                    "    return a - b\n\n"
+                    "def render(value):\n"
+                    "    return f\"Value: {value}\"\n"
+                ),
+                encoding="utf-8",
+            )
+            git(repo, "add", "calculator.py")
+            subprocess.run(
+                [
+                    "git", "-C", str(repo),
+                    "-c", "user.name=Test",
+                    "-c", "user.email=test@local",
+                    "commit", "-m", "add semantic render baseline",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            initial_patch = json.dumps({
+                "schema_version": "1.0",
+                "path": "calculator.py",
+                "old_text": "return a - b",
+                "new_text": "return a + b",
+                "summary": "Fix addition only",
+            })
+
+            malformed_semantic_repair = json.dumps({
+                "unexpected": "json mode lost the full-file schema",
+            })
+
+            corrected_semantic_recovery = json.dumps({
+                "schema_version": "2.1",
+                "summary": (
+                    "Add None validation while preserving render"
+                ),
+                "files": [
+                    {
+                        "path": "calculator.py",
+                        "new_text": (
+                            "def add(a, b):\n"
+                            "    if a is None or b is None:\n"
+                            "        raise ValueError("
+                            "\"inputs are required\""
+                            ")\n"
+                            "    return a + b\n\n"
+                            "def render(value):\n"
+                            "    return f\"Value: }\"\n"
+                        ),
+                        "summary": (
+                            "Add None validation; malformed render "
+                            "must be stabilized from current source"
+                        ),
+                    }
+                ],
+            })
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan([
+                        "Fix addition.",
+                        "Reject None inputs.",
+                    ]),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    initial_patch,
+                    30,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_fail(
+                        "Reject None inputs",
+                        (
+                            "Addition is fixed but None validation "
+                            "is still missing."
+                        ),
+                    ),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    malformed_semantic_repair,
+                    35,
+                    20,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    corrected_semantic_recovery,
+                    45,
+                    30,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    25,
+                    15,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ) as invoke:
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix addition and reject None inputs."
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(summary["repair_attempts"], 1)
+            self.assertEqual(review["status"], "PASS")
+            self.assertEqual(review["review_round"], 1)
+            self.assertFalse(
+                (run_dir / "PrewriteRecoveryFailure.json").exists()
+            )
+            self.assertEqual(
+                [
+                    item["exit_status"]
+                    for item in evidence["evidence"]
+                    if item["check_type"] == "tests"
+                ],
+                [0, 0],
+            )
+
+            repair = developer["repair_attempts"][0]
+            self.assertEqual(repair["cause"], "semantic_review")
+            self.assertEqual(
+                repair["prewrite_repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                repair[
+                    "deterministic_fstring_stabilized_paths"
+                ],
+                ["calculator.py"],
+            )
+            self.assertIn(
+                'return f"Value: {value}"',
+                repair["patch"]["changes"][0]["new_text"],
+            )
+            self.assertNotIn(
+                'return f"Value: }"',
+                repair["patch"]["changes"][0]["new_text"],
+            )
+
+            semantic_repair_prompt = (
+                invoke.call_args_list[3].args[1]
+            )
+            self.assertIn(
+                "Required response schema:",
+                semantic_repair_prompt,
+            )
+            self.assertIn(
+                '"schema_version": "2.1"',
+                semantic_repair_prompt,
+            )
+            self.assertEqual(len(invoke.call_args_list), 6)
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
                 "",
