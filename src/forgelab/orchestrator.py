@@ -1429,6 +1429,45 @@ def _fstring_statement_prefix(line: str) -> str | None:
     return "".join(line[:match.start()].split())
 
 
+def _normalize_fstring_subscript_quotes(
+    line: str,
+) -> str:
+    match = re.search(
+        r"(?<![A-Za-z0-9_])(?:[fF][rR]?|[rR][fF])(['\"])",
+        line,
+    )
+    if match is None:
+        return line
+
+    outer_quote = match.group(1)
+
+    def normalize_expression(
+        expression_match: re.Match[str],
+    ) -> str:
+        expression = expression_match.group(1)
+
+        if outer_quote == '"':
+            expression = re.sub(
+                r'\[\\?"([^"\\]+)\\?"\]',
+                r"['\1']",
+                expression,
+            )
+        else:
+            expression = re.sub(
+                r"\[\\?'([^'\\]+)\\?'\]",
+                r'["\1"]',
+                expression,
+            )
+
+        return "{" + expression + "}"
+
+    return re.sub(
+        r"\{([^{}]*)\}",
+        normalize_expression,
+        line,
+    )
+
+
 def _stabilize_malformed_python_fstrings_from_source(
     payload: dict[str, Any],
     source_texts: dict[str, str],
@@ -1487,10 +1526,22 @@ def _stabilize_malformed_python_fstrings_from_source(
                     ) == prefix
                 ]
 
-                if len(matches) != 1:
+                if len(matches) == 1:
+                    candidate_lines[index] = matches[0]
+                    candidate = "".join(candidate_lines)
+                    changed = True
+                    continue
+
+                normalized_line = (
+                    _normalize_fstring_subscript_quotes(
+                        candidate_lines[index]
+                    )
+                )
+
+                if normalized_line == candidate_lines[index]:
                     break
 
-                candidate_lines[index] = matches[0]
+                candidate_lines[index] = normalized_line
                 candidate = "".join(candidate_lines)
                 changed = True
 
