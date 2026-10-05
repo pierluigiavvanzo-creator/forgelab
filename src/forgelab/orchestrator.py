@@ -4407,6 +4407,20 @@ Return ONLY the required JSON object.
                     test.stderr
                 )
 
+                semantic_repair_schema = """
+{
+  "schema_version": "2.1",
+  "summary": "<short overall semantic-repair summary>",
+  "files": [
+    {
+      "path": "<one authorized path>",
+      "new_text": "<COMPLETE replacement file content>",
+      "summary": "<short per-file summary>"
+    }
+  ]
+}
+"""
+
                 semantic_repair_prompt = f"""
 You are the DEVELOPER agent in ForgeLab.
 
@@ -4440,17 +4454,7 @@ Return COMPLETE replacement content only for each authorized file
 that actually needs to change. Do not return old_text snippets.
 
 Required response schema:
-{
-  "schema_version": "2.1",
-  "summary": "<short overall semantic-repair summary>",
-  "files": [
-    {
-      "path": "<one authorized path>",
-      "new_text": "<COMPLETE replacement file content>",
-      "summary": "<short per-file summary>"
-    }
-  ]
-}
+{semantic_repair_schema}
 
 Rules:
 - every returned path MUST stay inside the ORIGINAL authorized path set;
