@@ -501,7 +501,7 @@ The semantic repair already has complete current authorized files available. Gen
 ## D-021 — Reset local Ollama model state before the existing repeat-limit retry
 
 **Date:** 2026-10-04
-**Status:** Proposed in PR #34; becomes Accepted only if PR #34 is explicitly approved and merged
+**Status:** Accepted — PR #34 merged 2026-10-04 at `5f83844a36063722c2979dae19576d57c0f06c5a`
 
 Evidence:
 
@@ -526,3 +526,45 @@ Decision candidate:
 Rationale:
 
 The provider already exposes a local unload/reset capability. Reusing that capability before the same authorized retry is lower-cost and more bounded than adding retries, paid fallback, or new infrastructure, while targeting the observed repeat-limit failure mode directly.
+
+
+---
+
+## D-022 — MVP recovery architecture reset and reusable editor boundary
+
+**Date:** 2026-10-05
+**Status:** Proposed — architecture audit candidate
+
+Evidence:
+
+After PR #34, Dental Quote debugging continued through a long stacked runtime chain (#37–#48). The chain improved governed failure handling, but repeated real runs continued to fail on custom LLM edit-contract behavior: exact-source references, structured schema adherence, full-file regeneration, Python quoting/f-strings and related pre-write recovery cases.
+
+At the same time:
+
+- Product Owner manual PowerShell touches increased;
+- canonical `main` remained behind the active runtime experiments;
+- `orchestrator.py` accumulated hundreds of additional lines of recovery logic;
+- the dashboard, despite already supporting real API run/create/repair/decision flows, was bypassed during ordinary MVP validation;
+- repository-first benchmarking had not been completed for the narrow code-editing engine problem.
+
+Root cause:
+
+`CUSTOM_LLM_EDIT_PROTOCOL_IS_BECOMING_THE_PRODUCT_BOTTLENECK`
+
+Decision candidate:
+
+- freeze runtime PRs #37–#48 and stop extending their special-case recovery chain;
+- keep ForgeLab as the control plane;
+- preserve dashboard, API, planner acceptance contract, isolated workspace, ToolGateway, deterministic tests, Reviewer, Security, usage evidence and human promotion gate;
+- introduce an explicit `EditorAdapter` boundary;
+- benchmark Aider as the first reusable code-editing engine through a bounded CLI adapter;
+- run the external editor in a restricted editor sandbox and preserve ToolGateway as the authoritative apply boundary;
+- compare the current editor and Aider using the same Dental Quote baseline, objective, local model, tests, Reviewer and repair cap;
+- do not change the model in phase 1 so the experiment isolates the editor engine;
+- do not add a paid API without explicit Product Owner approval;
+- after the bakeoff, rebuild only the generally necessary runtime behavior on a fresh branch from canonical `main`;
+- restore dashboard-first Golden Path validation before declaring MVP progress.
+
+Rationale:
+
+ForgeLab's differentiating asset is governed software production, not custom parsing of every possible malformed model edit. Reusing a mature editor engine behind a narrow adapter can reduce model-output fragility while retaining ForgeLab's governance and lowering Product Owner time.

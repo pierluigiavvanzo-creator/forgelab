@@ -1,8 +1,8 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-10-04
-**Current phase:** PRE-MVP / Software Factory Golden Path validation
-**Current priority:** A — Product Critical
+**Last updated:** 2026-10-05
+**Current phase:** PRE-MVP / MVP Recovery Architecture Reset
+**Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
 ## Canonical source
@@ -11,9 +11,62 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` before PR #34: `dd027196182da4701dafc035806acffd194f125b` (merge of PR #33).
+Current canonical `main`: `5f83844a36063722c2979dae19576d57c0f06c5a` (merge of PR #34).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
+
+## 2026-10-05 MVP recovery architecture reset
+
+Status:
+
+`RUNTIME STACK FROZEN / REUSE-FIRST EDITOR BAKEOFF REQUIRED`
+
+Audit:
+
+`docs/audits/FORGELAB_MVP_RECOVERY_ARCHITECTURE_AUDIT_2026-10-05.md`
+
+ADR candidate:
+
+`docs/decisions/ADR-002-editor-adapter-boundary.md`
+
+Key findings:
+
+- dashboard/API are real and already support run creation, artifact loading, repair and decisions;
+- the recent PowerShell workflow was a developer diagnostic path, not the intended Product Owner experience;
+- repeated Product Owner PowerShell reruns violate the autonomy/usability contract;
+- runtime PRs #37–#48 are frozen pending architecture reset;
+- custom Developer edit/recovery logic has become the dominant instability source;
+- `orchestrator.py` concentration and the stacked PR chain create maintainability and source-of-truth risk;
+- the next build step is not PR #49-style recovery logic, but an `EditorAdapter` bakeoff.
+
+Reuse decision:
+
+- Aider: `BENCHMARKED -> ADOPTED FOR BOUNDED EXPERIMENT`;
+- OpenHands SDK: `BENCHMARKED -> REJECTED FOR CURRENT NARROW EDITOR SWAP`;
+- Cline: `BENCHMARKED -> REJECTED FOR CURRENT NARROW EDITOR SWAP`;
+- Continue: `BENCHMARKED -> REJECTED` because its current README declares the repository no longer actively maintained.
+
+Immediate technical objective:
+
+`EDITOR_ENGINE_BAKEOFF_01`
+
+Compare:
+
+A. merged-main custom ForgeLab editor;  
+B. Aider CLI editor adapter in a restricted editor sandbox.
+
+Hold constant:
+
+- Dental Quote baseline/objective;
+- `qwen2.5-coder:7b`;
+- Planner acceptance contract;
+- authorized files;
+- deterministic tests;
+- Reviewer/Security;
+- repair cap;
+- EUR 0 provider cost.
+
+No further Product Owner PowerShell rerun is requested until the adapter/bakeoff harness is ready and the normal validation path is restored to the dashboard.
 
 ## Product direction
 
