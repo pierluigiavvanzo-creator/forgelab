@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main`: `5f83844a36063722c2979dae19576d57c0f06c5a` (merge of PR #34).
+Current canonical `main`: `8b67b98c61d6bd90af839d1cad185f05454a2e66` (merge of PR #49 architecture reset).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / REUSE-FIRST EDITOR BAKEOFF REQUIRED`
+`RUNTIME STACK FROZEN / EDITOR BAKEOFF HARNESS READY FOR HUMAN MERGE REVIEW`
 
 Audit:
 
@@ -48,7 +48,7 @@ Reuse decision:
 
 Immediate technical objective:
 
-`EDITOR_ENGINE_BAKEOFF_01`
+`EDITOR_ENGINE_BAKEOFF_01` — harness implemented and focused boundary verification PASS
 
 Compare:
 
@@ -66,7 +66,7 @@ Hold constant:
 - repair cap;
 - EUR 0 provider cost.
 
-No further Product Owner PowerShell rerun is requested until the adapter/bakeoff harness is ready and the normal validation path is restored to the dashboard.
+The adapter/bakeoff harness is now implemented without changing the normal Golden Path. Focused verification: 10/10 tests PASS; editor adapter, bakeoff evaluator and CLI syntax compile PASS. No Product Owner PowerShell rerun is requested.
 
 ## Product direction
 
@@ -806,7 +806,7 @@ Validation evidence:
 
 Evidence state:
 
-**PR #34 runtime/test code is TESTED locally; PR #34 is NOT MERGED; Dental Quote has NOT yet been rerun after PR #34.**
+**PR #34 was merged on 2026-10-04; PR #49 subsequently merged the architecture reset on 2026-10-05. Post-PR34 runtime PRs #37–#48 remain frozen and unmerged.**
 
 ## MVP gates
 
@@ -818,6 +818,8 @@ Evidence state:
 
 ## Single next action
 
-Review PR #34 and obtain explicit Product Owner approval before merge.
+`HUMAN_REVIEW_EDITOR_ADAPTER_BAKEOFF_HARNESS`
 
-After approved merge, rerun the **same unchanged Dental Quote Golden Path** with the same bounded repair budget. Do not start CRUD/reporting validation until Dental Quote passes.
+The candidate implements only the isolated editor boundary and deterministic bakeoff harness. It does not integrate Aider into the production Golden Path and does not add Aider as a ForgeLab runtime dependency.
+
+After explicit merge approval, the next development phase is the real bounded Aider/Ollama boundary experiment. No Product Owner PowerShell debug loop is authorized.
