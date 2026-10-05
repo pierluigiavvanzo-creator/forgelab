@@ -1453,6 +1453,26 @@ def _python_enclosing_scope(
     return None
 
 
+def _string_statement_prefix(
+    line: str,
+) -> str | None:
+    match = re.search(
+        r"(?<!\\)(['\"])",
+        line,
+    )
+    if match is None:
+        return None
+
+    prefix = line[:match.start()]
+    prefix = re.sub(
+        r"(?i)(?:[rubf]{1,3})$",
+        "",
+        prefix,
+    )
+    normalized = "".join(prefix.split())
+    return normalized or None
+
+
 def _normalize_fstring_subscript_quotes(
     line: str,
 ) -> str:
@@ -1492,7 +1512,7 @@ def _normalize_fstring_subscript_quotes(
     )
 
 
-def _stabilize_malformed_python_fstrings_from_source(
+def _stabilize_malformed_python_strings_from_source(
     payload: dict[str, Any],
     source_texts: dict[str, str],
 ) -> list[str]:
@@ -1511,7 +1531,7 @@ def _stabilize_malformed_python_fstrings_from_source(
         candidate = change["new_text"]
         changed = False
 
-        for _ in range(4):
+        for _ in range(6):
             try:
                 ast.parse(
                     candidate.lstrip("\ufeff"),
@@ -1519,10 +1539,7 @@ def _stabilize_malformed_python_fstrings_from_source(
                 )
                 break
             except SyntaxError as error:
-                if (
-                    error.lineno is None
-                    or "f-string" not in error.msg.lower()
-                ):
+                if error.lineno is None:
                     break
 
                 candidate_lines = candidate.splitlines(
@@ -1536,49 +1553,85 @@ def _stabilize_malformed_python_fstrings_from_source(
                 if not 0 <= index < len(candidate_lines):
                     break
 
-                prefix = _fstring_statement_prefix(
-                    candidate_lines[index]
-                )
-                if prefix is None:
-                    break
-
+                error_message = error.msg.lower()
                 candidate_scope = _python_enclosing_scope(
                     candidate_lines,
                     index,
                 )
-                matches = [
-                    source_line
-                    for source_index, source_line
-                    in enumerate(source_lines)
-                    if (
-                        _fstring_statement_prefix(
-                            source_line
-                        ) == prefix
-                        and _python_enclosing_scope(
-                            source_lines,
-                            source_index,
-                        ) == candidate_scope
-                    )
-                ]
 
-                if len(matches) == 1:
+                if "f-string" in error_message:
+                    prefix = _fstring_statement_prefix(
+                        candidate_lines[index]
+                    )
+                    if prefix is None:
+                        break
+
+                    matches = [
+                        source_line
+                        for source_index, source_line
+                        in enumerate(source_lines)
+                        if (
+                            _fstring_statement_prefix(
+                                source_line
+                            ) == prefix
+                            and _python_enclosing_scope(
+                                source_lines,
+                                source_index,
+                            ) == candidate_scope
+                        )
+                    ]
+
+                    if len(matches) == 1:
+                        candidate_lines[index] = matches[0]
+                        candidate = "".join(candidate_lines)
+                        changed = True
+                        continue
+
+                    normalized_line = (
+                        _normalize_fstring_subscript_quotes(
+                            candidate_lines[index]
+                        )
+                    )
+
+                    if normalized_line == candidate_lines[index]:
+                        break
+
+                    candidate_lines[index] = normalized_line
+                    candidate = "".join(candidate_lines)
+                    changed = True
+                    continue
+
+                if "unterminated string literal" in error_message:
+                    prefix = _string_statement_prefix(
+                        candidate_lines[index]
+                    )
+                    if prefix is None:
+                        break
+
+                    matches = [
+                        source_line
+                        for source_index, source_line
+                        in enumerate(source_lines)
+                        if (
+                            _string_statement_prefix(
+                                source_line
+                            ) == prefix
+                            and _python_enclosing_scope(
+                                source_lines,
+                                source_index,
+                            ) == candidate_scope
+                        )
+                    ]
+
+                    if len(matches) != 1:
+                        break
+
                     candidate_lines[index] = matches[0]
                     candidate = "".join(candidate_lines)
                     changed = True
                     continue
 
-                normalized_line = (
-                    _normalize_fstring_subscript_quotes(
-                        candidate_lines[index]
-                    )
-                )
-
-                if normalized_line == candidate_lines[index]:
-                    break
-
-                candidate_lines[index] = normalized_line
-                candidate = "".join(candidate_lines)
-                changed = True
+                break
 
         if changed and candidate != source:
             change["new_text"] = candidate
@@ -2678,7 +2731,7 @@ Rules:
                         )
                     )
                     deterministic_fstring_stabilized_paths = (
-                        _stabilize_malformed_python_fstrings_from_source(
+                        _stabilize_malformed_python_strings_from_source(
                             generated_patch,
                             source_texts,
                         )
@@ -4711,7 +4764,7 @@ For Python files, return complete syntactically valid Python.
                     )
 
                     semantic_repair_stabilized_paths = (
-                        _stabilize_malformed_python_fstrings_from_source(
+                        _stabilize_malformed_python_strings_from_source(
                             semantic_repair_patch,
                             semantic_repair_source_texts,
                         )
