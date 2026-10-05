@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from forgelab.editor_adapter import (
@@ -10,6 +11,7 @@ from forgelab.editor_adapter import (
     AiderCliConfig,
     EditorAdapterError,
     EditorRequest,
+    _sandbox_environment,
 )
 
 
@@ -181,6 +183,55 @@ class EditorAdapterTests(unittest.TestCase):
                 ),
                 "CONTEXT = 1\n",
             )
+
+    def test_sandbox_environment_strips_paid_provider_keys(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.dict(
+                "os.environ",
+                {
+                    "OPENAI_API_KEY": "should-not-pass",
+                    "ANTHROPIC_API_KEY": "should-not-pass",
+                    "PATH": "keep-me",
+                    "AIDER_MODEL": "ignore-user-config",
+                },
+                clear=True,
+            ):
+                environment = _sandbox_environment(Path(folder))
+
+            self.assertNotIn("OPENAI_API_KEY", environment)
+            self.assertNotIn("ANTHROPIC_API_KEY", environment)
+            self.assertNotIn("AIDER_MODEL", environment)
+            self.assertEqual(environment["PATH"], "keep-me")
+            self.assertEqual(environment["AIDER_ANALYTICS"], "0")
+
+    def test_aider_rejects_new_source_file_creation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+            fake = root / "fake_aider.py"
+            fake.write_text(
+                (
+                    "from pathlib import Path\n"
+                    "Path('outside.py').write_text('VALUE = 2\\n', encoding='utf-8')\n"
+                ),
+                encoding="utf-8",
+            )
+            adapter = AiderCliAdapter(AiderCliConfig(
+                executable=(sys.executable, str(fake))
+            ))
+
+            with self.assertRaisesRegex(EditorAdapterError, "created files"):
+                adapter.run(EditorRequest(
+                    repository=repo,
+                    objective="Change VALUE.",
+                    allowed_paths=("app.py",),
+                    timeout_seconds=30,
+                ))
+
+            self.assertFalse((repo / "outside.py").exists())
 
     def test_aider_rejects_scope_escape(self):
         with tempfile.TemporaryDirectory() as folder:
