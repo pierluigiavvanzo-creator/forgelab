@@ -1330,7 +1330,9 @@ class MultiAgentTests(unittest.TestCase):
                             "def add(a, b):\n"
                             "    return a + b\n\n"
                             "def render(value):\n"
-                            "    return f\"Value: }\"\n"
+                            "    return f\"Value: }\"\n\n"
+                            "def render_total(data):\n"
+                            "    return f\"Total: {data[\\\"total\\\"]:.2f}\"\n"
                         ),
                         "summary": (
                             "Fix addition; malformed render line "
@@ -2796,6 +2798,14 @@ class MultiAgentTests(unittest.TestCase):
             )
             self.assertNotIn(
                 'return f"Value: }"',
+                repair["patch"]["changes"][0]["new_text"],
+            )
+            self.assertIn(
+                'return f"Total: {data[\'total\']:.2f}"',
+                repair["patch"]["changes"][0]["new_text"],
+            )
+            self.assertNotIn(
+                'data[\\\"total\\\"]',
                 repair["patch"]["changes"][0]["new_text"],
             )
 
