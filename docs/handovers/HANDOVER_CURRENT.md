@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-05  
-**Checkpoint:** MVP Recovery Architecture Reset  
-**Status:** PRE-MVP / runtime stack frozen / REUSE-FIRST editor bakeoff next
+**Checkpoint:** EditorAdapter bakeoff harness ready  
+**Status:** PRE-MVP / PR #50 OPEN / HUMAN MERGE GATE
 
 ## 1. Strategic decision
 
@@ -45,9 +45,9 @@ Canonical branch:
 
 Canonical main HEAD at this checkpoint:
 
-`5f83844a36063722c2979dae19576d57c0f06c5a`
+`8b67b98c61d6bd90af839d1cad185f05454a2e66`
 
-This is the merge of PR #34.
+This is the merge of PR #49 architecture reset.
 
 The long runtime experiment chain after PR #34 is **not canonical**.
 
@@ -365,6 +365,57 @@ It must not be the repeated Product Owner workflow.
 
 ---
 
+## 14. Editor bakeoff harness candidate
+
+PR:
+
+`#50 — MVP Recovery: add bounded reusable editor bakeoff harness`
+
+Branch:
+
+`mvp-recovery-editor-adapter-bakeoff`
+
+Initial PR head:
+
+`1c57fe83f1dd96f57a74c6458bef8865720f8a6b`
+
+The PR remains subject to live HEAD verification before merge because documentation commits may advance the branch after PR creation.
+
+Candidate scope:
+
+- new `EditorAdapter` boundary;
+- `AiderCliAdapter` restricted to disposable copies of authorized files;
+- no Aider write access to the governed workspace;
+- no Aider package dependency added to ForgeLab;
+- no `orchestrator.py` modification;
+- no dashboard/API/Golden Path integration yet;
+- paid-provider API keys stripped from the Aider subprocess environment;
+- read-only mutation, path escape and unauthorized file creation rejected;
+- deterministic compile/test/scope/security evaluator;
+- machine-readable `EDITOR_ENGINE_BAKEOFF_01` artifact;
+- experimental CLI entry point only.
+
+Independent focused verification performed against the exact candidate module contents:
+
+- editor adapter tests: 5 / 5 PASS;
+- bakeoff evaluator tests: 5 / 5 PASS;
+- combined focused verification: 10 / 10 PASS;
+- `editor_adapter.py`: compile PASS;
+- `editor_bakeoff.py`: compile PASS;
+- modified `cli.py`: compile PASS.
+
+Important limitation:
+
+No real Aider + Ollama Dental Quote run has been performed yet. This PR proves the safety/evaluation boundary, not Aider superiority or Golden Path success.
+
+Human gate:
+
+`APPROVE_MERGE_PR50 | REJECT_PR50 | REQUEST_CHANGES`
+
+After approved merge, proceed autonomously to the real bounded Aider/Ollama editor experiment without returning to the repetitive Product Owner PowerShell loop.
+
+---
+
 ## 14. Commercial status
 
 Commercial evidence:
@@ -379,21 +430,15 @@ Current objective remains technical/product validation of a genuinely usable sof
 
 ## 15. Single next action
 
-`IMPLEMENT_EDITOR_ADAPTER_BAKEOFF_HARNESS`
+`HUMAN_REVIEW_EDITOR_ADAPTER_BAKEOFF_HARNESS_PR50`
 
-Owner:
+Product Owner decision required:
 
-ForgeLab development process.
+- approve merge;
+- reject;
+- request changes.
 
-Required output:
-
-- a small adapter boundary;
-- Aider CLI experiment isolated from governed workspace;
-- apples-to-apples benchmark harness;
-- no change to Product Owner objective/test/review policy;
-- no Product Owner PowerShell loop.
-
-Do **not** ask the Product Owner to run Dental Quote again until this harness is ready and the next validation can be initiated from the dashboard.
+No local command or PowerShell action is required from the Product Owner.
 
 ---
 
@@ -410,7 +455,8 @@ At the start of the next session:
 7. read the architecture-reset audit;
 8. read ADR-002;
 9. verify canonical `main`;
-10. verify the architecture-reset PR state;
-11. execute only `IMPLEMENT_EDITOR_ADAPTER_BAKEOFF_HARNESS`.
+10. verify PR #50 live HEAD/state/checks;
+11. if PR #50 is not merged, stop at the human merge gate;
+12. after explicit merge approval, execute the real bounded Aider/Ollama editor experiment.
 
-Do not resume PR #48 testing merely because it was the previous technical next step.
+Do not resume PR #48 testing and do not ask the Product Owner for a PowerShell rerun.

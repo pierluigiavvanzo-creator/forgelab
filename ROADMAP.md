@@ -34,7 +34,7 @@ For Golden Path work:
 
 Current canonical `main`:
 
-`5f83844a36063722c2979dae19576d57c0f06c5a`
+`8b67b98c61d6bd90af839d1cad185f05454a2e66`
 
 ## NOW — A Product Critical
 
@@ -50,7 +50,7 @@ Do not extend the stacked recovery chain.
 
 Primary task:
 
-`EDITOR_ENGINE_BAKEOFF_01`
+`EDITOR_ENGINE_BAKEOFF_01` — harness candidate implemented; human merge review is the current gate
 
 Target architecture:
 
@@ -87,12 +87,27 @@ Measure:
 - unauthorized path changes;
 - usable-output result.
 
-Exit gate:
+Harness gate completed:
 
-1. adapter experiment preserves isolation and ToolGateway authority;
-2. no direct protected-repo writes;
+- adapter works only on disposable copies of authorized files;
+- source repository remains unchanged;
+- read-only mutation, path escape and new-file creation are blocked;
+- paid-provider API keys are stripped from the editor subprocess;
+- compile-invalid candidates stop before tests;
+- deterministic scope/security/test evidence is produced;
+- focused verification: 10 / 10 PASS;
+- no Aider runtime dependency has been added.
+
+Current human gate:
+
+`HUMAN_REVIEW_EDITOR_ADAPTER_BAKEOFF_HARNESS`
+
+Post-merge experiment exit gate:
+
+1. run the real Aider/Ollama boundary experiment;
+2. compare edit reliability with current ForgeLab evidence;
 3. Aider materially reduces malformed-edit failures OR is rejected with evidence;
-4. only generally necessary runtime behaviors are rebuilt on a fresh branch from `main`;
+4. only then decide whether to integrate an EditorAdapter into the Golden Path;
 5. ordinary Golden Path validation returns to the dashboard;
 6. Product Owner is not used as the repeated CLI/PowerShell test harness.
 

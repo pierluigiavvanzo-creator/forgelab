@@ -13,6 +13,7 @@ from .model_router import TaskProfile, classify, load_routes
 from .memory import ProjectMemory, write_json
 from .telemetry import collect_kpis
 from .api import serve
+from .editor_bakeoff import EditorBakeoffRequest, run_editor_bakeoff
 
 
 def main() -> int:
@@ -51,6 +52,12 @@ def main() -> int:
     api.add_argument("--port", type=int, default=8765)
     api.add_argument("--allowed-origin", default="http://localhost:5173")
     api.add_argument("--token-env", default="FORGELAB_API_TOKEN")
+    editor_bakeoff = sub.add_parser(
+        "editor-bakeoff",
+        help="run the bounded reusable-editor experiment",
+    )
+    editor_bakeoff.add_argument("--request", type=Path, required=True)
+    editor_bakeoff.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "smoke":
         print(run_smoke(args.output))
@@ -97,6 +104,13 @@ def main() -> int:
         if not token:
             parser.error(f"environment variable {args.token_env} is required")
         serve(args.runs, token, args.allowed_origin, args.host, args.port)
+        return 0
+    if args.command == "editor-bakeoff":
+        report = run_editor_bakeoff(
+            EditorBakeoffRequest.from_json(args.request),
+            args.output,
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0
     return 2
 
