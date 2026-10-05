@@ -1,28 +1,37 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-10-04
-**Checkpoint:** PR #34 locally TESTED / explicit merge approval pending
-**Status:** PRE-MVP / Golden Path 1 blocker remediation
+**Checkpoint date:** 2026-10-05  
+**Checkpoint:** MVP Recovery Architecture Reset  
+**Status:** PRE-MVP / runtime stack frozen / REUSE-FIRST editor bakeoff next
 
-## 1. Strategic operating model
+## 1. Strategic decision
 
-ForgeLab is the primary product: a governed multi-agent software factory that should convert a Product Owner objective into usable, tested, reviewed software with minimal Product Owner operational work.
+ForgeLab remains the product.
 
-Canonical workflow:
+It is a governed multi-agent software-development control plane, not a coding CLI and not a collection of prompts.
 
-`OBJECTIVE -> PROJECT/REPO CONTEXT -> PLAN -> IMPLEMENT -> TEST -> BOUNDED REPAIR -> REVIEW -> WORKING PREVIEW -> HUMAN APPROVAL -> PROMOTION`
+Canonical product workflow:
 
-Shared governance:
+`OBJECTIVE -> PROJECT/REPO CONTEXT -> PLAN -> IMPLEMENT -> TEST -> BOUNDED REPAIR -> REVIEW -> SECURITY -> READY_FOR_DECISION -> HUMAN APPROVAL -> PROMOTION`
 
-`AGENTS_MASTER.md v2`
+Primary metric:
 
-Key operating principle:
+`ECONOMIC VALUE × USABLE PRODUCT VALUE / PRODUCT OWNER TIME`
 
-`Autonomous within the box; human approval to change the box.`
+Product Owner contract:
 
-Current commercial evidence level:
+- strategic decision maker;
+- merge/promotion approver;
+- final usability tester;
+- not routine debugger;
+- not repetitive QA;
+- not log transporter;
+- not retry orchestrator;
+- not operator of repeated PowerShell validation loops.
 
-`C0 — Hypothesis`
+No Work or Codex is required for this project workflow.
+
+---
 
 ## 2. Canonical repository
 
@@ -34,642 +43,374 @@ Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #34:
+Canonical main HEAD at this checkpoint:
 
-`dd027196182da4701dafc035806acffd194f125b` (merge of PR #33)
+`5f83844a36063722c2979dae19576d57c0f06c5a`
 
-Current remediation branch:
+This is the merge of PR #34.
 
-`mvp1-ollama-repeat-reset-retry`
+The long runtime experiment chain after PR #34 is **not canonical**.
 
-PR:
+---
 
-`#34 — MVP-1: reset Ollama state before repeat-limit retry`
+## 3. Why the process was reset
 
-Runtime/test candidate validated locally:
+Recent Dental Quote work improved safe failure handling but did not improve the primary product metric enough.
 
-`64ce31f1310b73076da74766c93968125c7ea3d7`
+Observed process regression:
 
-## 3. Product Owner contract
+- repeated Product Owner PowerShell reruns;
+- dashboard bypassed during candidate validation;
+- many stacked runtime PRs;
+- repeated malformed custom LLM edit outputs;
+- increasing recovery special cases inside `orchestrator.py`;
+- practical source of truth drifting from `main` to stacked branches;
+- risk of overfitting to Dental Quote.
 
-The Product Owner is:
+Architecture audit:
 
-- strategic decision maker;
-- approver at merge/promotion gates;
-- final product tester.
+`docs/audits/FORGELAB_MVP_RECOVERY_ARCHITECTURE_AUDIT_2026-10-05.md`
 
-Do not routinely use the Product Owner as:
+ADR candidate:
 
-- debugger;
-- repetitive QA;
-- log transporter;
-- retry orchestrator;
-- operator of long diagnostic command sequences.
+`docs/decisions/ADR-002-editor-adapter-boundary.md`
 
-Operating preference remains normal ChatGPT chat plus Windows PowerShell only when necessary; no Work or Codex.
+Root diagnosis:
 
-## 4. Golden Path 1 — Dental Quote
+`CUSTOM_LLM_EDIT_PROTOCOL_IS_BECOMING_THE_PRODUCT_BOTTLENECK`
 
-Target:
+---
 
-`C:\Users\NITRO\source\FORGELAB_MVP1_DENTAL_QUOTE`
+## 4. What is preserved
 
-Objective:
+KEEP:
 
-`Add support for three treatments, automatic subtotals, percentage discount and final total. Validate inputs. Modify only necessary files. Add tests. Do not change dependencies or configuration unless necessary and explicitly justified.`
+- dashboard;
+- local authenticated API;
+- Planner acceptance contract;
+- agent role contracts;
+- state machine;
+- isolated workspace;
+- ToolGateway;
+- deterministic test runner;
+- independent semantic Reviewer;
+- Security review;
+- evidence/artifact store;
+- usage/cost ledger;
+- bounded repair policy;
+- explicit human promotion gate.
 
-Authorized files:
+These components are not the primary current blocker.
 
-- `quote_calculator.py`
-- `test_quote_calculator.py`
+---
 
-Test command:
+## 5. What is frozen
 
-`py -3.11 -m unittest discover -v`
+Runtime PRs:
 
-Risk:
+- #37
+- #38
+- #39
+- #40
+- #41
+- #43
+- #44
+- #45
+- #46
+- #47
+- #48
 
-`normal`
+Decision:
 
-Repair budget:
+`FREEZE / DO NOT MERGE / DO NOT EXTEND`
 
-`1`
+until the editor bakeoff is complete.
 
-## 5. Earlier Golden Path evidence
+Documentation PRs #36 and #42 are superseded by the architecture-reset documentation candidate.
 
-Run:
+Do not merge the stacked runtime chain one-by-one.
 
-`run-6a0c2c512498`
+---
 
-Observed:
+## 6. Evidence behind the reset
 
-- AI Developer generated a bounded two-file candidate;
-- one bounded repair was used;
-- deterministic tests passed;
-- independent semantic Reviewer blocked promotion;
-- final candidate still represented a one-treatment workflow;
-- automatic subtotals / complete three-treatment behavior and matching tests were not fully evidenced;
-- no promotion occurred.
+From the PR #34 merged baseline to the PR #48 experiment:
 
-This was a valid product failure, not a Reviewer false positive.
+- 33 commits ahead;
+- `orchestrator.py`: +672 / -75 lines;
+- `test_orchestrator.py`: +1674 / -618 lines.
 
-## 6. Root cause
+Approximate file sizes at audit:
 
-Blocker:
+- main `orchestrator.py`: 5,345 lines;
+- PR #48 `orchestrator.py`: 5,942 lines;
+- main `test_orchestrator.py`: 4,439 lines;
+- PR #48 `test_orchestrator.py`: 5,495 lines.
 
-`PROJECT_MANAGER_OUTPUT_NOT_CONSUMED_BY_DEVELOPER`
+Repeated real failure categories:
 
-The Project Manager generated an implementation plan, but the downstream Developer prompt did not consume the plan or its acceptance criteria.
+- exact `old_text` mismatch;
+- schema mismatch;
+- full-file recovery failure;
+- Ollama repeat limit;
+- semantic repair schema loss;
+- malformed f-string;
+- compile-only Python syntax error;
+- escaped subscript quote error;
+- unterminated normal string.
 
-The Reviewer did explicitly decompose the original objective into every obligation, which is why it correctly caught the incomplete result.
+This is evidence that the LLM editing boundary needs replacement/refactoring rather than more special-case recovery.
 
-## 7. PR #20 remediation
+---
 
-PR #20 introduces the smallest meaningful correction:
+## 7. REUSE-FIRST benchmark result
 
-`OBJECTIVE -> STRUCTURED PM ACCEPTANCE CONTRACT -> DEVELOPER -> TEST -> INDEPENDENT REVIEW -> BOUNDED REPAIR -> HUMAN GATE`
+### Aider
 
-It:
+Status:
 
-- makes PM output structured JSON;
-- includes `intended_outcome`, `execution_steps`, `acceptance_criteria`, `principal_risks`;
-- preserves quantitative requirements;
-- prohibits PM scope invention;
-- propagates PM acceptance criteria into the Developer task;
-- passes the contract to initial generation and repair paths;
-- keeps Reviewer independent;
-- adds no new agent, provider, dependency, repair budget or broad infrastructure.
+`BENCHMARKED -> ADOPTED FOR BOUNDED EXPERIMENT`
 
-Reuse status:
+Use only as an editor-engine candidate.
 
-`ADAPT -> INTEGRATED CANDIDATE`
+Reasons:
 
-## 8. Golden Path rerun after PR #20
+- Apache-2.0;
+- Python;
+- local Ollama support;
+- mature edit formats;
+- one-shot scripting;
+- explicit file scope;
+- auto commits can be disabled.
 
-Run:
+Integration boundary:
 
-`run-c135dcec0887`
+Prefer CLI for the experiment because Aider documents its Python API as not officially stable.
 
-Observed:
+### OpenHands Software Agent SDK
 
-- deterministic status PASS;
-- Developer added aggregate multi-treatment calculation logic;
-- tests covered three treatments and percentage-discount calculations;
-- Tkinter UI remained one-treatment only;
-- aggregate discount remained hard-coded at 10%;
-- semantic Reviewer correctly blocked promotion;
-- Reviewer wording incorrectly characterized some partial implementation/tests as absent.
+Status:
 
-Current blocker:
+`BENCHMARKED -> REJECTED FOR CURRENT NARROW EDITOR SWAP`
 
-`END_TO_END_ACCEPTANCE_NOT_ENFORCED_AND_REVIEW_EVIDENCE_NOT_GROUNDED`
+Reason:
 
-## 9. PR #22 remediation
+Strong and active, but duplicates agent runtime, workspaces, tools, server/client and other control-plane responsibilities already present in ForgeLab.
 
-PR #22:
+Revisit only for a broader runtime replacement.
 
-- provides complete authorized target files to the Project Manager as bounded read-only planning context;
-- requires Developer to wire user-visible behavior through an existing interface/entry point;
-- treats helper-only implementation as insufficient for end-to-end acceptance;
-- requires Developer self-check against every acceptance criterion;
-- provides complete final authorized candidate files to Reviewer;
-- requires Reviewer to describe partial evidence precisely rather than falsely calling it absent;
-- preserves Reviewer independence from the PM contract;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure expansion.
+### Cline
 
-Reuse status:
+Status:
 
-`ADAPT -> INTEGRATED CANDIDATE`
+`BENCHMARKED -> REJECTED FOR CURRENT NARROW EDITOR SWAP`
 
-## 10. Golden Path rerun after PR #22
+Reason:
 
-Run:
+Strong active SDK/CLI and local-model support, but larger TypeScript/Node integration surface and substantial overlap with existing ForgeLab agent/tool lifecycle.
 
-`run-81c1ceb4506c`
+### Continue
 
-Observed:
+Status:
 
-- initial candidate changed both authorized files;
-- first deterministic run: 4 PASS / 1 ERROR;
-- failing test attempted to add two dictionary results directly;
-- one bounded repair was used;
-- after repair, previously passing tests regressed: 2 ERROR + 1 FAIL;
-- run ended in DIAGNOSING with `repair_attempts=1`;
-- no `Changes.patch` was produced;
-- semantic review was never reached.
+`BENCHMARKED -> REJECTED`
 
-Current blocker:
+Reason:
 
-`BOUNDED_REPAIR_REGRESSION_AND_TEST_CONTRACT_DRIFT`
+Current README states that the repository is no longer actively maintained.
 
-## 11. PR #23 remediation
+---
 
-PR #23:
+## 8. Target editor architecture
 
-- makes newly-added tests follow the actual candidate API consistently;
-- requires Support to distinguish implementation defects from malformed/API-inconsistent tests;
-- treats tests already reported as `ok` as regression constraints;
-- preserves public return types, dictionary keys, call signatures and passing semantics unless the objective explicitly requires change;
-- allows correcting malformed tests without weakening acceptance requirements;
-- carries the same constraints into bounded pre-write repair;
-- keeps `max repair attempts = 1`;
-- adds no agent, provider, dependency or infrastructure.
+```text
+Dashboard
+  -> Local API
+  -> ForgeLab Orchestrator
+  -> Planner / Acceptance Contract
+  -> EditorAdapter
+       -> AiderCliAdapter [experiment]
+       -> restricted editor sandbox
+  -> candidate file set
+  -> deterministic scope + compile/lint validation
+  -> ToolGateway apply to isolated workspace
+  -> tests
+  -> independent Reviewer
+  -> Security
+  -> READY_FOR_DECISION
+  -> Dashboard human gate
+```
 
-Reuse status:
+ToolGateway remains the authoritative apply boundary.
 
-`ADAPT -> INTEGRATED CANDIDATE`
+Aider must not write directly to canonical/protected source.
 
-## 12. Golden Path rerun after PR #23
+---
 
-Observed failure:
+## 9. Editor sandbox rules
 
-`ValueError: AI Developer proposed a no-op replacement`
+The experiment must:
 
-Observed behavior:
+- expose only authorized writable files;
+- provide only bounded necessary read-only context;
+- disable Aider auto commits;
+- not install dependencies in the target project;
+- not expand write scope;
+- not push or merge;
+- run under the existing local zero-cost provider policy;
+- return candidate file content/diff to ForgeLab;
+- require ForgeLab deterministic validation before ToolGateway apply.
 
-- candidate was rejected before repository write;
-- no-op safety rule worked;
-- generic `ValueError` bypassed bounded pre-write recovery;
-- run terminated before the normal implementation/test/review flow.
+---
 
-Current blocker:
+## 10. EDITOR_ENGINE_BAKEOFF_01
 
-`NOOP_PATCH_BYPASSES_PREWRITE_RECOVERY`
+Compare:
 
-## 13. PR #24 remediation
+A. current custom editor from canonical merged `main`;  
+B. Aider CLI adapter.
 
-PR #24:
+Hold constant:
 
-- classifies no-op patch candidates as recoverable `AIDeveloperFormatError`;
-- keeps no-op writes prohibited;
-- routes no-op responses through the existing one bounded pre-write correction;
-- tells Developer to omit unchanged files/regions and never emit a no-op replacement;
-- adds regression coverage for successful bounded recovery;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure.
+- same Dental Quote baseline;
+- same objective;
+- same authorized files;
+- same `qwen2.5-coder:7b`;
+- same Planner acceptance criteria;
+- same deterministic tests;
+- same Reviewer;
+- same Security;
+- same repair cap;
+- provider cost EUR 0.
 
-Reuse status:
+Metrics:
 
-`ADAPT -> INTEGRATED CANDIDATE`
+- successful candidate generation;
+- compile-valid candidate;
+- malformed edit events;
+- deterministic test result;
+- semantic review result;
+- model-call count;
+- repair count;
+- wall-clock time;
+- unauthorized path changes;
+- Product Owner touches;
+- usable-output state.
 
-## 14. Golden Path rerun after PR #24
+Why the model stays unchanged in phase 1:
 
-Run:
+The first experiment must isolate whether the editing engine, not the model, is responsible for a meaningful portion of the instability.
 
-`run-e83f1cfbebff`
+Only if both editor paths remain poor should a stronger local model be benchmarked.
 
-Observed:
+---
 
-- no-op recovery worked and the run continued;
-- first deterministic run failed;
-- one bounded repair was used;
-- second deterministic run passed;
-- independent semantic review was reached;
-- candidate still lacked an explicit three-treatment GUI workflow;
-- no direct test exercised exactly three distinct treatments;
-- a test name no longer matched the behavior it exercised;
-- discount percentage conversion was inconsistent end-to-end;
-- Reviewer blocked promotion but mislabeled existing partial logic as absent.
+## 11. Workstation constraint
 
-Current blocker:
+Known local ForgeLab workstation:
 
-`ACCEPTANCE_TEST_TRACEABILITY_GAP_AND_NO_PARTIAL_REVIEW_STATE`
+- NVIDIA GeForce RTX 4050 Laptop GPU;
+- about 6 GB VRAM;
+- about 15.7 GB system RAM;
+- current local model `qwen2.5-coder:7b` works through Ollama at EUR 0.
 
-## 15. PR #25 remediation
+This hardware makes a simple jump to very large local agentic models unattractive.
 
-PR #25:
+Therefore:
 
-- adds `PARTIAL` semantic requirement status;
-- reserves `MISSING` for genuinely absent evidence;
-- requires Reviewer to inspect complete candidate files before claiming absence;
-- requires direct tests for each testable acceptance criterion;
-- requires direct quantitative tests for quantitative requirements;
-- requires semantic alignment among test name, setup, exercised API and assertions;
-- carries criterion-coverage constraints into bounded repair;
-- requires consistent numeric/unit conversion across boundaries;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure.
+`EDITOR ENGINE FIRST -> MODEL BENCHMARK SECOND`
 
-Reuse status:
+---
 
-`ADAPT -> INTEGRATED CANDIDATE`
+## 12. Consolidation rule
 
-## 16. Golden Path rerun after PR #25
+After the editor bakeoff:
 
-Observed failure:
+1. identify general runtime behaviors worth keeping;
+2. do not merge #37–#48 as a chain;
+3. create a fresh consolidation branch from canonical `main`;
+4. split editor/prewrite/repair responsibilities out of the orchestrator;
+5. integrate only evidence-backed behavior;
+6. validate through dashboard;
+7. only then request Product Owner merge approval.
 
-`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 41: unterminated string literal`
+Suggested module boundaries:
 
-Observed behavior:
+- `editor_adapter.py`;
+- `prewrite_validation.py`;
+- `repair_policy.py`.
 
-- invalid Python was rejected before repository write;
-- the existing single pre-write correction path was entered;
-- snippet-oriented syntax correction could still compose invalid Python;
-- a subsequent syntax error escaped the normal governed run lifecycle.
+---
 
-Current blocker:
+## 13. Dashboard-first product gate
 
-`EXHAUSTED_PREWRITE_CORRECTION_ESCAPES_RUN_LIFECYCLE`
+MVP validation resumes only when the ordinary Product Owner journey is:
 
-## 17. PR #26 remediation
+1. start local ForgeLab services once;
+2. open dashboard;
+3. select/register project;
+4. enter objective;
+5. click Run;
+6. ForgeLab works without manual retry orchestration;
+7. dashboard presents plan, changes, tests, risk, usage and decision;
+8. Product Owner chooses Approve / Reject / Repair.
 
-PR #26:
+PowerShell is permitted for:
 
-- reuses full-file recovery for `AIDeveloperSyntaxError`;
-- uses complete current authorized files as authoritative recovery context;
-- requires complete syntactically valid Python for changed Python files;
-- runs deterministic syntax validation before write;
-- applies the same rule to syntax errors inside bounded test-failure repair;
-- retains exactly one pre-write correction;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure.
+- bootstrap;
+- service startup;
+- exceptional developer diagnostics.
 
-Reuse status:
+It must not be the repeated Product Owner workflow.
 
-`ADAPT -> INTEGRATED CANDIDATE`
+---
 
-## 18. Golden Path rerun after PR #26
+## 14. Commercial status
 
-Run:
+Commercial evidence:
 
-`run-0a4726594909`
+`C0 — Hypothesis`
 
-Observed:
+No market-validation claim.
 
-- full-file syntax recovery prevented the prior pre-write crash;
-- initial deterministic tests: 4 PASS / 1 ERROR;
-- `test_multiple_treatments` failed because it added two dictionary results directly;
-- one bounded repair was used;
-- repaired run made `test_multiple_treatments` PASS;
-- repaired run regressed `test_discount_applied` and `test_single_treatment_total` from PASS to ERROR;
-- repair changed established mapping/dictionary behavior into float behavior;
-- run ended in DIAGNOSING with repair budget exhausted;
-- no patch artifact was produced and semantic review was not reached.
+Current objective remains technical/product validation of a genuinely usable software factory before customer validation.
 
-Current blocker:
+---
 
-`PROMPT_ONLY_REGRESSION_CONSTRAINT_NOT_ENFORCED_DETERMINISTICALLY`
+## 15. Single next action
 
-## 19. PR #28 remediation
+`IMPLEMENT_EDITOR_ADAPTER_BAKEOFF_HARNESS`
 
-PR #28:
+Owner:
 
-- parses deterministic test outcomes before and after repair;
-- turns previously PASS tests into machine-enforced regression constraints;
-- emits explicit `repair_regression` evidence;
-- rolls back a regressing repair to the exact pre-repair candidate state;
-- allows one regression correction inside the same top-level repair attempt;
-- uses full-file correction for the authorized subset;
-- reruns deterministic tests after correction;
-- keeps `max repair attempts = 1`;
-- adds no new agent, provider, dependency or infrastructure.
+ForgeLab development process.
 
-Reuse status:
+Required output:
 
-`ADAPT -> INTEGRATED CANDIDATE`
+- a small adapter boundary;
+- Aider CLI experiment isolated from governed workspace;
+- apples-to-apples benchmark harness;
+- no change to Product Owner objective/test/review policy;
+- no Product Owner PowerShell loop.
 
-## 20. Golden Path rerun after PR #28
+Do **not** ask the Product Owner to run Dental Quote again until this harness is ready and the next validation can be initiated from the dashboard.
 
-Observed failure:
+---
 
-`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 43: unterminated string literal`
+## 16. Resume protocol
 
-Observed:
+At the start of the next session:
 
-- initial syntax validation blocked invalid Python before write;
-- the single full-file syntax recovery was attempted;
-- the recovery also produced invalid Python;
-- second pre-write validation failure escaped as `run execution failed`;
-- no validated candidate reached implementation/testing.
+1. read `AGENTS_MASTER.md`;
+2. read `MANIFEST.md`;
+3. read `PROJECT_STATE.md`;
+4. read `ROADMAP.md`;
+5. read `DECISIONS.md`;
+6. read this handover;
+7. read the architecture-reset audit;
+8. read ADR-002;
+9. verify canonical `main`;
+10. verify the architecture-reset PR state;
+11. execute only `IMPLEMENT_EDITOR_ADAPTER_BAKEOFF_HARNESS`.
 
-Current blocker:
-
-`PREWRITE_RECOVERY_EXHAUSTION_NOT_GOVERNED`
-
-## 21. PR #29 remediation
-
-PR #29:
-
-- keeps exactly one pre-write correction;
-- converts second recoverable pre-write validation failure into `PREWRITE_RECOVERY_EXHAUSTED`;
-- emits `PrewriteRecoveryFailure.json`;
-- records explicit pre-write validation evidence;
-- closes as `CLOSED / Repair required`;
-- writes the normal terminal artifacts even without a candidate patch;
-- guarantees no repository write on exhausted pre-write recovery;
-- applies the same handling to implementation, test-failure repair and semantic-review repair;
-- extends semantic syntax recovery to full-file mode;
-- adds no new agent, provider, dependency or repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 22. Golden Path rerun after PR #29
-
-Run:
-
-`run-81f814fa23f5`
-
-Observed:
-
-- PR #29 eliminated the uncaught pre-write lifecycle crash;
-- initial deterministic tests passed 5 / 5;
-- independent semantic review correctly blocked the incomplete exact three-treatment workflow;
-- one semantic-review repair was applied;
-- the repair added a direct treatment-validation test;
-- deterministic retest failed because the expected `ValueError` was not raised;
-- the run stopped in DIAGNOSING with `repair_attempts=1`;
-- `Changes.patch` remained stale relative to the semantic repair candidate;
-- Reviewer overall FAIL was correct, but its wording understated partial existing treatment/subtotal/final-total implementation.
-
-Current blocker:
-
-`SEMANTIC_REPAIR_TEST_FAILURE_HAS_NO_IN_ATTEMPT_RECOVERY`
-
-## 23. PR #30 remediation
-
-PR #30:
-
-- preserves `max repair attempts = 1`;
-- allows one deterministic test correction inside the same semantic-review repair attempt;
-- supplies the correction with objective, PM contract, semantic findings, before/after test evidence, and complete current authorized files;
-- uses full-file replacement for only the authorized subset;
-- validates scope and syntax before write;
-- reruns tests after correction;
-- re-enters semantic review only after tests pass;
-- safely blocks if correction is invalid or retest still fails;
-- records `semantic_test_correction_attempts = 1` separately;
-- refreshes `Changes.patch` after semantic repair and after correction;
-- adds no agent, provider, dependency, infrastructure, or top-level repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 24. Golden Path rerun after PR #30
-
-Run:
-
-`run-7676d5c968dc`
-
-Observed:
-
-- PR #30 successfully returned a failed semantic repair through deterministic retest and back to independent semantic review;
-- initial deterministic tests passed 6 / 6;
-- the single semantic-review repair was applied;
-- deterministic retest passed 9 / 9;
-- `Changes.patch` correctly reflected the semantic repair candidate;
-- second semantic review still failed;
-- Reviewer overall blocking decision was directionally correct because the exact three-treatment end-to-end workflow remained incomplete;
-- Reviewer wording remained partly inaccurate about present-but-incomplete behavior;
-- the run stopped in REVIEW with tests PASS and `repair_attempts=1`;
-- no further bounded semantic correction existed inside the already-used repair attempt.
-
-Current blocker:
-
-`SEMANTIC_REPAIR_REVIEW_FAILURE_HAS_NO_IN_ATTEMPT_CORRECTION`
-
-## 25. PR #31 remediation
-
-PR #31:
-
-- preserves `max repair attempts = 1`;
-- allows one semantic correction inside the same top-level semantic repair when deterministic retest passes but semantic re-review still fails;
-- supplies objective, PM contract, latest semantic findings, latest passing tests, complete current authorized files and current diff;
-- requires inspection of current files before acting on Reviewer wording;
-- uses full-file replacement for only the authorized subset;
-- validates scope and syntax before write;
-- reruns deterministic tests;
-- performs one further independent semantic review only after tests pass;
-- safely blocks if correction is invalid, retest fails or final semantic review still fails;
-- records `semantic_review_correction_attempts = 1` separately;
-- refreshes `Changes.patch` after the correction;
-- adds no agent, provider, dependency, infrastructure or top-level repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 26. Golden Path rerun after PR #31
-
-Observed:
-
-- the unchanged Dental Quote run did not reach product acceptance evaluation;
-- local Ollama returned HTTP 500 with `prediction aborted, token repeat limit reached`;
-- the configured bounded retry was exhausted;
-- the transient provider error escaped the governed run lifecycle as `run execution failed`;
-- this is a provider-runtime lifecycle blocker, not evidence that the Dental Quote candidate itself failed acceptance.
-
-Current blocker:
-
-`OLLAMA_REPEAT_LIMIT_RETRY_EXHAUSTION_ESCAPES_RUN_LIFECYCLE`
-
-## 27. PR #32 remediation
-
-PR #32:
-
-- keeps Ollama and provider cost EUR 0;
-- keeps the configured retry count unchanged;
-- makes the existing retry adaptive only for `token repeat limit reached`;
-- preserves the original prompt and response schema while appending a concise anti-loop recovery instruction;
-- preserves the existing bounded timeout widening;
-- emits `ProviderFailure.json` when the bounded retry is exhausted;
-- converts planning-time provider exhaustion into `CLOSED / Repair required` with normal terminal artifacts;
-- converts in-run provider exhaustion into the same governed outcome;
-- records provider-runtime evidence and usage RETRY/FAIL outcomes;
-- adds no paid fallback, extra retry, provider, agent, dependency or infrastructure.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 28. Golden Path rerun after PR #32
-
-Run:
-
-`run-0960eae66316`
-
-Observed:
-
-- PR #32 eliminated the uncaught provider failure path;
-- initial deterministic tests passed;
-- semantic review returned FAIL/PARTIAL for incomplete three-treatment and automatic-subtotal behavior;
-- semantic repair entered REPAIRING;
-- the first semantic repair candidate failed deterministic Python syntax validation;
-- the one bounded pre-write recovery also failed syntax validation;
-- ForgeLab emitted `PrewriteRecoveryFailure.json` and closed as `CLOSED / Repair required`;
-- final syntax error was `f-string: unmatched '['`.
-
-Current blocker:
-
-`SEMANTIC_REPAIR_FRAGMENT_SCHEMA_CAUSES_AVOIDABLE_SYNTAX_COMPOSITION_RISK`
-
-## 29. PR #33 remediation
-
-PR #33:
-
-- preserves `max repair attempts = 1`;
-- preserves the one bounded pre-write correction;
-- starts semantic-review repair directly in full-file schema `2.1`;
-- returns complete replacement content only for the authorized changed subset;
-- validates complete Python files before write;
-- keeps the one bounded pre-write correction in full-file mode;
-- removes snippet-specific recovery branching from this semantic-repair path;
-- strengthens repair grounding against inaccurate Reviewer wording and incomplete quantitative/user-visible acceptance;
-- adds no agent, provider, dependency, retry, infrastructure or top-level repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 30. Golden Path rerun after PR #33
-
-Run:
-
-`run-98f2c045a9f3`
-
-Observed:
-
-- initial deterministic tests passed 5 / 5;
-- semantic review blocked incomplete three-treatment and automatic-subtotal acceptance;
-- semantic repair task `review-repair-1` started;
-- Ollama returned HTTP 500 `prediction aborted, token repeat limit reached`;
-- the existing adaptive generation retry was exhausted;
-- PR #32 correctly emitted `ProviderFailure.json` and closed as `CLOSED / Repair required`;
-- no semantic repair candidate was produced, so PR #33 full-file-first repair behavior was not exercised in the real Golden Path.
-
-Current blocker:
-
-`OLLAMA_REPEAT_LIMIT_RETRY_REUSES_LOADED_MODEL_STATE`
-
-## 31. PR #34 remediation
-
-PR #34:
-
-- preserves Ollama and provider cost EUR 0;
-- preserves the configured generation retry count;
-- preserves the adaptive anti-repetition prompt;
-- resets/unloads local Ollama model state before the existing repeat-limit retry using an empty prompt and `keep_alive: 0`;
-- uses the same loopback provider endpoint;
-- proceeds with the existing generation retry even if the reset control call fails;
-- does not reset on ordinary transient failures;
-- preserves existing governed `ProviderFailure.json` behavior if generation retry still fails;
-- adds no paid fallback, extra generation retry, provider, agent, dependency or configuration expansion.
-
-Reuse status:
-
-`REUSE / ADAPT -> INTEGRATED CANDIDATE`
-
-## 32. Validation evidence
-
-Product Owner local validation reached:
-
-`=== FORGELAB VALIDATION PASS ===`
-
-The checked harness requires:
-
-- clean worktree before tests;
-- focused PM -> Developer -> semantic repair contract test PASS;
-- two API AI-generate regression tests PASS;
-- explicit full Python discovery over `tests/test*.py` PASS;
-- full discovery executes more than zero tests;
-- clean worktree after tests.
-
-Current evidence classification:
-
-- PR #20: **MERGED** at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`
-- PR #22: **MERGED** at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`
-- PR #23: **MERGED** at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`
-- PR #24: **MERGED** at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`
-- PR #25: **MERGED** at `2eaa2f0399b4080e54633357bc9668cd6975e96e`
-- PR #26: **MERGED** at `97f25bdb358adaa050735d463000495bafcf0b85`
-- PR #27: **MERGED** governance-only update to `AGENTS_MASTER.md`; canonical main advanced to `a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
-- PR #28: **MERGED** at `718af139078537a29bbb93ed06089f52162f526a`
-- PR #29: **MERGED** at `02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14`
-- PR #30: **MERGED** at `081960cb6c0c696567010010dd387a49c6750114`
-- PR #31: **MERGED** at `af63c04cf401771499988b30a6c4f45fbef4c8b0`
-- PR #32: **MERGED** at `fb3188890573e484640b7a4c667c3f4703218685`
-- PR #33: **MERGED** at `dd027196182da4701dafc035806acffd194f125b`
-- PR #34 runtime/test code: **TESTED locally** at `64ce31f1310b73076da74766c93968125c7ea3d7`
-- PR #34: **NOT MERGED**
-- Dental Quote after PR #34: **NOT YET REAL-WORKFLOW VALIDATED**
-
-## 33. Out of scope until Dental Quote PASS
-
-Do not prioritize:
-
-- multi-tenancy;
-- billing;
-- advanced scaling;
-- deployment expansion;
-- paid-provider expansion;
-- new agent roles;
-- broad observability;
-- new configuration frameworks;
-- unrelated refactors.
-
-Only a concrete Golden Path blocker may justify additional ForgeLab development.
-
-## 34. Generality proof after Dental Quote PASS
-
-1. Dental Quote — calculator/business logic.
-2. Small CRUD SaaS — records/users/workflow.
-3. Automation/reporting tool — ingest -> transform -> report.
-
-Do not begin #2 or #3 until #1 passes.
-
-## 35. Current gate
-
-PR #34 is locally TESTED and awaits explicit Product Owner merge approval.
-
-Do not merge, force-update, rebase or promote without explicit approval.
-
-## 36. Single next action
-
-Obtain explicit Product Owner approval for PR #34 merge.
-
-After approved merge:
-
-1. verify exact merged HEAD on `main`;
-2. align local ForgeLab checkout;
-3. rerun the same unchanged Dental Quote objective;
-4. evaluate the real output through deterministic tests and independent semantic review;
-5. only after Dental Quote PASS proceed to Golden Path 2.
+Do not resume PR #48 testing merely because it was the previous technical next step.
