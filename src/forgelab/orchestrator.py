@@ -1429,6 +1429,30 @@ def _fstring_statement_prefix(line: str) -> str | None:
     return "".join(line[:match.start()].split())
 
 
+def _python_enclosing_scope(
+    lines: list[str],
+    index: int,
+) -> str | None:
+    for candidate_index in range(index - 1, -1, -1):
+        stripped = lines[candidate_index].lstrip()
+
+        function_match = re.match(
+            r"(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(",
+            stripped,
+        )
+        if function_match is not None:
+            return "def:" + function_match.group(1)
+
+        class_match = re.match(
+            r"class\s+([A-Za-z_]\w*)\b",
+            stripped,
+        )
+        if class_match is not None:
+            return "class:" + class_match.group(1)
+
+    return None
+
+
 def _normalize_fstring_subscript_quotes(
     line: str,
 ) -> str:
@@ -1518,12 +1542,23 @@ def _stabilize_malformed_python_fstrings_from_source(
                 if prefix is None:
                     break
 
+                candidate_scope = _python_enclosing_scope(
+                    candidate_lines,
+                    index,
+                )
                 matches = [
                     source_line
-                    for source_line in source_lines
-                    if _fstring_statement_prefix(
-                        source_line
-                    ) == prefix
+                    for source_index, source_line
+                    in enumerate(source_lines)
+                    if (
+                        _fstring_statement_prefix(
+                            source_line
+                        ) == prefix
+                        and _python_enclosing_scope(
+                            source_lines,
+                            source_index,
+                        ) == candidate_scope
+                    )
                 ]
 
                 if len(matches) == 1:
