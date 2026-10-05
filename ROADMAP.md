@@ -32,70 +32,79 @@ For Golden Path work:
 - stabilization PR #18 — MERGED
 - shared governance v2 / Marketability Card — present on `main`
 
-Current canonical `main` before PR #34:
+Current canonical `main`:
 
-`dd027196182da4701dafc035806acffd194f125b`
+`5f83844a36063722c2979dae19576d57c0f06c5a`
 
 ## NOW — A Product Critical
 
-### Golden Path 1 — Dental Quote
+### MVP Recovery — Editor Boundary Reset
 
-Required journey:
+Problem:
 
-`PRODUCT OBJECTIVE -> PROJECT/REPO CONTEXT -> STRUCTURED PLAN -> IMPLEMENT -> TEST -> BOUNDED AUTO-REPAIR -> RETEST -> INDEPENDENT REQUIREMENT REVIEW -> WORKING PREVIEW -> PRODUCT OWNER APPROVAL -> PROMOTABLE PRODUCT`
+The Golden Path is not blocked by missing dashboard/API/governance infrastructure. It is blocked by an unstable custom LLM-to-edit contract and a development loop that has transferred too much QA/retry work to the Product Owner.
 
-Target:
+Runtime PRs #37–#48 are frozen.
 
-`C:\Users\NITRO\source\FORGELAB_MVP1_DENTAL_QUOTE`
+Do not extend the stacked recovery chain.
+
+Primary task:
+
+`EDITOR_ENGINE_BAKEOFF_01`
+
+Target architecture:
+
+`Planner -> EditorAdapter -> restricted editor sandbox -> deterministic validation -> ToolGateway apply -> tests -> Reviewer -> Security -> dashboard gate`
+
+First reusable editor candidate:
+
+`Aider CLI`
+
+Why Aider first:
+
+- narrow fit to code editing;
+- Python implementation;
+- Apache-2.0;
+- local Ollama support;
+- mature edit formats;
+- scriptable one-shot CLI;
+- auto commits can be disabled.
+
+Bakeoff rule:
+
+Compare current merged-main editor vs Aider adapter with the same Dental Quote objective and the same `qwen2.5-coder:7b`.
+
+Measure:
+
+- compile-valid candidate rate;
+- malformed edit/recovery events;
+- deterministic test status;
+- semantic review status;
+- model calls;
+- repair attempts;
+- wall time;
+- Product Owner touches;
+- unauthorized path changes;
+- usable-output result.
+
+Exit gate:
+
+1. adapter experiment preserves isolation and ToolGateway authority;
+2. no direct protected-repo writes;
+3. Aider materially reduces malformed-edit failures OR is rejected with evidence;
+4. only generally necessary runtime behaviors are rebuilt on a fresh branch from `main`;
+5. ordinary Golden Path validation returns to the dashboard;
+6. Product Owner is not used as the repeated CLI/PowerShell test harness.
+
+### Golden Path 1 — Dental Quote resumes after bakeoff
+
+Required Product Owner journey:
+
+`START LOCAL SERVICES ONCE -> OPEN DASHBOARD -> ENTER OBJECTIVE -> RUN -> DECISION-READY RESULT -> APPROVE | REJECT | REPAIR`
 
 Pass condition:
 
-ForgeLab produces the complete requested three-treatment application without ChatGPT manually orchestrating routine repair/debug steps.
-
-### Latest Golden Path evidence
-
-PR #26 was merged to `main` at `97f25bdb358adaa050735d463000495bafcf0b85`; PR #27 subsequently updated governance only.
-
-Fresh Dental Quote rerun `run-98f2c045a9f3` after PR #33:
-
-- initial deterministic tests passed 5 / 5;
-- semantic review blocked incomplete three-treatment / automatic-subtotal acceptance;
-- semantic repair task `review-repair-1` started;
-- Ollama hit `token repeat limit reached`;
-- the existing bounded adaptive retry also failed;
-- ForgeLab emitted `ProviderFailure.json` and closed normally;
-- no semantic repair candidate was produced, so the new full-file-first semantic repair was not exercised in the real Golden Path.
-
-Current blocker:
-
-`OLLAMA_REPEAT_LIMIT_RETRY_REUSES_LOADED_MODEL_STATE`
-
-### Current remediation — PR #34
-
-PR #34 implements the smallest product-relevant correction:
-
-`REPEAT-LIMIT -> RESET/UNLOAD LOCAL MODEL STATE -> SAME ONE BOUNDED RETRY -> SUCCESS OR GOVERNED CLOSED`
-
-Reuse status:
-
-`REUSE / ADAPT -> INTEGRATED CANDIDATE`
-
-It reuses Ollama's existing local unload mechanism rather than adding another provider or retry. Before the already-authorized repeat-limit retry, ForgeLab requests model unload/reset using an empty prompt and `keep_alive: 0`.
-
-If the reset control call fails, the generation retry still proceeds; no additional generation retry is created. If generation still fails, existing governed provider-failure handling remains authoritative.
-
-No paid fallback, extra generation retry, new provider, agent, dependency or broad infrastructure was added.
-
-Local validation reached `FORGELAB VALIDATION PASS`.
-
-### PR #34 exit gate
-
-PR #34 is not complete until:
-
-1. Product Owner explicitly approves merge;
-2. exact approved PR HEAD is merged to `main`;
-3. the same unchanged Dental Quote Golden Path is rerun;
-4. repeat-limit recovery either succeeds after model reset or terminates through existing governed provider failure, without extra retries or manual Product Owner retry orchestration.
+ForgeLab produces the requested three-treatment application with tests/review/security evidence and without routine ChatGPT-directed PowerShell debugging.
 
 ## NEXT — only after Dental Quote PASS
 
