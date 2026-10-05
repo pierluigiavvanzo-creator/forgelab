@@ -88,6 +88,38 @@ def _read_files(root: Path, paths: tuple[str, ...]) -> dict[str, str]:
     }
 
 
+_PAID_PROVIDER_KEY_NAMES = {
+    "ANTHROPIC_API_KEY",
+    "AZURE_OPENAI_API_KEY",
+    "CEREBRAS_API_KEY",
+    "COHERE_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+    "MISTRAL_API_KEY",
+    "OPENAI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "TOGETHERAI_API_KEY",
+}
+
+
+def _sandbox_environment(sandbox: Path) -> dict[str, str]:
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if (
+            not key.upper().startswith("AIDER_")
+            and key.upper() not in _PAID_PROVIDER_KEY_NAMES
+        )
+    }
+    environment.update({
+        "HOME": str(sandbox),
+        "USERPROFILE": str(sandbox),
+        "AIDER_ANALYTICS": "0",
+    })
+    return environment
+
+
 @dataclass(frozen=True)
 class AiderCliConfig:
     executable: tuple[str, ...] = ("aider",)
@@ -186,12 +218,7 @@ including tests only when they are inside the writable set.
                 command.extend(["--read", path])
             command.extend(request.allowed_paths)
 
-            environment = os.environ.copy()
-            environment.update({
-                "HOME": str(sandbox),
-                "USERPROFILE": str(sandbox),
-                "AIDER_ANALYTICS": "0",
-            })
+            environment = _sandbox_environment(sandbox)
             started = time.monotonic()
             try:
                 completed = subprocess.run(
