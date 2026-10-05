@@ -2664,7 +2664,9 @@ class MultiAgentTests(unittest.TestCase):
                             ")\n"
                             "    return a + b\n\n"
                             "def render(value):\n"
-                            "    return f\"Value: }\"\n"
+                            "    return f\"Value: }\"\n\n"
+                            "def render_total(data):\n"
+                            "    return f\"Total: {data[\\\"total\\\"]:.2f}\"\n"
                         ),
                         "summary": (
                             "Add None validation; malformed render "
