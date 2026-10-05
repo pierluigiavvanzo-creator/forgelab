@@ -1,7 +1,7 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-05  
-**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #47  
+**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #48  
 **Status:** PRE-MVP / product-critical validation  
 **Commercial evidence level:** C0 — Hypothesis  
 **Canonical repository:** `pierluigiavvanzo-creator/forgelab`
@@ -411,6 +411,33 @@ Regression target:
 
 Semantic pre-write recovery contains both a baseline-restorable malformed f-string and a newly introduced escaped dictionary-subscript f-string; both are repaired deterministically before compilation.
 
+### PR #48 — deterministic restoration of unterminated normal source strings
+
+Branch:
+
+`mvp1-source-string-recovery-stabilizer`
+
+HEAD:
+
+`5e7a7e24d5f9eb618477c8d076a08c3e1dd380c5`
+
+Base:
+
+PR #47 branch.
+
+Purpose:
+
+- extend the existing deterministic malformed-string stabilizer beyond f-strings;
+- when Python reports `unterminated string literal`, identify the failing statement prefix before the quote;
+- require one unique matching authoritative source line inside the same enclosing function/class;
+- restore only that line, then rerun parse/compile validation;
+- preserve the intended non-string functional changes in the candidate;
+- add no AI call, retry, provider, model, paid API, agent or scope expansion.
+
+Regression target:
+
+Initial full-file recovery preserves the intended functional change while an unchanged malformed normal string line is restored from the same-scope baseline before compilation.
+
 ## 7. Latest real-run evidence
 
 ### Run A — PR #41 pre-write variability
@@ -517,29 +544,55 @@ Interpretation:
 
 PR #46 succeeded on the schema-contract half of its purpose. The remaining failure demonstrates that semantic repair may introduce a *new* malformed f-string with no baseline line that can be restored. This is the narrow gap addressed by PR #47.
 
+### Run G — PR #47
+
+`run-658e58306274`
+
+ForgeLab HEAD:
+
+`02390da8cd1bad27a4b476aa3de6640553efc32f`
+
+Observed:
+
+- CLI exit 0;
+- Product Manager succeeded;
+- initial Developer patch failed reference validation because `old_text` was not found;
+- the existing one full-file implementation recovery executed;
+- recovery then failed Python pre-write validation with `unterminated string literal (detected at line 42)`;
+- run closed `CLOSED / Repair required`;
+- no repository write;
+- source repository remained CLEAN;
+- only 3 local Ollama calls;
+- estimated/spent cost EUR 0.
+
+Interpretation:
+
+PR #47's semantic f-string normalization was not exercised because the run stopped earlier in initial implementation recovery. The new blocker is a baseline-preservation failure for a normal quoted source/UI line, not a semantic-repair orchestration defect.
+
 ## 8. Current product diagnosis
 
-The stacked candidates now address five distinct proven gaps:
+The stacked candidates now address six distinct proven gaps:
 
 1. PR #43: semantic correction remains available after the one top-level repair was consumed by a deterministic test failure.
 2. PR #44: malformed full-file recovery f-strings can be stabilized from the authoritative source baseline.
 3. PR #45: every final Python candidate is compiled pre-write, not merely AST-parsed.
 4. PR #46: semantic-review repair remains schema-grounded under retry-only JSON mode and inherits source-based f-string stabilization.
 5. PR #47: newly introduced f-strings with malformed dictionary-subscript quoting can be normalized deterministically when no safe baseline restoration exists.
+6. PR #48: unchanged normal quoted source lines that become unterminated during full-file recovery can be restored deterministically from the unique same-scope baseline line.
 
 The intended uninterrupted proof remains:
 
-`PLAN -> IMPLEMENT -> PREWRITE COMPILE GATE -> TEST -> BOUNDED REPAIR IF NEEDED -> TEST PASS -> SEMANTIC REVIEW -> SEMANTIC REPAIR/CORRECTION -> FSTRING STABILIZATION IF NEEDED -> PREWRITE COMPILE GATE -> RETEST -> RE-REVIEW -> READY_FOR_DECISION`
+`PLAN -> IMPLEMENT -> PREWRITE STRING/FSTRING STABILIZATION IF NEEDED -> COMPILE GATE -> TEST -> BOUNDED REPAIR IF NEEDED -> TEST PASS -> SEMANTIC REVIEW -> SEMANTIC REPAIR/CORRECTION -> STABILIZATION IF NEEDED -> COMPILE GATE -> RETEST -> RE-REVIEW -> READY_FOR_DECISION`
 
 ## 9. Current blocker
 
 Current blocker classification:
 
-`NEW_SEMANTIC_REPAIR_FSTRING_HAS_NO_BASELINE_MATCH_AND_ESCAPED_SUBSCRIPT_QUOTES_FAIL_COMPILE`
+`INITIAL_FULL_FILE_RECOVERY_REGENERATES_UNTERMINATED_BASELINE_STRING`
 
 Smallest remediation:
 
-PR #47 keeps source restoration scoped to the same enclosing function/class and, only when no unique safe source match exists, normalizes bracketed string-key quotes inside the failing f-string expression before compile validation.
+PR #48 restores only a uniquely matching same-scope authoritative source line when the compile/parser reports an unterminated normal string literal, then reruns validation.
 
 No additional AI retry is introduced.
 
@@ -557,8 +610,9 @@ No additional AI retry is introduced.
 - PR #45: **OPEN / stacked on #44 / not merged**.
 - PR #46: **OPEN / stacked on #45 / not merged**.
 - PR #47: **OPEN / stacked on #46 / not merged**.
+- PR #48: **OPEN / stacked on #47 / not merged**.
 
-No explicit approval has been given to merge PR #37–#47.
+No explicit approval has been given to merge PR #37–#48.
 
 ## 11. Out of scope until Golden Path 1 passes
 
@@ -578,11 +632,11 @@ Only a concrete blocker from the unchanged Dental Quote flow may justify another
 
 ## 12. Single next action
 
-`VALIDATE_PR47_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
+`VALIDATE_PR48_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
 
 Use exactly:
 
-- ForgeLab candidate HEAD: `02390da8cd1bad27a4b476aa3de6640553efc32f`;
+- ForgeLab candidate HEAD: `5e7a7e24d5f9eb618477c8d076a08c3e1dd380c5`;
 - same Dental Quote repository;
 - same Product Owner objective;
 - same two authorized files;
@@ -594,14 +648,14 @@ Use exactly:
 
 Required sequence:
 
-1. run standard ForgeLab validation harness on exact PR #47 HEAD;
+1. run standard ForgeLab validation harness on exact PR #48 HEAD;
 2. only if validation PASS, rerun unchanged Dental Quote once;
-3. verify initial implementation and semantic repair remain compile-valid before write;
-4. if malformed semantic-repair f-strings occur, verify same-scope baseline restoration and/or deterministic subscript-quote normalization recover them without another AI call;
-5. require deterministic retest and independent semantic re-review;
-6. only final `READY_FOR_DECISION` with tests/review/security PASS and source CLEAN can justify merge/promotion review.
+3. verify reference/syntax recovery can restore a malformed unchanged normal string from the same-scope baseline without another AI call;
+4. verify compile-invalid Python never reaches deterministic tests;
+5. if the run reaches semantic repair, preserve all PR #43–#47 guards;
+6. require deterministic retest, independent semantic re-review, security PASS and source CLEAN before `READY_FOR_DECISION`.
 
-Do not merge PR #37–#47 before decision-ready real-run evidence.
+Do not merge PR #37–#48 before decision-ready real-run evidence.
 
 ## 13. Resume protocol for the next chat
 
@@ -613,7 +667,7 @@ Before changing code:
 4. read `ROADMAP.md`;
 5. read `DECISIONS.md`;
 6. read this `docs/handovers/HANDOVER_CURRENT.md`;
-7. verify live GitHub `main` and PR #37–#47 heads/states;
+7. verify live GitHub `main` and PR #37–#48 heads/states;
 8. do not infer local checkout state from this handover.
 
 Then execute only the Single Next Action unless new evidence invalidates it.
