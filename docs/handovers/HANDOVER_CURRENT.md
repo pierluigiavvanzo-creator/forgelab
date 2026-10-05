@@ -1,78 +1,67 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-10-04
-**Checkpoint:** PR #34 locally TESTED / explicit merge approval pending
-**Status:** PRE-MVP / Golden Path 1 blocker remediation
+**Checkpoint date:** 2026-10-05  
+**Checkpoint:** Golden Path 1 / Dental Quote — stacked runtime remediations through PR #48  
+**Status:** PRE-MVP / product-critical validation  
+**Commercial evidence level:** C0 — Hypothesis  
+**Canonical repository:** `pierluigiavvanzo-creator/forgelab`
 
-## 1. Strategic operating model
+## 1. Executive state
 
-ForgeLab is the primary product: a governed multi-agent software factory that should convert a Product Owner objective into usable, tested, reviewed software with minimal Product Owner operational work.
+ForgeLab is being validated as a governed multi-agent software-development control plane, not as a generic chat workflow.
 
-Canonical workflow:
+Golden Path:
 
 `OBJECTIVE -> PROJECT/REPO CONTEXT -> PLAN -> IMPLEMENT -> TEST -> BOUNDED REPAIR -> REVIEW -> WORKING PREVIEW -> HUMAN APPROVAL -> PROMOTION`
 
-Shared governance:
+Primary constraint:
 
-`AGENTS_MASTER.md v2`
+`ECONOMIC VALUE × USABLE PRODUCT VALUE / PRODUCT OWNER TIME`
 
-Key operating principle:
+The Product Owner should approve strategy and final promotion, not act as routine debugger, QA operator, log courier or retry orchestrator.
 
-`Autonomous within the box; human approval to change the box.`
+Current work remains focused exclusively on Golden Path 1. Do not start new infrastructure or Golden Path 2 until Dental Quote reaches a decision-ready PASS.
 
-Current commercial evidence level:
-
-`C0 — Hypothesis`
-
-## 2. Canonical repository
-
-Repository:
-
-`pierluigiavvanzo-creator/forgelab`
+## 2. Canonical baseline
 
 Canonical branch:
 
 `main`
 
-Current canonical `main` before PR #34:
+Current verified `main` HEAD:
 
-`dd027196182da4701dafc035806acffd194f125b` (merge of PR #33)
+`5f83844a36063722c2979dae19576d57c0f06c5a`
 
-Current remediation branch:
+This is the merge of PR #34:
 
-`mvp1-ollama-repeat-reset-retry`
+`MVP-1: reset Ollama state before repeat-limit retry`
 
-PR:
+PR #34 is therefore **MERGED**. Any older document saying PR #34 is awaiting merge is stale.
 
-`#34 — MVP-1: reset Ollama state before repeat-limit retry`
+Local ForgeLab path used for real runs:
 
-Runtime/test candidate validated locally:
+`C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
 
-`64ce31f1310b73076da74766c93968125c7ea3d7`
-
-## 3. Product Owner contract
-
-The Product Owner is:
-
-- strategic decision maker;
-- approver at merge/promotion gates;
-- final product tester.
-
-Do not routinely use the Product Owner as:
-
-- debugger;
-- repetitive QA;
-- log transporter;
-- retry orchestrator;
-- operator of long diagnostic command sequences.
-
-Operating preference remains normal ChatGPT chat plus Windows PowerShell only when necessary; no Work or Codex.
-
-## 4. Golden Path 1 — Dental Quote
-
-Target:
+Dental Quote target:
 
 `C:\Users\NITRO\source\FORGELAB_MVP1_DENTAL_QUOTE`
+
+## 3. Product Owner operating constraints
+
+Preserve these constraints unless explicitly changed:
+
+- use normal ChatGPT chat plus Windows PowerShell only when necessary;
+- do not use Work or Codex;
+- ZERO-COST API/TOKEN FIRST;
+- current local model: Ollama `qwen2.5-coder:7b`;
+- no paid provider fallback;
+- no paid API/token without explicit approval;
+- `max_repair_attempts = 1`;
+- no new agent, provider, dependency, configuration framework or infrastructure unless a concrete Golden Path blocker proves it necessary;
+- no merge/promotion without explicit Product Owner approval;
+- repository source must remain unchanged until explicit promotion.
+
+## 4. Golden Path 1 contract
 
 Objective:
 
@@ -95,581 +84,596 @@ Repair budget:
 
 `1`
 
-## 5. Earlier Golden Path evidence
+## 5. Merged remediation baseline
 
-Run:
+The main branch already contains the earlier MVP-1 remediations through PR #34.
 
-`run-6a0c2c512498`
+Key merged behaviors now available on `main` include:
+
+- PM acceptance contract propagation;
+- end-to-end acceptance grounding;
+- repair regression constraints;
+- no-op pre-write recovery;
+- acceptance-test traceability;
+- full-file syntax recovery;
+- deterministic repair-regression gate;
+- governed pre-write recovery exhaustion;
+- in-attempt semantic test correction;
+- in-attempt semantic re-review correction;
+- governed provider retry exhaustion;
+- semantic repair full-file schema;
+- Ollama model unload/reset before repeat-limit retry.
+
+The current work after PR #34 is therefore not a restart. It is incremental hardening of the same real Golden Path.
+
+## 6. Open stacked runtime PRs
+
+Do not merge these automatically.
+
+### PR #37 — govern unexpected run failures
+
+Branch:
+
+`mvp1-govern-early-run-failure-envelope`
+
+HEAD:
+
+`f2600c167edaecbe4351f6dbcac798cf84859074`
+
+Base:
+
+`main@5f83844a36063722c2979dae19576d57c0f06c5a`
+
+Status:
+
+**OPEN / mergeable / locally validated**
+
+Purpose:
+
+- terminalize unexpected started-run failures;
+- emit `RunFailure.json`;
+- emit normal terminal decision artifacts;
+- close as `CLOSED / Repair required`;
+- do not catch `KeyboardInterrupt` or `SystemExit`;
+- do not invent test/security evidence.
+
+Real-run evidence:
+
+`run-9f2e9fdf5c8a`
+
+Result:
+
+- CLI exit 0;
+- run safely CLOSED;
+- failure became `PrewriteRecoveryFailure.json`;
+- no repository write;
+- PR #37 successfully eliminated the prior invisible/crashing lifecycle path.
+
+### PR #38 — single-schema pre-write recovery
+
+Branch:
+
+`mvp1-prewrite-recovery-single-schema`
+
+HEAD:
+
+`473ddfd0435d74c690391b5880a8fb99e20c9cbc`
+
+Base:
+
+PR #37 branch.
+
+Purpose:
+
+- remove contradictory normal-patch + full-file contracts from the same recovery prompt;
+- full-file reference/syntax recovery exposes only schema 2.1;
+- preserve one bounded pre-write recovery.
+
+Real-run evidence:
+
+`run-8d44a83b7d99`
+
+Result:
+
+- valid two-file AI Developer candidate was produced;
+- ForgeLab progressed beyond the earlier syntax/recovery blocker;
+- run then stopped because Windows test command `py` was not allowlisted.
+
+### PR #39 — Windows `py` launcher in bounded tests
+
+Branch:
+
+`mvp1-windows-py-test-runner`
+
+HEAD:
+
+`d4b20d7115cb108686f7b4edbd31d432da78a1b7`
+
+Base:
+
+PR #38 branch.
+
+Purpose:
+
+- allow `py` and `py.exe` only on Windows;
+- preserve blocking of shell/other non-allowlisted executables;
+- leave the Golden Path test command unchanged.
+
+Real-run evidence:
+
+`run-5c795866ebc5`
+
+Result:
+
+- deterministic tests actually ran and passed 6 / 6;
+- Reviewer correctly blocked promotion because three-treatment and automatic-subtotal behavior were still incomplete;
+- semantic repair started;
+- Ollama repeat-limit was exhausted during `review-repair-1`.
+
+### PR #40 — harden repeat-limit retry
+
+Branch:
+
+`mvp1-ollama-repeat-limit-recovery-profile`
+
+HEAD:
+
+`4ccd12cff2a86a7eb50390106a050dc7d8631bd4`
+
+Base:
+
+PR #39 branch.
+
+Purpose:
+
+- keep the same single existing provider retry;
+- keep the same local model and EUR 0 cost;
+- after repeat-limit only: unload/reset model, use anti-repeat prompt, JSON mode for S2 Developer retry, and retry-only anti-repeat generation options;
+- retain deterministic ForgeLab schema validation after generation.
+
+Real-run evidence:
+
+`run-7188ab09e507`
+
+Result:
+
+- repeat-limit recovery **worked**;
+- semantic repair succeeded on the second provider attempt;
+- ForgeLab applied repair and reran tests;
+- tests became 8 total with 2 errors;
+- one in-attempt semantic test correction was activated;
+- correction retry returned JSON with the wrong shape because its prompt did not explicitly carry schema 2.1 after JSON-mode fallback.
+
+### PR #41 — self-describing semantic test-correction schema
+
+Branch:
+
+`mvp1-semantic-test-correction-self-describing-schema`
+
+Current HEAD:
+
+`a8fa650ee48b7660ddf47a62a6b4bee00dae4399`
+
+Base:
+
+PR #40 branch.
+
+Purpose:
+
+- write the full-file schema 2.1 directly into the semantic test-correction prompt;
+- keep normal response-format enforcement on the first attempt;
+- remain compatible with PR #40 JSON-mode repeat recovery;
+- preserve all retry/model/provider/budget limits.
+
+Important branch history:
+
+- first PR #41 candidate HEAD `b0211eb636b73961022a567455a3b90de1f9978f` accidentally embedded JSON braces directly inside an f-string;
+- real run `run-3b29af81a9f0` exposed the resulting Python `ValueError: Invalid format specifier ...`;
+- PR #37 safely terminalized that failure;
+- the branch was corrected in place;
+- current PR #41 HEAD is `a8fa650ee48b7660ddf47a62a6b4bee00dae4399`;
+- the schema now lives in a literal string outside the f-string and is inserted as a variable.
+
+### PR #43 — semantic correction after bounded test repair
+
+Branch:
+
+`mvp1-post-test-repair-semantic-correction`
+
+HEAD:
+
+`a5e375dab9fdfb87cf441c5841044ace25d354a2`
+
+Base:
+
+PR #41 branch.
+
+Purpose:
+
+- tag ordinary bounded deterministic-test repairs with `cause: test_failure`;
+- reuse the existing one in-attempt semantic correction when the only top-level repair was consumed by a deterministic test failure;
+- allow that correction only after repaired deterministic tests PASS and independent semantic review still FAILS;
+- preserve `max_repair_attempts = 1`;
+- rerun deterministic tests after the correction;
+- require another independent semantic review before decision readiness;
+- add no agent, provider, dependency, paid fallback or scope expansion.
+
+Regression target:
+
+`test FAIL -> repair -> tests PASS -> semantic review FAIL -> one in-attempt semantic correction -> tests PASS -> re-review PASS`
+
+This closes the exact orchestration gap exposed by the unchanged PR #41 rerun.
+
+### PR #44 — deterministic malformed f-string stabilization
+
+Branch:
+
+`mvp1-deterministic-fstring-recovery-stabilizer`
+
+HEAD:
+
+`252dc530455c086f1f3f9b9f2da22f7d3509d240`
+
+Base:
+
+PR #43 branch.
+
+Purpose:
+
+- address repeated initial full-file recovery failures caused by malformed f-string quoting/braces;
+- use no extra AI retry;
+- when full-file recovery fails syntax specifically on an f-string, restore the unique matching f-string statement from the authoritative source baseline;
+- rerun deterministic Python syntax validation afterward;
+- record `deterministic_fstring_stabilized_paths` for auditability;
+- leave non-f-string syntax failures governed and unchanged.
+
+Regression target:
+
+A malformed recovery f-string is repaired from baseline while the intended non-f-string code change remains intact.
+
+### PR #45 — compile Python candidates before repository write
+
+Branch:
+
+`mvp1-python-compile-prewrite-gate`
+
+HEAD:
+
+`d57df27b6649d62578a20d98b2c0e6147751a94b`
+
+Base:
+
+PR #44 branch.
+
+Purpose:
+
+- strengthen final Python pre-write validation from AST-only parsing to actual Python compilation with `compile(..., "exec")`;
+- catch compile-time constraints such as module-level `return` before any repository/workspace write reaches deterministic tests;
+- keep PR #44's AST-based f-string stabilizer only for locating malformed f-string lines;
+- route compile-time failures through the existing single bounded pre-write recovery;
+- add no retry, provider, model, paid API, agent or scope expansion.
+
+Regression target:
+
+A candidate that `ast.parse()` accepts but Python compilation rejects must be stopped pre-write and recovered through the existing one full-file recovery.
+
+### PR #46 — self-describing semantic repair + semantic f-string stabilization
+
+Branch:
+
+`mvp1-semantic-repair-self-describing-stabilized`
+
+HEAD:
+
+`ab082de9eae9936f18a1f15614b6b8153eaac251`
+
+Base:
+
+PR #45 branch.
+
+Purpose:
+
+- make the initial semantic-review repair prompt explicitly include full-file schema 2.1, so PR #40's retry-only JSON mode still has the required contract;
+- keep the schema literal outside the Python f-string prompt;
+- apply the existing deterministic source-based f-string stabilizer to semantic-review pre-write recovery;
+- retain PR #45 compile validation afterward;
+- record `deterministic_fstring_stabilized_paths` on semantic repair records;
+- add no retry, provider, model, paid API, agent or scope expansion.
+
+Regression target:
+
+`semantic review FAIL -> semantic repair malformed/JSON-mode fallback -> one pre-write recovery -> malformed f-string stabilized from source -> compile PASS -> tests PASS -> semantic re-review PASS`.
+
+### PR #47 — deterministic f-string subscript normalization
+
+Branch:
+
+`mvp1-fstring-subscript-normalizer`
+
+HEAD:
+
+`02390da8cd1bad27a4b476aa3de6640553efc32f`
+
+Base:
+
+PR #46 branch.
+
+Purpose:
+
+- preserve same-scope source restoration as the first malformed f-string strategy;
+- constrain restoration to the same enclosing Python function/class scope;
+- when a newly introduced f-string has no unique same-scope baseline line, normalize only dictionary-subscript quote syntax inside its `{...}` expression;
+- convert escaped/same-quote forms such as `data[\"key\"]` inside a double-quoted f-string to semantically equivalent `data['key']`;
+- retain PR #45 compile validation afterward;
+- add no AI call, retry, provider, model, paid API, agent or scope expansion.
+
+Regression target:
+
+Semantic pre-write recovery contains both a baseline-restorable malformed f-string and a newly introduced escaped dictionary-subscript f-string; both are repaired deterministically before compilation.
+
+### PR #48 — deterministic restoration of unterminated normal source strings
+
+Branch:
+
+`mvp1-source-string-recovery-stabilizer`
+
+HEAD:
+
+`5e7a7e24d5f9eb618477c8d076a08c3e1dd380c5`
+
+Base:
+
+PR #47 branch.
+
+Purpose:
+
+- extend the existing deterministic malformed-string stabilizer beyond f-strings;
+- when Python reports `unterminated string literal`, identify the failing statement prefix before the quote;
+- require one unique matching authoritative source line inside the same enclosing function/class;
+- restore only that line, then rerun parse/compile validation;
+- preserve the intended non-string functional changes in the candidate;
+- add no AI call, retry, provider, model, paid API, agent or scope expansion.
+
+Regression target:
+
+Initial full-file recovery preserves the intended functional change while an unchanged malformed normal string line is restored from the same-scope baseline before compilation.
+
+## 7. Latest real-run evidence
+
+### Run A — PR #41 pre-write variability
+
+`run-291a8c57536f`
+
+- governed pre-write recovery exhaustion;
+- source CLEAN;
+- EUR 0.
+
+### Run B — unchanged PR #41 rerun
+
+`run-827c3464862e`
+
+- deterministic test failure;
+- one bounded test repair;
+- repaired tests 6 / 6 PASS;
+- independent semantic review correctly blocked missing three-treatment / automatic-subtotal behavior;
+- exposed the PR #43 post-test semantic-correction orchestration gap.
+
+### Run C — PR #43
+
+`run-7ca3466ed4a7`
+
+- initial and recovery candidates both failed on malformed f-string syntax;
+- no repository write;
+- source CLEAN;
+- exposed repeated f-string regeneration and motivated PR #44.
+
+### Run D — PR #44
+
+`run-f07b2ecb940a`
+
+ForgeLab HEAD:
+
+`252dc530455c086f1f3f9b9f2da22f7d3509d240`
 
 Observed:
 
-- AI Developer generated a bounded two-file candidate;
-- one bounded repair was used;
-- deterministic tests passed;
-- independent semantic Reviewer blocked promotion;
-- final candidate still represented a one-treatment workflow;
-- automatic subtotals / complete three-treatment behavior and matching tests were not fully evidenced;
-- no promotion occurred.
+- CLI exit 0;
+- initial AI Developer candidate was accepted pre-write and applied in isolated workspace;
+- deterministic tests then failed during import with `SyntaxError: 'return' outside function`;
+- Support diagnosed the syntax failure;
+- repair candidate and its one pre-write correction both collapsed to no-op output;
+- ForgeLab emitted `PrewriteRecoveryFailure.json` for phase `test_failure_repair`;
+- run closed safely;
+- source repository remained CLEAN;
+- `deterministic_fstring_stabilized_paths` was empty because this failure was not an f-string error;
+- 5 local Ollama calls, EUR 0.
 
-This was a valid product failure, not a Reviewer false positive.
+Root cause learned from Run D:
 
-## 6. Root cause
+The final pre-write Python validator used `ast.parse()`. That parser accepts some constructs which Python later rejects at compile/import time, including module-level `return`. The pre-write gate therefore did not validate the same constraint enforced by the real test/import runtime.
 
-Blocker:
+### Run E — PR #45
 
-`PROJECT_MANAGER_OUTPUT_NOT_CONSUMED_BY_DEVELOPER`
+`run-83a68ff67822`
 
-The Project Manager generated an implementation plan, but the downstream Developer prompt did not consume the plan or its acceptance criteria.
+ForgeLab HEAD:
 
-The Reviewer did explicitly decompose the original objective into every obligation, which is why it correctly caught the incomplete result.
-
-## 7. PR #20 remediation
-
-PR #20 introduces the smallest meaningful correction:
-
-`OBJECTIVE -> STRUCTURED PM ACCEPTANCE CONTRACT -> DEVELOPER -> TEST -> INDEPENDENT REVIEW -> BOUNDED REPAIR -> HUMAN GATE`
-
-It:
-
-- makes PM output structured JSON;
-- includes `intended_outcome`, `execution_steps`, `acceptance_criteria`, `principal_risks`;
-- preserves quantitative requirements;
-- prohibits PM scope invention;
-- propagates PM acceptance criteria into the Developer task;
-- passes the contract to initial generation and repair paths;
-- keeps Reviewer independent;
-- adds no new agent, provider, dependency, repair budget or broad infrastructure.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 8. Golden Path rerun after PR #20
-
-Run:
-
-`run-c135dcec0887`
+`d57df27b6649d62578a20d98b2c0e6147751a94b`
 
 Observed:
 
-- deterministic status PASS;
-- Developer added aggregate multi-treatment calculation logic;
-- tests covered three treatments and percentage-discount calculations;
-- Tkinter UI remained one-treatment only;
-- aggregate discount remained hard-coded at 10%;
-- semantic Reviewer correctly blocked promotion;
-- Reviewer wording incorrectly characterized some partial implementation/tests as absent.
+- CLI exit 0;
+- initial implementation and its one pre-write recovery produced a compilable two-file candidate;
+- deterministic tests ran and passed 4 / 4;
+- independent semantic review correctly blocked incomplete Product Owner coverage, especially missing true three-treatment / automatic-subtotal behavior;
+- semantic-review repair was activated;
+- its first provider attempt hit Ollama repeat-limit;
+- the existing anti-repeat retry succeeded but returned JSON without `schema_version`, `summary` and `files`;
+- semantic pre-write recovery then timed out once, succeeded on its existing provider retry, but produced Python with `f-string: unmatched '['`;
+- governed `PrewriteRecoveryFailure.json` recorded phase `semantic_review_repair`;
+- source repository remained CLEAN;
+- tests before semantic repair were PASS;
+- 8 local Ollama calls, EUR 0.
 
-Current blocker:
+Interpretation:
 
-`END_TO_END_ACCEPTANCE_NOT_ENFORCED_AND_REVIEW_EVIDENCE_NOT_GROUNDED`
+PR #45 worked for its intended purpose: compile-invalid Python did not leak into deterministic testing. The current blocker is now entirely inside semantic-review repair/recovery.
 
-## 9. PR #22 remediation
+### Run F — PR #46
 
-PR #22:
+`run-a933b591f000`
 
-- provides complete authorized target files to the Project Manager as bounded read-only planning context;
-- requires Developer to wire user-visible behavior through an existing interface/entry point;
-- treats helper-only implementation as insufficient for end-to-end acceptance;
-- requires Developer self-check against every acceptance criterion;
-- provides complete final authorized candidate files to Reviewer;
-- requires Reviewer to describe partial evidence precisely rather than falsely calling it absent;
-- preserves Reviewer independence from the PM contract;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure expansion.
+ForgeLab HEAD:
 
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 10. Golden Path rerun after PR #22
-
-Run:
-
-`run-81c1ceb4506c`
+`ab082de9eae9936f18a1f15614b6b8153eaac251`
 
 Observed:
 
-- initial candidate changed both authorized files;
-- first deterministic run: 4 PASS / 1 ERROR;
-- failing test attempted to add two dictionary results directly;
-- one bounded repair was used;
-- after repair, previously passing tests regressed: 2 ERROR + 1 FAIL;
-- run ended in DIAGNOSING with `repair_attempts=1`;
-- no `Changes.patch` was produced;
-- semantic review was never reached.
+- CLI exit 0;
+- initial implementation reached deterministic tests;
+- deterministic tests passed 5 / 5;
+- independent semantic review correctly blocked missing explicit three-treatment / automatic-subtotal behavior;
+- semantic-review repair remained schema-grounded: the prior `missing fields: files, schema_version, summary` failure did not recur;
+- semantic repair then failed pre-write on `f-string: unmatched '['`;
+- its single pre-write recovery produced a second f-string error: `f-string expression part cannot include a backslash`;
+- no semantic repair write occurred;
+- source repository remained CLEAN;
+- 7 local Ollama calls, EUR 0.
 
-Current blocker:
+Interpretation:
 
-`BOUNDED_REPAIR_REGRESSION_AND_TEST_CONTRACT_DRIFT`
+PR #46 succeeded on the schema-contract half of its purpose. The remaining failure demonstrates that semantic repair may introduce a *new* malformed f-string with no baseline line that can be restored. This is the narrow gap addressed by PR #47.
 
-## 11. PR #23 remediation
+### Run G — PR #47
 
-PR #23:
+`run-658e58306274`
 
-- makes newly-added tests follow the actual candidate API consistently;
-- requires Support to distinguish implementation defects from malformed/API-inconsistent tests;
-- treats tests already reported as `ok` as regression constraints;
-- preserves public return types, dictionary keys, call signatures and passing semantics unless the objective explicitly requires change;
-- allows correcting malformed tests without weakening acceptance requirements;
-- carries the same constraints into bounded pre-write repair;
-- keeps `max repair attempts = 1`;
-- adds no agent, provider, dependency or infrastructure.
+ForgeLab HEAD:
 
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 12. Golden Path rerun after PR #23
-
-Observed failure:
-
-`ValueError: AI Developer proposed a no-op replacement`
-
-Observed behavior:
-
-- candidate was rejected before repository write;
-- no-op safety rule worked;
-- generic `ValueError` bypassed bounded pre-write recovery;
-- run terminated before the normal implementation/test/review flow.
-
-Current blocker:
-
-`NOOP_PATCH_BYPASSES_PREWRITE_RECOVERY`
-
-## 13. PR #24 remediation
-
-PR #24:
-
-- classifies no-op patch candidates as recoverable `AIDeveloperFormatError`;
-- keeps no-op writes prohibited;
-- routes no-op responses through the existing one bounded pre-write correction;
-- tells Developer to omit unchanged files/regions and never emit a no-op replacement;
-- adds regression coverage for successful bounded recovery;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 14. Golden Path rerun after PR #24
-
-Run:
-
-`run-e83f1cfbebff`
+`02390da8cd1bad27a4b476aa3de6640553efc32f`
 
 Observed:
 
-- no-op recovery worked and the run continued;
-- first deterministic run failed;
-- one bounded repair was used;
-- second deterministic run passed;
-- independent semantic review was reached;
-- candidate still lacked an explicit three-treatment GUI workflow;
-- no direct test exercised exactly three distinct treatments;
-- a test name no longer matched the behavior it exercised;
-- discount percentage conversion was inconsistent end-to-end;
-- Reviewer blocked promotion but mislabeled existing partial logic as absent.
+- CLI exit 0;
+- Product Manager succeeded;
+- initial Developer patch failed reference validation because `old_text` was not found;
+- the existing one full-file implementation recovery executed;
+- recovery then failed Python pre-write validation with `unterminated string literal (detected at line 42)`;
+- run closed `CLOSED / Repair required`;
+- no repository write;
+- source repository remained CLEAN;
+- only 3 local Ollama calls;
+- estimated/spent cost EUR 0.
 
-Current blocker:
+Interpretation:
 
-`ACCEPTANCE_TEST_TRACEABILITY_GAP_AND_NO_PARTIAL_REVIEW_STATE`
+PR #47's semantic f-string normalization was not exercised because the run stopped earlier in initial implementation recovery. The new blocker is a baseline-preservation failure for a normal quoted source/UI line, not a semantic-repair orchestration defect.
 
-## 15. PR #25 remediation
+## 8. Current product diagnosis
 
-PR #25:
+The stacked candidates now address six distinct proven gaps:
 
-- adds `PARTIAL` semantic requirement status;
-- reserves `MISSING` for genuinely absent evidence;
-- requires Reviewer to inspect complete candidate files before claiming absence;
-- requires direct tests for each testable acceptance criterion;
-- requires direct quantitative tests for quantitative requirements;
-- requires semantic alignment among test name, setup, exercised API and assertions;
-- carries criterion-coverage constraints into bounded repair;
-- requires consistent numeric/unit conversion across boundaries;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure.
+1. PR #43: semantic correction remains available after the one top-level repair was consumed by a deterministic test failure.
+2. PR #44: malformed full-file recovery f-strings can be stabilized from the authoritative source baseline.
+3. PR #45: every final Python candidate is compiled pre-write, not merely AST-parsed.
+4. PR #46: semantic-review repair remains schema-grounded under retry-only JSON mode and inherits source-based f-string stabilization.
+5. PR #47: newly introduced f-strings with malformed dictionary-subscript quoting can be normalized deterministically when no safe baseline restoration exists.
+6. PR #48: unchanged normal quoted source lines that become unterminated during full-file recovery can be restored deterministically from the unique same-scope baseline line.
 
-Reuse status:
+The intended uninterrupted proof remains:
 
-`ADAPT -> INTEGRATED CANDIDATE`
+`PLAN -> IMPLEMENT -> PREWRITE STRING/FSTRING STABILIZATION IF NEEDED -> COMPILE GATE -> TEST -> BOUNDED REPAIR IF NEEDED -> TEST PASS -> SEMANTIC REVIEW -> SEMANTIC REPAIR/CORRECTION -> STABILIZATION IF NEEDED -> COMPILE GATE -> RETEST -> RE-REVIEW -> READY_FOR_DECISION`
 
-## 16. Golden Path rerun after PR #25
+## 9. Current blocker
 
-Observed failure:
+Current blocker classification:
 
-`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 41: unterminated string literal`
+`INITIAL_FULL_FILE_RECOVERY_REGENERATES_UNTERMINATED_BASELINE_STRING`
 
-Observed behavior:
+Smallest remediation:
 
-- invalid Python was rejected before repository write;
-- the existing single pre-write correction path was entered;
-- snippet-oriented syntax correction could still compose invalid Python;
-- a subsequent syntax error escaped the normal governed run lifecycle.
+PR #48 restores only a uniquely matching same-scope authoritative source line when the compile/parser reports an unterminated normal string literal, then reruns validation.
 
-Current blocker:
+No additional AI retry is introduced.
 
-`EXHAUSTED_PREWRITE_CORRECTION_ESCAPES_RUN_LIFECYCLE`
+## 10. PR / merge state
 
-## 17. PR #26 remediation
+- PR #34: **MERGED** into `main`.
+- PR #36: **OPEN** docs-only canonical sync created after PR #34; now historically stale relative to PR #37–#41. Do not merge it without reconciliation.
+- PR #37: **OPEN / not merged**.
+- PR #38: **OPEN / stacked on #37 / not merged**.
+- PR #39: **OPEN / stacked on #38 / not merged**.
+- PR #40: **OPEN / stacked on #39 / not merged**.
+- PR #41: **OPEN / stacked on #40 / not merged**.
+- PR #43: **OPEN / stacked on #41 / not merged**.
+- PR #44: **OPEN / stacked on #43 / not merged**.
+- PR #45: **OPEN / stacked on #44 / not merged**.
+- PR #46: **OPEN / stacked on #45 / not merged**.
+- PR #47: **OPEN / stacked on #46 / not merged**.
+- PR #48: **OPEN / stacked on #47 / not merged**.
 
-PR #26:
+No explicit approval has been given to merge PR #37–#48.
 
-- reuses full-file recovery for `AIDeveloperSyntaxError`;
-- uses complete current authorized files as authoritative recovery context;
-- requires complete syntactically valid Python for changed Python files;
-- runs deterministic syntax validation before write;
-- applies the same rule to syntax errors inside bounded test-failure repair;
-- retains exactly one pre-write correction;
-- adds no agent, provider, dependency, repair-budget increase or infrastructure.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 18. Golden Path rerun after PR #26
-
-Run:
-
-`run-0a4726594909`
-
-Observed:
-
-- full-file syntax recovery prevented the prior pre-write crash;
-- initial deterministic tests: 4 PASS / 1 ERROR;
-- `test_multiple_treatments` failed because it added two dictionary results directly;
-- one bounded repair was used;
-- repaired run made `test_multiple_treatments` PASS;
-- repaired run regressed `test_discount_applied` and `test_single_treatment_total` from PASS to ERROR;
-- repair changed established mapping/dictionary behavior into float behavior;
-- run ended in DIAGNOSING with repair budget exhausted;
-- no patch artifact was produced and semantic review was not reached.
-
-Current blocker:
-
-`PROMPT_ONLY_REGRESSION_CONSTRAINT_NOT_ENFORCED_DETERMINISTICALLY`
-
-## 19. PR #28 remediation
-
-PR #28:
-
-- parses deterministic test outcomes before and after repair;
-- turns previously PASS tests into machine-enforced regression constraints;
-- emits explicit `repair_regression` evidence;
-- rolls back a regressing repair to the exact pre-repair candidate state;
-- allows one regression correction inside the same top-level repair attempt;
-- uses full-file correction for the authorized subset;
-- reruns deterministic tests after correction;
-- keeps `max repair attempts = 1`;
-- adds no new agent, provider, dependency or infrastructure.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 20. Golden Path rerun after PR #28
-
-Observed failure:
-
-`AIDeveloperSyntaxError: AI Developer Python candidate does not parse in quote_calculator.py at line 43: unterminated string literal`
-
-Observed:
-
-- initial syntax validation blocked invalid Python before write;
-- the single full-file syntax recovery was attempted;
-- the recovery also produced invalid Python;
-- second pre-write validation failure escaped as `run execution failed`;
-- no validated candidate reached implementation/testing.
-
-Current blocker:
-
-`PREWRITE_RECOVERY_EXHAUSTION_NOT_GOVERNED`
-
-## 21. PR #29 remediation
-
-PR #29:
-
-- keeps exactly one pre-write correction;
-- converts second recoverable pre-write validation failure into `PREWRITE_RECOVERY_EXHAUSTED`;
-- emits `PrewriteRecoveryFailure.json`;
-- records explicit pre-write validation evidence;
-- closes as `CLOSED / Repair required`;
-- writes the normal terminal artifacts even without a candidate patch;
-- guarantees no repository write on exhausted pre-write recovery;
-- applies the same handling to implementation, test-failure repair and semantic-review repair;
-- extends semantic syntax recovery to full-file mode;
-- adds no new agent, provider, dependency or repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 22. Golden Path rerun after PR #29
-
-Run:
-
-`run-81f814fa23f5`
-
-Observed:
-
-- PR #29 eliminated the uncaught pre-write lifecycle crash;
-- initial deterministic tests passed 5 / 5;
-- independent semantic review correctly blocked the incomplete exact three-treatment workflow;
-- one semantic-review repair was applied;
-- the repair added a direct treatment-validation test;
-- deterministic retest failed because the expected `ValueError` was not raised;
-- the run stopped in DIAGNOSING with `repair_attempts=1`;
-- `Changes.patch` remained stale relative to the semantic repair candidate;
-- Reviewer overall FAIL was correct, but its wording understated partial existing treatment/subtotal/final-total implementation.
-
-Current blocker:
-
-`SEMANTIC_REPAIR_TEST_FAILURE_HAS_NO_IN_ATTEMPT_RECOVERY`
-
-## 23. PR #30 remediation
-
-PR #30:
-
-- preserves `max repair attempts = 1`;
-- allows one deterministic test correction inside the same semantic-review repair attempt;
-- supplies the correction with objective, PM contract, semantic findings, before/after test evidence, and complete current authorized files;
-- uses full-file replacement for only the authorized subset;
-- validates scope and syntax before write;
-- reruns tests after correction;
-- re-enters semantic review only after tests pass;
-- safely blocks if correction is invalid or retest still fails;
-- records `semantic_test_correction_attempts = 1` separately;
-- refreshes `Changes.patch` after semantic repair and after correction;
-- adds no agent, provider, dependency, infrastructure, or top-level repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 24. Golden Path rerun after PR #30
-
-Run:
-
-`run-7676d5c968dc`
-
-Observed:
-
-- PR #30 successfully returned a failed semantic repair through deterministic retest and back to independent semantic review;
-- initial deterministic tests passed 6 / 6;
-- the single semantic-review repair was applied;
-- deterministic retest passed 9 / 9;
-- `Changes.patch` correctly reflected the semantic repair candidate;
-- second semantic review still failed;
-- Reviewer overall blocking decision was directionally correct because the exact three-treatment end-to-end workflow remained incomplete;
-- Reviewer wording remained partly inaccurate about present-but-incomplete behavior;
-- the run stopped in REVIEW with tests PASS and `repair_attempts=1`;
-- no further bounded semantic correction existed inside the already-used repair attempt.
-
-Current blocker:
-
-`SEMANTIC_REPAIR_REVIEW_FAILURE_HAS_NO_IN_ATTEMPT_CORRECTION`
-
-## 25. PR #31 remediation
-
-PR #31:
-
-- preserves `max repair attempts = 1`;
-- allows one semantic correction inside the same top-level semantic repair when deterministic retest passes but semantic re-review still fails;
-- supplies objective, PM contract, latest semantic findings, latest passing tests, complete current authorized files and current diff;
-- requires inspection of current files before acting on Reviewer wording;
-- uses full-file replacement for only the authorized subset;
-- validates scope and syntax before write;
-- reruns deterministic tests;
-- performs one further independent semantic review only after tests pass;
-- safely blocks if correction is invalid, retest fails or final semantic review still fails;
-- records `semantic_review_correction_attempts = 1` separately;
-- refreshes `Changes.patch` after the correction;
-- adds no agent, provider, dependency, infrastructure or top-level repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 26. Golden Path rerun after PR #31
-
-Observed:
-
-- the unchanged Dental Quote run did not reach product acceptance evaluation;
-- local Ollama returned HTTP 500 with `prediction aborted, token repeat limit reached`;
-- the configured bounded retry was exhausted;
-- the transient provider error escaped the governed run lifecycle as `run execution failed`;
-- this is a provider-runtime lifecycle blocker, not evidence that the Dental Quote candidate itself failed acceptance.
-
-Current blocker:
-
-`OLLAMA_REPEAT_LIMIT_RETRY_EXHAUSTION_ESCAPES_RUN_LIFECYCLE`
-
-## 27. PR #32 remediation
-
-PR #32:
-
-- keeps Ollama and provider cost EUR 0;
-- keeps the configured retry count unchanged;
-- makes the existing retry adaptive only for `token repeat limit reached`;
-- preserves the original prompt and response schema while appending a concise anti-loop recovery instruction;
-- preserves the existing bounded timeout widening;
-- emits `ProviderFailure.json` when the bounded retry is exhausted;
-- converts planning-time provider exhaustion into `CLOSED / Repair required` with normal terminal artifacts;
-- converts in-run provider exhaustion into the same governed outcome;
-- records provider-runtime evidence and usage RETRY/FAIL outcomes;
-- adds no paid fallback, extra retry, provider, agent, dependency or infrastructure.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 28. Golden Path rerun after PR #32
-
-Run:
-
-`run-0960eae66316`
-
-Observed:
-
-- PR #32 eliminated the uncaught provider failure path;
-- initial deterministic tests passed;
-- semantic review returned FAIL/PARTIAL for incomplete three-treatment and automatic-subtotal behavior;
-- semantic repair entered REPAIRING;
-- the first semantic repair candidate failed deterministic Python syntax validation;
-- the one bounded pre-write recovery also failed syntax validation;
-- ForgeLab emitted `PrewriteRecoveryFailure.json` and closed as `CLOSED / Repair required`;
-- final syntax error was `f-string: unmatched '['`.
-
-Current blocker:
-
-`SEMANTIC_REPAIR_FRAGMENT_SCHEMA_CAUSES_AVOIDABLE_SYNTAX_COMPOSITION_RISK`
-
-## 29. PR #33 remediation
-
-PR #33:
-
-- preserves `max repair attempts = 1`;
-- preserves the one bounded pre-write correction;
-- starts semantic-review repair directly in full-file schema `2.1`;
-- returns complete replacement content only for the authorized changed subset;
-- validates complete Python files before write;
-- keeps the one bounded pre-write correction in full-file mode;
-- removes snippet-specific recovery branching from this semantic-repair path;
-- strengthens repair grounding against inaccurate Reviewer wording and incomplete quantitative/user-visible acceptance;
-- adds no agent, provider, dependency, retry, infrastructure or top-level repair-budget increase.
-
-Reuse status:
-
-`ADAPT -> INTEGRATED CANDIDATE`
-
-## 30. Golden Path rerun after PR #33
-
-Run:
-
-`run-98f2c045a9f3`
-
-Observed:
-
-- initial deterministic tests passed 5 / 5;
-- semantic review blocked incomplete three-treatment and automatic-subtotal acceptance;
-- semantic repair task `review-repair-1` started;
-- Ollama returned HTTP 500 `prediction aborted, token repeat limit reached`;
-- the existing adaptive generation retry was exhausted;
-- PR #32 correctly emitted `ProviderFailure.json` and closed as `CLOSED / Repair required`;
-- no semantic repair candidate was produced, so PR #33 full-file-first repair behavior was not exercised in the real Golden Path.
-
-Current blocker:
-
-`OLLAMA_REPEAT_LIMIT_RETRY_REUSES_LOADED_MODEL_STATE`
-
-## 31. PR #34 remediation
-
-PR #34:
-
-- preserves Ollama and provider cost EUR 0;
-- preserves the configured generation retry count;
-- preserves the adaptive anti-repetition prompt;
-- resets/unloads local Ollama model state before the existing repeat-limit retry using an empty prompt and `keep_alive: 0`;
-- uses the same loopback provider endpoint;
-- proceeds with the existing generation retry even if the reset control call fails;
-- does not reset on ordinary transient failures;
-- preserves existing governed `ProviderFailure.json` behavior if generation retry still fails;
-- adds no paid fallback, extra generation retry, provider, agent, dependency or configuration expansion.
-
-Reuse status:
-
-`REUSE / ADAPT -> INTEGRATED CANDIDATE`
-
-## 32. Validation evidence
-
-Product Owner local validation reached:
-
-`=== FORGELAB VALIDATION PASS ===`
-
-The checked harness requires:
-
-- clean worktree before tests;
-- focused PM -> Developer -> semantic repair contract test PASS;
-- two API AI-generate regression tests PASS;
-- explicit full Python discovery over `tests/test*.py` PASS;
-- full discovery executes more than zero tests;
-- clean worktree after tests.
-
-Current evidence classification:
-
-- PR #20: **MERGED** at `c0c7fafb604893840efe22597f1ae18bb4cd32f5`
-- PR #22: **MERGED** at `e8a768044ed0e61c2f5619c5d558c2025b0eafa2`
-- PR #23: **MERGED** at `18a49ab54f90efefabdd5e54c4abeebd962cd35a`
-- PR #24: **MERGED** at `0af0a75b2be4b66ab3da8d26449265c4d0ef8c78`
-- PR #25: **MERGED** at `2eaa2f0399b4080e54633357bc9668cd6975e96e`
-- PR #26: **MERGED** at `97f25bdb358adaa050735d463000495bafcf0b85`
-- PR #27: **MERGED** governance-only update to `AGENTS_MASTER.md`; canonical main advanced to `a3fefabd1a39a3a8d8c20ffd88ccfca5bc732496`
-- PR #28: **MERGED** at `718af139078537a29bbb93ed06089f52162f526a`
-- PR #29: **MERGED** at `02980f17c6ba85c77c2bd2b00e6ca92cf2aa1f14`
-- PR #30: **MERGED** at `081960cb6c0c696567010010dd387a49c6750114`
-- PR #31: **MERGED** at `af63c04cf401771499988b30a6c4f45fbef4c8b0`
-- PR #32: **MERGED** at `fb3188890573e484640b7a4c667c3f4703218685`
-- PR #33: **MERGED** at `dd027196182da4701dafc035806acffd194f125b`
-- PR #34 runtime/test code: **TESTED locally** at `64ce31f1310b73076da74766c93968125c7ea3d7`
-- PR #34: **NOT MERGED**
-- Dental Quote after PR #34: **NOT YET REAL-WORKFLOW VALIDATED**
-
-## 33. Out of scope until Dental Quote PASS
+## 11. Out of scope until Golden Path 1 passes
 
 Do not prioritize:
 
 - multi-tenancy;
 - billing;
-- advanced scaling;
 - deployment expansion;
 - paid-provider expansion;
 - new agent roles;
 - broad observability;
 - new configuration frameworks;
-- unrelated refactors.
+- unrelated refactors;
+- Golden Path 2 or 3.
 
-Only a concrete Golden Path blocker may justify additional ForgeLab development.
+Only a concrete blocker from the unchanged Dental Quote flow may justify another ForgeLab runtime change.
 
-## 34. Generality proof after Dental Quote PASS
+## 12. Single next action
 
-1. Dental Quote — calculator/business logic.
-2. Small CRUD SaaS — records/users/workflow.
-3. Automation/reporting tool — ingest -> transform -> report.
+`VALIDATE_PR48_AND_RERUN_UNCHANGED_DENTAL_QUOTE_ONCE`
 
-Do not begin #2 or #3 until #1 passes.
+Use exactly:
 
-## 35. Current gate
+- ForgeLab candidate HEAD: `5e7a7e24d5f9eb618477c8d076a08c3e1dd380c5`;
+- same Dental Quote repository;
+- same Product Owner objective;
+- same two authorized files;
+- same test command;
+- same `max_repair_attempts = 1`;
+- same local Ollama model;
+- no paid fallback;
+- no configuration expansion.
 
-PR #34 is locally TESTED and awaits explicit Product Owner merge approval.
+Required sequence:
 
-Do not merge, force-update, rebase or promote without explicit approval.
+1. run standard ForgeLab validation harness on exact PR #48 HEAD;
+2. only if validation PASS, rerun unchanged Dental Quote once;
+3. verify reference/syntax recovery can restore a malformed unchanged normal string from the same-scope baseline without another AI call;
+4. verify compile-invalid Python never reaches deterministic tests;
+5. if the run reaches semantic repair, preserve all PR #43–#47 guards;
+6. require deterministic retest, independent semantic re-review, security PASS and source CLEAN before `READY_FOR_DECISION`.
 
-## 36. Single next action
+Do not merge PR #37–#48 before decision-ready real-run evidence.
 
-Obtain explicit Product Owner approval for PR #34 merge.
+## 13. Resume protocol for the next chat
 
-After approved merge:
+Before changing code:
 
-1. verify exact merged HEAD on `main`;
-2. align local ForgeLab checkout;
-3. rerun the same unchanged Dental Quote objective;
-4. evaluate the real output through deterministic tests and independent semantic review;
-5. only after Dental Quote PASS proceed to Golden Path 2.
+1. read `AGENTS_MASTER.md`;
+2. read `AGENTS.md`;
+3. read `PROJECT_STATE.md`;
+4. read `ROADMAP.md`;
+5. read `DECISIONS.md`;
+6. read this `docs/handovers/HANDOVER_CURRENT.md`;
+7. verify live GitHub `main` and PR #37–#48 heads/states;
+8. do not infer local checkout state from this handover.
+
+Then execute only the Single Next Action unless new evidence invalidates it.
+
+## 14. Economic / product significance
+
+The work remains A — Product Critical because the goal is not to make individual tests green. The goal is to prove that ForgeLab can autonomously produce a usable software change, detect incomplete behavior that unit tests miss, repair within a bounded budget, and present a decision-ready result without routine Product Owner debugging.
+
+Until that happens in one uninterrupted real run, ForgeLab remains PRE-MVP and Dental Quote remains the active acceptance test.
