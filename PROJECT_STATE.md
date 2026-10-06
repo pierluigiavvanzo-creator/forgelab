@@ -1,6 +1,6 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-06
 **Current phase:** PRE-MVP / MVP Recovery Architecture Reset
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
@@ -11,7 +11,7 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main`: `8b67b98c61d6bd90af839d1cad185f05454a2e66` (merge of PR #49 architecture reset).
+Current canonical `main`: `1fac126023444052623da0c8027cc7209522bbbb` (merge of PR #50 editor bakeoff harness).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / EDITOR BAKEOFF HARNESS READY FOR HUMAN MERGE REVIEW`
+`RUNTIME STACK FROZEN / DENTAL QUOTE AUTONOMOUS PRODUCT INTEGRATION ACTIVE`
 
 Audit:
 
@@ -66,7 +66,19 @@ Hold constant:
 - repair cap;
 - EUR 0 provider cost.
 
-The adapter/bakeoff harness is now implemented without changing the normal Golden Path. Focused verification: 10/10 tests PASS; editor adapter, bakeoff evaluator and CLI syntax compile PASS. No Product Owner PowerShell rerun is requested.
+PR #50 is merged. The next work is no longer a detached bakeoff: integrate the reusable editor into the real Dental Quote Golden Path while preserving dashboard/API/ToolGateway/test/review/security governance. Binding product metrics are in `docs/experiments/DENTAL_QUOTE_AUTONOMY_GATE.md`.
+
+## Binding Dental autonomy metrics
+
+- `CHATGPT_ASSISTANCE_IN_TARGET_PRODUCT_RUN = 0`;
+- `PRODUCT_OWNER_LOG_COPY_ACTIONS = 0`;
+- `PRODUCT_OWNER_MANUAL_DEBUG_ACTIONS = 0`;
+- `PAID_API_COST_EUR = 0`;
+- tests PASS + independent semantic Reviewer PASS + Security PASS;
+- source protected until human approval;
+- approved Dental Quote must be launchable and usable.
+
+The game is Golden Path #2 and cannot replace or defer Dental Quote.
 
 ## Product direction
 
@@ -84,9 +96,10 @@ Primary product/economic metric:
 
 ## Golden Path sequence
 
-1. Dental Quote — calculator/business logic.
-2. Small CRUD SaaS — records/users/workflow.
-3. Automation/reporting tool — ingest -> transform -> report.
+1. Dental Quote — autonomous usable product proof.
+2. Playable game — visual/generalization proof.
+3. Small CRUD SaaS — records/users/workflow.
+4. Automation/reporting tool — ingest -> transform -> report.
 
 Dental Quote target:
 
