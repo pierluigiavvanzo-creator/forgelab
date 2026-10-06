@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / PR #51 DENTAL AUTONOMOUS INTEGRATION AT HUMAN MERGE GATE`
+`RUNTIME STACK FROZEN / PR #53 TEST-FAILURE AIDER REPAIR AT HUMAN MERGE GATE`
 
 Audit:
 
@@ -105,6 +105,35 @@ Scope:
   repair budget;
 - no new recovery catalogue;
 - no Dental-specific product logic.
+
+## 2026-10-06 second real Dental dashboard evidence
+
+Observed real dashboard run:
+
+`run-bee503005ab4`
+
+Visible outcome:
+
+- status: `CLOSED`;
+- gate: `Repair`;
+- deterministic tests: `FAIL`;
+- test attempts: `0/1 PASS`;
+- repair attempts applied: `0`;
+- provider cost: `EUR 0`;
+- dashboard reports 6 LLM calls / 15669 tokens.
+
+Interpretation:
+
+The product is **not PASS**. The run failed before any bounded repair was applied.
+
+Code trace on canonical main shows that deterministic test-failure repair still
+uses the legacy custom JSON/snippet Developer path even when
+`editor_engine=aider`. The smallest general remediation is to keep this
+repair on the same reusable Aider editor path.
+
+Current remediation PR:
+
+`#53 — MVP-1: keep failed-test repair on reusable Aider path`
 
 ## Binding Dental autonomy metrics
 
