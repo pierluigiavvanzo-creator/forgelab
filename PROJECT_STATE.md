@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / AIDER PREWRITE CORRECTION CANDIDATE AT HUMAN MERGE GATE`
+`RUNTIME STACK FROZEN / TERMINAL BLOCKER OBSERVABILITY AT HUMAN MERGE GATE`
 
 Audit:
 
@@ -180,6 +180,48 @@ Scope:
 - no new top-level repair budget;
 - no Dental-specific product logic;
 - no custom syntax/string recovery catalogue.
+
+## 2026-10-06 fourth real Dental dashboard evidence
+
+Observed synchronized dashboard run:
+
+`run-1df61ea4f109`
+
+Visible outcome:
+
+- status: `CLOSED`;
+- gate: `Repair`;
+- deterministic tests: `FAIL`;
+- repair attempts applied: `0`;
+- provider cost: `EUR 0`;
+- dashboard reports 2 LLM calls / 3443 tokens.
+
+This run is a valid Dental product FAIL.
+
+However, the current dashboard/API contract does not expose the terminal
+failure artifact that explains why the run stopped. In particular,
+`PrewriteRecoveryFailure.json` and `ProviderFailure.json` may exist on disk
+but are not returned by the artifact API or summarized in Panoramica.
+
+Decision:
+
+Do **not** create another repair-engine remediation from this screenshot alone.
+
+Current remediation is observability only:
+
+`mvp1-dashboard-terminal-blocker-observability`
+
+It must:
+
+- expose terminal failure artifacts through the existing allowlisted API;
+- display the current blocking reason, phase and final error in Panoramica;
+- link directly to the supporting evidence artifact;
+- show the active ForgeLab runtime Git SHA;
+- stop showing ForgeLab internal fallback changes when a real target run has
+  no applied change-set.
+
+Only a subsequent run with visible terminal evidence may justify another
+runtime repair change.
 
 ## Binding Dental autonomy metrics
 
