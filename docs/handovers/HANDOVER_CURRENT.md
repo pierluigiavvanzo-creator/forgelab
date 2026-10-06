@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** Dashboard exposed exact initial Aider pre-write blocker  
-**Status:** PRE-MVP / initial Aider correction candidate / HUMAN MERGE GATE
+**Checkpoint:** Initial Aider correction now runs but exits 2 without process detail  
+**Status:** PRE-MVP / Aider process-evidence candidate / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -271,6 +271,44 @@ The candidate keeps:
 
 It adds no Dental-specific implementation logic.
 
+## 14. Sixth real Dental dashboard run — Aider process failure visible
+
+Run:
+
+`run-160a0cc0cc6a`
+
+Runner:
+
+`f09ec5801fb9...`
+
+Dashboard blocker:
+
+`PREWRITE_RECOVERY_EXHAUSTED`
+
+Phase:
+
+`implementation`
+
+Final error:
+
+`Aider initial pre-write correction did not complete successfully: exit=2, timed_out=False`
+
+This proves PR #56 is active: the initial Aider correction is attempted.
+
+Current evidence gap:
+
+The adapter already captures Aider stdout/stderr, but the orchestrator discards
+them when a non-zero process exit is converted into a terminal error. Therefore
+`exit=2` alone is insufficient to distinguish CLI parsing, model/provider
+failure or another subprocess problem.
+
+Smallest next change:
+
+`PRESERVE_BOUNDED_AIDER_STDERR_STDOUT_IN_FAILURE_EVIDENCE`
+
+Do not change retry/editor behavior until the next dashboard blocker includes
+the actual Aider process output.
+
 ## 14. Fifth real Dental dashboard run — exact blocker visible
 
 Run:
@@ -422,7 +460,7 @@ No new repair budget, no paid provider, no Dental-specific product logic.
 
 ## 14. Single next action
 
-`HUMAN_REVIEW_INITIAL_AIDER_PREWRITE_CORRECTION_PR`
+`HUMAN_REVIEW_AIDER_FAILURE_OUTPUT_EVIDENCE_PR`
 
 No Product Owner diagnostic command is required.
 
