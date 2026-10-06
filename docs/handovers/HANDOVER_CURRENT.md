@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** First real Dental run reached tests PASS but semantic gate repair  
-**Status:** PRE-MVP / Aider semantic-repair candidate
+**Checkpoint:** Second real Dental run failed tests before repair application  
+**Status:** PRE-MVP / PR #53 OPEN / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -271,9 +271,41 @@ The candidate keeps:
 
 It adds no Dental-specific implementation logic.
 
+## 14. Second real Dental dashboard run
+
+Run:
+
+`run-bee503005ab4`
+
+Dashboard evidence:
+
+- `CLOSED`;
+- Gate `Repair`;
+- TEST `FAIL`;
+- `0/1` tests PASS;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- 6 LLM calls / 15669 tokens.
+
+Root cause trace:
+
+The initial Aider path is active, and PR #52 moved semantic-review repair to
+Aider. However, deterministic test-failure repair still uses the legacy custom
+JSON/snippet Developer path.
+
+Current candidate:
+
+`PR #53 — MVP-1: keep failed-test repair on reusable Aider path`
+
+Expected governed flow after merge:
+
+`Aider initial edit -> test FAIL -> Support diagnosis -> Aider bounded repair -> ToolGateway -> retest -> Reviewer -> Security -> human gate`
+
+No new repair budget, no paid provider, no Dental-specific product logic.
+
 ## 14. Single next action
 
-`HUMAN_REVIEW_AIDER_SEMANTIC_REPAIR_PR`
+`HUMAN_REVIEW_MERGE_PR53_AIDER_TEST_FAILURE_REPAIR`
 
 No Product Owner diagnostic command is required.
 
