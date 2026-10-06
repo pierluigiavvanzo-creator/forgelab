@@ -4480,25 +4480,6 @@ Rules:
 Return ONLY the required structured JSON object.
 """
 
-                semantic_repair_response = (
-                    ai_router.execute(
-                        TaskClass.S2,
-                        semantic_repair_prompt,
-                        semantic_repair_id,
-                        Role.DEVELOPER.value,
-                        (
-                            "Repair blocking semantic "
-                            "review findings"
-                        ),
-                        request.timeout_seconds,
-                        response_format=(
-                            _ai_developer_full_file_response_schema(
-                                target_paths
-                            )
-                        ),
-                    )
-                )
-
                 semantic_repair_route = (
                     ai_router.route(
                         TaskClass.S2
@@ -4506,11 +4487,87 @@ Return ONLY the required structured JSON object.
                 )
 
                 semantic_prewrite_attempts = 0
+                semantic_repair_engine = "custom"
 
-                try:
+                if request.editor_engine == "aider":
+                    reusable_editor_calls += 1
+                    semantic_repair_engine = "aider-cli"
+                    semantic_aider_objective = (
+                        request.objective
+                        + "\n\nBinding Project Manager acceptance contract:\n"
+                        + plan_contract_text
+                        + "\n\nBlocking semantic review:\n"
+                        + json.dumps(
+                            semantic_review,
+                            indent=2,
+                            ensure_ascii=False,
+                        )
+                        + "\n\nRepair every blocking requirement while "
+                        "preserving passing tests and unrelated behavior. "
+                        "Stay inside the authorized files."
+                    )
+                    try:
+                        semantic_editor_result = AiderCliAdapter(
+                            AiderCliConfig(
+                                executable=(
+                                    os.environ.get(
+                                        "FORGELAB_AIDER_EXECUTABLE",
+                                        "aider",
+                                    ),
+                                ),
+                                edit_format="whole",
+                            )
+                        ).run(
+                            EditorRequest(
+                                repository=workspace.path,  # type: ignore[arg-type]
+                                objective=semantic_aider_objective,
+                                allowed_paths=target_paths,
+                                model=semantic_repair_route.model,
+                                timeout_seconds=request.timeout_seconds,
+                            )
+                        )
+                    except EditorAdapterError as error:
+                        raise AIDeveloperFormatError(
+                            "Aider semantic repair failed before governed write: "
+                            f"{error}"
+                        ) from error
+
+                    if (
+                        semantic_editor_result.exit_status != 0
+                        or semantic_editor_result.timed_out
+                    ):
+                        raise AIDeveloperFormatError(
+                            "Aider semantic repair did not complete successfully: "
+                            f"exit={semantic_editor_result.exit_status}, "
+                            f"timed_out={semantic_editor_result.timed_out}"
+                        )
+
+                    if not semantic_editor_result.changed_paths:
+                        raise AIDeveloperFormatError(
+                            "Aider semantic repair returned no authorized changes"
+                        )
+
+                    semantic_repair_patch = {
+                        "schema_version": "2.1",
+                        "summary": (
+                            "Aider reusable editor repaired blocking "
+                            "semantic review findings"
+                        ),
+                        "files": [
+                            {
+                                "path": path,
+                                "new_text": semantic_editor_result.files[path],
+                                "summary": "Reusable Aider semantic repair",
+                            }
+                            for path in semantic_editor_result.changed_paths
+                        ],
+                    }
                     semantic_repair_patch = (
                         _validate_ai_developer_full_file_patch(
-                            semantic_repair_response.text,
+                            json.dumps(
+                                semantic_repair_patch,
+                                ensure_ascii=False,
+                            ),
                             target_paths,
                             semantic_repair_source_texts,
                         )
@@ -4519,118 +4576,150 @@ Return ONLY the required structured JSON object.
                         semantic_repair_patch,
                         semantic_repair_source_texts,
                     )
-                except (
-                    AIDeveloperFormatError,
-                    AIDeveloperReferenceError,
-                    AIDeveloperSyntaxError,
-                ) as semantic_prewrite_error:
-                    semantic_prewrite_attempts = 1
-
-                    semantic_prewrite_prompt = f"""
-You are the DEVELOPER agent in ForgeLab.
-
-Your semantic-review repair failed deterministic pre-write
-validation before any repository write occurred.
-
-Validation error:
-{semantic_prewrite_error}
-
-Original objective:
-{request.objective}
-
-Project Manager binding acceptance contract:
-{plan_contract_text}
-
-Blocking semantic review:
-{json.dumps(semantic_review, indent=2, ensure_ascii=False)}
-
-Original authorized paths:
-{chr(10).join(f"- {path}" for path in target_paths)}
-
-Current complete authorized files:
-{semantic_repair_files}
-
-Return ONLY one corrected structured JSON object.
-
-Rules:
-- this is the ONE bounded pre-write correction for this repair;
-- stay inside the original authorized path set;
-- repair only the non-empty subset actually needed;
-- multiple changes may target the same file only when their old_text regions are disjoint;
-- use at most 4 changes per authorized path;
-- old_text MUST be copied verbatim from the current file;
-- old_text MUST occur exactly once;
-- do not reference text from an earlier candidate state;
-- do not weaken tests;
-- do not modify dependencies or configuration.
-"""
-
-                    semantic_prewrite_prompt += """
-                        
-FULL-FILE SEMANTIC REPAIR RECOVERY MODE:
-Return COMPLETE replacement content only for each authorized file
-that actually needs to change. Do not return old_text snippets.
-
-Required recovery schema:
-{
-  "schema_version": "2.1",
-  "summary": "<short overall recovery summary>",
-  "files": [
-    {
-      "path": "<one authorized path>",
-      "new_text": "<COMPLETE replacement file content>",
-      "summary": "<short per-file summary>"
-    }
-  ]
-}
-
-The current complete authorized files above are authoritative.
-For Python files, return complete syntactically valid Python.
-"""
-                    semantic_response_format = (
-                        _ai_developer_full_file_response_schema(
-                            target_paths
-                        )
-                    )
-
-                    prewrite_recovery_context = {
-                        "phase": "semantic_review_repair",
-                        "first_error": str(
-                            semantic_prewrite_error
-                        ),
-                    }
-
+                else:
                     semantic_repair_response = (
                         ai_router.execute(
                             TaskClass.S2,
-                            semantic_prewrite_prompt,
-                            (
-                                f"{semantic_repair_id}"
-                                "-prewrite"
-                            ),
+                            semantic_repair_prompt,
+                            semantic_repair_id,
                             Role.DEVELOPER.value,
                             (
-                                "Correct semantic repair "
-                                "pre-write validation once"
+                                "Repair blocking semantic "
+                                "review findings"
                             ),
                             request.timeout_seconds,
-                            response_format=semantic_response_format,
+                            response_format=(
+                                _ai_developer_full_file_response_schema(
+                                    target_paths
+                                )
+                            ),
                         )
                     )
 
-                    semantic_repair_patch = (
-                        _validate_ai_developer_full_file_patch(
-                            semantic_repair_response.text,
-                            target_paths,
+                    try:
+                        semantic_repair_patch = (
+                            _validate_ai_developer_full_file_patch(
+                                semantic_repair_response.text,
+                                target_paths,
+                                semantic_repair_source_texts,
+                            )
+                        )
+                        _validate_ai_developer_candidate_syntax(
+                            semantic_repair_patch,
                             semantic_repair_source_texts,
                         )
-                    )
+                    except (
+                        AIDeveloperFormatError,
+                        AIDeveloperReferenceError,
+                        AIDeveloperSyntaxError,
+                    ) as semantic_prewrite_error:
+                        semantic_prewrite_attempts = 1
 
-                    _validate_ai_developer_candidate_syntax(
-                        semantic_repair_patch,
-                        semantic_repair_source_texts,
-                    )
-                    prewrite_recovery_context = None
+                        semantic_prewrite_prompt = f"""
+    You are the DEVELOPER agent in ForgeLab.
+
+    Your semantic-review repair failed deterministic pre-write
+    validation before any repository write occurred.
+
+    Validation error:
+    {semantic_prewrite_error}
+
+    Original objective:
+    {request.objective}
+
+    Project Manager binding acceptance contract:
+    {plan_contract_text}
+
+    Blocking semantic review:
+    {json.dumps(semantic_review, indent=2, ensure_ascii=False)}
+
+    Original authorized paths:
+    {chr(10).join(f"- {path}" for path in target_paths)}
+
+    Current complete authorized files:
+    {semantic_repair_files}
+
+    Return ONLY one corrected structured JSON object.
+
+    Rules:
+    - this is the ONE bounded pre-write correction for this repair;
+    - stay inside the original authorized path set;
+    - repair only the non-empty subset actually needed;
+    - multiple changes may target the same file only when their old_text regions are disjoint;
+    - use at most 4 changes per authorized path;
+    - old_text MUST be copied verbatim from the current file;
+    - old_text MUST occur exactly once;
+    - do not reference text from an earlier candidate state;
+    - do not weaken tests;
+    - do not modify dependencies or configuration.
+    """
+
+                        semantic_prewrite_prompt += """
+                            
+    FULL-FILE SEMANTIC REPAIR RECOVERY MODE:
+    Return COMPLETE replacement content only for each authorized file
+    that actually needs to change. Do not return old_text snippets.
+
+    Required recovery schema:
+    {
+      "schema_version": "2.1",
+      "summary": "<short overall recovery summary>",
+      "files": [
+        {
+          "path": "<one authorized path>",
+          "new_text": "<COMPLETE replacement file content>",
+          "summary": "<short per-file summary>"
+        }
+      ]
+    }
+
+    The current complete authorized files above are authoritative.
+    For Python files, return complete syntactically valid Python.
+    """
+                        semantic_response_format = (
+                            _ai_developer_full_file_response_schema(
+                                target_paths
+                            )
+                        )
+
+                        prewrite_recovery_context = {
+                            "phase": "semantic_review_repair",
+                            "first_error": str(
+                                semantic_prewrite_error
+                            ),
+                        }
+
+                        semantic_repair_response = (
+                            ai_router.execute(
+                                TaskClass.S2,
+                                semantic_prewrite_prompt,
+                                (
+                                    f"{semantic_repair_id}"
+                                    "-prewrite"
+                                ),
+                                Role.DEVELOPER.value,
+                                (
+                                    "Correct semantic repair "
+                                    "pre-write validation once"
+                                ),
+                                request.timeout_seconds,
+                                response_format=semantic_response_format,
+                            )
+                        )
+
+                        semantic_repair_patch = (
+                            _validate_ai_developer_full_file_patch(
+                                semantic_repair_response.text,
+                                target_paths,
+                                semantic_repair_source_texts,
+                            )
+                        )
+
+                        _validate_ai_developer_candidate_syntax(
+                            semantic_repair_patch,
+                            semantic_repair_source_texts,
+                        )
+                        prewrite_recovery_context = None
 
                 semantic_repair_payload_key = (
                     json.dumps(
@@ -4729,9 +4818,17 @@ For Python files, return complete syntactically valid Python.
                     "developer_task_id":
                         semantic_repair_id,
                     "provider":
-                        semantic_repair_route.provider,
+                        (
+                            "aider-cli"
+                            if semantic_repair_engine == "aider-cli"
+                            else semantic_repair_route.provider
+                        ),
                     "model":
                         semantic_repair_route.model,
+                    "editor_engine":
+                        semantic_repair_engine,
+                    "chatgpt_assistance_in_target_product_run":
+                        0,
                     "changed_paths":
                         semantic_changed_paths,
                     "patch":
