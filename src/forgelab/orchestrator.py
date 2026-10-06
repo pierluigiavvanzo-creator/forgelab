@@ -3363,7 +3363,6 @@ Rules:
                 repair_engine = "custom"
 
                 if request.editor_engine == "aider":
-                    reusable_editor_calls += 1
                     repair_engine = "aider-cli"
                     repair_aider_objective = (
                         request.objective
@@ -3380,80 +3379,118 @@ Rules:
                         "the public API, quantitative acceptance coverage, "
                         "and the authorized file scope. Do not weaken tests."
                     )
-                    try:
-                        repair_editor_result = AiderCliAdapter(
-                            AiderCliConfig(
-                                executable=(
-                                    os.environ.get(
-                                        "FORGELAB_AIDER_EXECUTABLE",
-                                        "aider",
+
+                    def run_aider_repair(
+                        objective: str,
+                    ) -> dict[str, Any]:
+                        nonlocal reusable_editor_calls
+                        reusable_editor_calls += 1
+                        try:
+                            editor_result = AiderCliAdapter(
+                                AiderCliConfig(
+                                    executable=(
+                                        os.environ.get(
+                                            "FORGELAB_AIDER_EXECUTABLE",
+                                            "aider",
+                                        ),
                                     ),
-                                ),
-                                edit_format="whole",
+                                    edit_format="whole",
+                                )
+                            ).run(
+                                EditorRequest(
+                                    repository=workspace.path,  # type: ignore[arg-type]
+                                    objective=objective,
+                                    allowed_paths=target_paths,
+                                    model=repair_route.model,
+                                    timeout_seconds=request.timeout_seconds,
+                                )
                             )
-                        ).run(
-                            EditorRequest(
-                                repository=workspace.path,  # type: ignore[arg-type]
-                                objective=repair_aider_objective,
-                                allowed_paths=target_paths,
-                                model=repair_route.model,
-                                timeout_seconds=request.timeout_seconds,
+                        except EditorAdapterError as error:
+                            raise AIDeveloperFormatError(
+                                "Aider test-failure repair failed before "
+                                f"governed write: {error}"
+                            ) from error
+
+                        if (
+                            editor_result.exit_status != 0
+                            or editor_result.timed_out
+                        ):
+                            raise AIDeveloperFormatError(
+                                "Aider test-failure repair did not complete "
+                                "successfully: "
+                                f"exit={editor_result.exit_status}, "
+                                f"timed_out={editor_result.timed_out}"
                             )
-                        )
-                    except EditorAdapterError as error:
-                        raise AIDeveloperFormatError(
-                            "Aider test-failure repair failed before "
-                            f"governed write: {error}"
-                        ) from error
 
-                    if (
-                        repair_editor_result.exit_status != 0
-                        or repair_editor_result.timed_out
-                    ):
-                        raise AIDeveloperFormatError(
-                            "Aider test-failure repair did not complete "
-                            "successfully: "
-                            f"exit={repair_editor_result.exit_status}, "
-                            f"timed_out={repair_editor_result.timed_out}"
-                        )
+                        if not editor_result.changed_paths:
+                            raise AIDeveloperFormatError(
+                                "Aider test-failure repair returned "
+                                "no authorized changes"
+                            )
 
-                    if not repair_editor_result.changed_paths:
-                        raise AIDeveloperFormatError(
-                            "Aider test-failure repair returned "
-                            "no authorized changes"
-                        )
-
-                    repair_patch = {
-                        "schema_version": "2.1",
-                        "summary": (
-                            "Aider reusable editor repaired failed "
-                            "deterministic tests"
-                        ),
-                        "files": [
-                            {
-                                "path": path,
-                                "new_text": repair_editor_result.files[path],
-                                "summary": (
-                                    "Reusable Aider test-failure repair"
-                                ),
-                            }
-                            for path in repair_editor_result.changed_paths
-                        ],
-                    }
-                    repair_patch = (
-                        _validate_ai_developer_full_file_patch(
-                            json.dumps(
-                                repair_patch,
-                                ensure_ascii=False,
+                        candidate = {
+                            "schema_version": "2.1",
+                            "summary": (
+                                "Aider reusable editor repaired failed "
+                                "deterministic tests"
                             ),
-                            target_paths,
+                            "files": [
+                                {
+                                    "path": path,
+                                    "new_text": editor_result.files[path],
+                                    "summary": (
+                                        "Reusable Aider test-failure repair"
+                                    ),
+                                }
+                                for path in editor_result.changed_paths
+                            ],
+                        }
+
+                        validated = (
+                            _validate_ai_developer_full_file_patch(
+                                json.dumps(
+                                    candidate,
+                                    ensure_ascii=False,
+                                ),
+                                target_paths,
+                                repair_source_texts,
+                            )
+                        )
+                        _validate_ai_developer_candidate_syntax(
+                            validated,
                             repair_source_texts,
                         )
-                    )
-                    _validate_ai_developer_candidate_syntax(
-                        repair_patch,
-                        repair_source_texts,
-                    )
+                        return validated
+
+                    try:
+                        repair_patch = run_aider_repair(
+                            repair_aider_objective
+                        )
+                    except (
+                        AIDeveloperFormatError,
+                        AIDeveloperReferenceError,
+                        AIDeveloperSyntaxError,
+                    ) as repair_prewrite_error:
+                        repair_prewrite_attempts = 1
+                        prewrite_recovery_context = {
+                            "phase": "test_failure_repair",
+                            "first_error": str(
+                                repair_prewrite_error
+                            ),
+                        }
+                        correction_objective = (
+                            repair_aider_objective
+                            + "\n\nYour first repair candidate failed "
+                            "ForgeLab deterministic pre-write validation. "
+                            "Correct the candidate once without changing "
+                            "scope or weakening tests.\n"
+                            + "Validation error:\n"
+                            + str(repair_prewrite_error)
+                        )
+                        repair_patch = run_aider_repair(
+                            correction_objective
+                        )
+                        prewrite_recovery_context = None
                 else:
                     repair_response = ai_router.execute(
                         TaskClass.S2,
