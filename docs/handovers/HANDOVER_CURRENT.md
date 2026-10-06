@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** Synchronized Dental run confirms Aider pre-write repair blocker  
-**Status:** PRE-MVP / Aider pre-write correction candidate
+**Checkpoint:** Dental run still fails; terminal reason must become dashboard-visible  
+**Status:** PRE-MVP / observability candidate / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -271,6 +271,48 @@ The candidate keeps:
 
 It adds no Dental-specific implementation logic.
 
+## 14. Fourth real Dental dashboard run
+
+Run:
+
+`run-1df61ea4f109`
+
+Visible evidence:
+
+- `CLOSED`;
+- Gate `Repair`;
+- TEST `FAIL`;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- 2 LLM calls / 3443 tokens.
+
+The run is FAIL, but the dashboard does not expose the terminal failure
+artifact needed to distinguish:
+
+- pre-write recovery exhaustion;
+- local provider failure;
+- deterministic test failure;
+- semantic review failure;
+- generic closed-before-decision state.
+
+Therefore the next change is **observability only**.
+
+Candidate branch:
+
+`mvp1-dashboard-terminal-blocker-observability`
+
+Expected UI after merge:
+
+- active runner Git SHA visible;
+- red `BLOCCO CORRENTE` card on CLOSED runs;
+- phase;
+- machine-readable reason;
+- final error/detail;
+- direct link to the supporting evidence artifact;
+- no misleading ForgeLab internal fallback files in target-run changes.
+
+No Product Owner diagnostic log transport is required.
+
 ## 14. Third real Dental dashboard run — synchronized runtime
 
 Run:
@@ -338,7 +380,7 @@ No new repair budget, no paid provider, no Dental-specific product logic.
 
 ## 14. Single next action
 
-`HUMAN_REVIEW_AIDER_PREWRITE_CORRECTION_PR`
+`HUMAN_REVIEW_TERMINAL_BLOCKER_OBSERVABILITY_PR`
 
 No Product Owner diagnostic command is required.
 
