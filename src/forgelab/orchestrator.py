@@ -2197,6 +2197,7 @@ Return ONLY the required structured JSON object.
     seen_hypotheses: set[str] = set()
     seen_repair_payloads: set[str] = set()
     ai_developer_artifact: dict[str, Any] | None = None
+    reusable_editor_calls = 0
     format_repair_attempts = 0
     reference_repair_attempts = 0
     syntax_repair_attempts = 0
@@ -2363,6 +2364,7 @@ Rules:
 
             try:
                 if request.editor_engine == "aider":
+                    reusable_editor_calls += 1
                     aider_executable = os.environ.get(
                         "FORGELAB_AIDER_EXECUTABLE",
                         "aider",
@@ -5430,6 +5432,9 @@ Return ONLY the required JSON object.
             "estimated_cost": str(ai_ledger.spent),
             "runtime": "hybrid_local_ai",
             "provider_mode": "local_zero_spend",
+            "editor_engine": request.editor_engine,
+            "reusable_editor_calls": reusable_editor_calls,
+            "chatgpt_assistance_in_target_product_run": 0,
         })
         store.write(
             "UsageReport.json",
@@ -5456,7 +5461,12 @@ Return ONLY the required JSON object.
         "selected_roles": [role.value for role in roles] + ([Role.SUPPORT.value] if repair_attempts else []),
         "changes": list(review_report.get("changed_paths", [])) if diff else [], "tests": "PASS" if final_test_passed else "FAIL",
         "repair_attempts": repair_attempts, "risk": "Patch only; source unchanged" if source_unchanged else "Source integrity failed",
-        "model_usage": "Ollama local" if use_ai else "None", "decision": "Human gate pending" if passed else "Repair required", "created_at": now,
+        "model_usage": (
+            "Aider + Ollama local"
+            if request.editor_engine == "aider"
+            else ("Ollama local" if use_ai else "None")
+        ),
+        "decision": "Human gate pending" if passed else "Repair required", "created_at": now,
         "change_operation": request.operation,
         "editor_engine": request.editor_engine,
         "chatgpt_assistance_in_target_product_run": 0,
