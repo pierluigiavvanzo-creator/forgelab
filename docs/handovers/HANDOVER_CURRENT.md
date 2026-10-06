@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** Dental Quote autonomous reusable-editor integration  
-**Status:** PRE-MVP / PR #51 OPEN / HUMAN MERGE GATE
+**Checkpoint:** First real Dental run reached tests PASS but semantic gate repair  
+**Status:** PRE-MVP / Aider semantic-repair candidate
 
 ## 1. Binding product priority
 
@@ -234,20 +234,50 @@ Do not mark Golden Path #1 PASS until:
 - promoted application launches locally;
 - Product Owner confirms the visible workflow is usable.
 
-## 13. Single next action
+## 13. First real Dental dashboard run
 
-`HUMAN_REVIEW_MERGE_PR51_DENTAL_AUTONOMOUS_AIDER_INTEGRATION`
+Run:
 
-No Product Owner PowerShell command is required at this gate.
+`run-f03a38460154`
 
-If the integration PR is explicitly approved and merged, the next user action is only:
+Dashboard evidence:
 
-1. start ForgeLab normally once;
-2. use the dashboard for the unchanged Dental Quote run.
+- `CLOSED`;
+- Gate `Repair`;
+- TEST `PASS`;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- 6 LLM calls / 10004 tokens.
 
-Do not ask the Product Owner to execute a diagnostic CLI run.
+This run is FAIL for the Dental autonomy gate because it did not reach
+`READY_FOR_DECISION`.
 
-## 14. Resume protocol
+Code trace on merged PR #51 shows the reusable Aider editor is used for initial
+implementation, but semantic-review repair still uses the legacy custom
+structured/full-file Developer path.
+
+The smallest general remediation is therefore:
+
+`AIDER_FOR_BOUNDED_SEMANTIC_REPAIR`
+
+The candidate keeps:
+
+- one top-level repair budget;
+- ToolGateway authority;
+- deterministic retest;
+- independent semantic re-review;
+- zero paid API cost;
+- ChatGPT target assistance = 0.
+
+It adds no Dental-specific implementation logic.
+
+## 14. Single next action
+
+`HUMAN_REVIEW_AIDER_SEMANTIC_REPAIR_PR`
+
+No Product Owner diagnostic command is required.
+
+## 15. Resume protocol
 
 1. read `AGENTS_MASTER.md`;
 2. read `MANIFEST.md`;
