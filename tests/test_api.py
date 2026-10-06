@@ -225,6 +225,26 @@ class ApiTests(unittest.TestCase):
                 200,
             )
 
+    def test_health_reports_active_runtime_sha(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "FORGELAB_RUNTIME_SHA":
+                    "abc123runtime",
+            },
+            clear=False,
+        ):
+            with self.request(
+                "/health",
+                token=None,
+            ) as response:
+                payload = json.load(response)
+
+        self.assertEqual(
+            payload["runtime_sha"],
+            "abc123runtime",
+        )
+
     def test_run_listing_requires_bearer_token(self):
         with self.assertRaises(HTTPError) as denied:
             self.request(
@@ -276,6 +296,57 @@ class ApiTests(unittest.TestCase):
             "@@ -1 +1 @@\n"
             "-OLD\n"
             "+NEW\n",
+        )
+
+    def test_terminal_failure_artifacts_are_exposed(self):
+        prewrite = {
+            "reason":
+                "PREWRITE_RECOVERY_EXHAUSTED",
+            "phase":
+                "test_failure_repair",
+            "final_error":
+                "invalid repair candidate",
+        }
+        provider = {
+            "reason":
+                "PROVIDER_TRANSIENT_RETRY_EXHAUSTED",
+            "phase":
+                "review",
+            "final_error":
+                "provider timeout",
+        }
+
+        (
+            self.run /
+            "PrewriteRecoveryFailure.json"
+        ).write_text(
+            json.dumps(prewrite),
+            encoding="utf-8",
+        )
+        (
+            self.run /
+            "ProviderFailure.json"
+        ).write_text(
+            json.dumps(provider),
+            encoding="utf-8",
+        )
+
+        with self.request(
+            "/v1/runs/run-test123/artifacts"
+        ) as response:
+            payload = json.load(response)
+
+        self.assertEqual(
+            payload["artifacts"][
+                "PrewriteRecoveryFailure.json"
+            ]["reason"],
+            "PREWRITE_RECOVERY_EXHAUSTED",
+        )
+        self.assertEqual(
+            payload["artifacts"][
+                "ProviderFailure.json"
+            ]["final_error"],
+            "provider timeout",
         )
 
     def test_human_repair_creates_bounded_child_run(self):
