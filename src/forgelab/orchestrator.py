@@ -2093,6 +2093,10 @@ Return ONLY the required structured JSON object.
                         request.operation,
                     "editor_engine":
                         request.editor_engine,
+                    "chatgpt_assistance_in_target_product_run":
+                        0,
+                    "product_owner_run_actions":
+                        1,
                     "context_bundle_ref":
                         "ContextBundle.json",
                     "context_selection_sha256":
