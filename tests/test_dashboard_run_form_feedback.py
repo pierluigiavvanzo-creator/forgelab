@@ -85,6 +85,56 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.start,
         )
 
+    def test_dashboard_surfaces_terminal_blocker_evidence(self):
+        self.assertIn(
+            "BLOCCO CORRENTE",
+            self.source,
+        )
+        self.assertIn(
+            "PrewriteRecoveryFailure.json",
+            self.source,
+        )
+        self.assertIn(
+            "ProviderFailure.json",
+            self.source,
+        )
+        self.assertIn(
+            "DETERMINISTIC_TEST_FAILED",
+            self.source,
+        )
+        self.assertIn(
+            "SEMANTIC_REVIEW_FAILED",
+            self.source,
+        )
+        self.assertIn(
+            "Apri evidenza:",
+            self.source,
+        )
+
+    def test_dashboard_shows_active_runner_sha(self):
+        self.assertIn(
+            "runtimeSha",
+            self.source,
+        )
+        self.assertIn(
+            "runner {",
+            self.source,
+        )
+        self.assertIn(
+            "FORGELAB_RUNTIME_SHA",
+            self.start,
+        )
+
+    def test_real_run_without_changes_does_not_show_internal_fallback_changes(self):
+        self.assertIn(
+            "Nessuna modifica applicata",
+            self.source,
+        )
+        self.assertIn(
+            "artifactCount > 0",
+            self.source,
+        )
+
     def test_api_failures_are_visible_inside_run_modal(self):
         self.assertIn(
             "setRunFormError(message);",
