@@ -2472,6 +2472,13 @@ Rules:
                 AIDeveloperReferenceError,
                 AIDeveloperSyntaxError,
             ) as prewrite_error:
+                if request.editor_engine == "aider":
+                    editor_metadata["fallback"] = (
+                        "custom_prewrite_repair"
+                    )
+                    editor_metadata["aider_error"] = str(
+                        prewrite_error
+                    )
                 prewrite_repair_attempts = 1
                 format_repair_attempts = int(
                     isinstance(
