@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / INITIAL AIDER PREWRITE CORRECTION AT HUMAN MERGE GATE`
+`RUNTIME STACK FROZEN / AIDER FAILURE OUTPUT EVIDENCE AT HUMAN MERGE GATE`
 
 Audit:
 
@@ -269,6 +269,51 @@ Scope:
 - no additional top-level repair budget;
 - no Dental-specific logic;
 - no regex/string recovery catalogue.
+
+## 2026-10-06 sixth real Dental dashboard evidence
+
+Observed synchronized dashboard run:
+
+`run-160a0cc0cc6a`
+
+Visible outcome:
+
+- active runner SHA: `f09ec5801fb9...`;
+- status: `CLOSED`;
+- gate: `Repair`;
+- deterministic tests: `FAIL`;
+- repair attempts applied: `0`;
+- provider cost: `EUR 0`;
+- terminal blocker: `PREWRITE_RECOVERY_EXHAUSTED`;
+- blocker phase: `implementation`;
+- final error:
+  `Aider initial pre-write correction did not complete successfully: exit=2, timed_out=False`.
+
+Interpretation:
+
+PR #56 is active and the reusable initial pre-write correction is being
+attempted. The blocker has moved from malformed Python syntax to a non-zero
+Aider process exit during that correction.
+
+Aider 0.86.2 has no explicit normal `return 2` in its one-shot message-file
+path; code 2 is consistent with a SystemExit/argument parsing class of failure,
+but the exact reason is currently hidden because ForgeLab discards Aider
+`stderr` and `stdout` when constructing the terminal error.
+
+Decision:
+
+Do not change editor/retry behavior again from `exit=2` alone.
+
+Current remediation:
+
+`mvp1-aider-failure-output-evidence`
+
+Scope:
+
+- preserve a bounded tail of Aider stderr/stdout in terminal failure evidence;
+- apply the same evidence behavior to initial edit, initial pre-write
+  correction, failed-test repair and semantic repair;
+- no routing/model/retry/product logic change.
 
 ## Binding Dental autonomy metrics
 

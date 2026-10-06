@@ -1441,6 +1441,37 @@ def _ai_patch_changes(
     }]
 
 
+def _aider_process_failure_message(
+    label: str,
+    result: EditorResult,
+    *,
+    max_output_chars: int = 1600,
+) -> str:
+    parts = [
+        (
+            f"{label}: exit={result.exit_status}, "
+            f"timed_out={result.timed_out}"
+        )
+    ]
+
+    stderr_tail = (result.stderr or "").strip()
+    stdout_tail = (result.stdout or "").strip()
+
+    if stderr_tail:
+        parts.append(
+            "stderr_tail:\n"
+            + stderr_tail[-max_output_chars:]
+        )
+
+    if stdout_tail:
+        parts.append(
+            "stdout_tail:\n"
+            + stdout_tail[-max_output_chars:]
+        )
+
+    return "\n".join(parts)
+
+
 def _validate_ai_developer_candidate_syntax(
     payload: dict[str, Any],
     source_texts: dict[str, str],
@@ -2405,9 +2436,10 @@ Rules:
                         or editor_result.timed_out
                     ):
                         raise AIDeveloperFormatError(
-                            "Aider editor did not complete successfully: "
-                            f"exit={editor_result.exit_status}, "
-                            f"timed_out={editor_result.timed_out}"
+                            _aider_process_failure_message(
+                                "Aider editor did not complete successfully",
+                                editor_result,
+                            )
                         )
 
                     if not editor_result.changed_paths:
@@ -2564,10 +2596,10 @@ Rules:
                         or corrected_editor_result.timed_out
                     ):
                         raise AIDeveloperFormatError(
-                            "Aider initial pre-write correction did not "
-                            "complete successfully: "
-                            f"exit={corrected_editor_result.exit_status}, "
-                            f"timed_out={corrected_editor_result.timed_out}"
+                            _aider_process_failure_message(
+                                "Aider initial pre-write correction did not complete successfully",
+                                corrected_editor_result,
+                            )
                         )
 
                     if not corrected_editor_result.changed_paths:
@@ -3521,10 +3553,10 @@ Rules:
                             or editor_result.timed_out
                         ):
                             raise AIDeveloperFormatError(
-                                "Aider test-failure repair did not complete "
-                                "successfully: "
-                                f"exit={editor_result.exit_status}, "
-                                f"timed_out={editor_result.timed_out}"
+                                _aider_process_failure_message(
+                                    "Aider test-failure repair did not complete successfully",
+                                    editor_result,
+                                )
                             )
 
                         if not editor_result.changed_paths:
@@ -4779,9 +4811,10 @@ Return ONLY the required structured JSON object.
                         or semantic_editor_result.timed_out
                     ):
                         raise AIDeveloperFormatError(
-                            "Aider semantic repair did not complete successfully: "
-                            f"exit={semantic_editor_result.exit_status}, "
-                            f"timed_out={semantic_editor_result.timed_out}"
+                            _aider_process_failure_message(
+                                "Aider semantic repair did not complete successfully",
+                                semantic_editor_result,
+                            )
                         )
 
                     if not semantic_editor_result.changed_paths:
