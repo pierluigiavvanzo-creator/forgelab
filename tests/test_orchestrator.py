@@ -8,6 +8,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from forgelab.domain import Role
+from forgelab.editor_adapter import EditorResult
 from forgelab.model_router import (
     ProviderResponse,
     ProviderTransientError,
@@ -489,6 +490,185 @@ class MultiAgentTests(unittest.TestCase):
                 "",
             )
 
+
+
+    def test_aider_editor_engine_reaches_decision_ready_without_chatgpt(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            editor_result = EditorResult(
+                engine="aider-cli",
+                files={
+                    "calculator.py": (
+                        "def add(a, b):\n"
+                        "    return a + b\n"
+                    ),
+                },
+                changed_paths=(
+                    "calculator.py",
+                ),
+                stdout="aider local edit complete",
+                stderr="",
+                exit_status=0,
+                timed_out=False,
+                duration_ms=25,
+                command=(
+                    "aider",
+                    "--model",
+                    "ollama_chat/qwen2.5-coder:7b",
+                ),
+            )
+
+            with (
+                patch(
+                    "forgelab.orchestrator.OllamaProvider.invoke",
+                    side_effect=scripted,
+                ) as invoke,
+                patch(
+                    "forgelab.orchestrator.AiderCliAdapter.run",
+                    return_value=editor_result,
+                ) as aider_run,
+            ):
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                        editor_engine="aider",
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (
+                    run_dir /
+                    "RunSummary.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (
+                    run_dir /
+                    "AIDeveloperPatch.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (
+                    run_dir /
+                    "UsageReport.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (
+                    run_dir /
+                    "ReviewReport.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                summary["tests"],
+                "PASS",
+            )
+            self.assertEqual(
+                summary["editor_engine"],
+                "aider",
+            )
+            self.assertEqual(
+                summary[
+                    "chatgpt_assistance_in_target_product_run"
+                ],
+                0,
+            )
+            self.assertEqual(
+                summary[
+                    "product_owner_run_actions"
+                ],
+                1,
+            )
+            self.assertEqual(
+                developer["editor"]["engine"],
+                "aider-cli",
+            )
+            self.assertEqual(
+                developer[
+                    "chatgpt_assistance_in_target_product_run"
+                ],
+                0,
+            )
+            self.assertEqual(
+                usage["reusable_editor_calls"],
+                1,
+            )
+            self.assertEqual(
+                usage[
+                    "chatgpt_assistance_in_target_product_run"
+                ],
+                0,
+            )
+            self.assertEqual(
+                usage["spent"],
+                "0",
+            )
+            self.assertEqual(
+                review["status"],
+                "PASS",
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                2,
+            )
+            self.assertEqual(
+                len(aider_run.call_args_list),
+                1,
+            )
+            editor_request = (
+                aider_run.call_args.args[0]
+            )
+            self.assertIn(
+                "Binding Project Manager acceptance contract",
+                editor_request.objective,
+            )
+            self.assertEqual(
+                editor_request.allowed_paths,
+                ("calculator.py",),
+            )
+            self.assertEqual(
+                git(
+                    repo,
+                    "status",
+                    "--porcelain",
+                ),
+                "",
+            )
 
 
     def test_ai_developer_generates_patch_without_user_solution(self):
