@@ -25,6 +25,12 @@ from .model_router import (
 from .ollama_provider import OllamaProvider
 from .memory import ProjectMemory
 from .governance import PolicyEngine, ToolGateway
+from .editor_adapter import (
+    AiderCliAdapter,
+    AiderCliConfig,
+    EditorAdapterError,
+    EditorRequest,
+)
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,7 @@ class MultiAgentRequest:
     ai_mode: bool = False
     operation: str = "replace_text"
     allowed_paths: tuple[str, ...] = ()
+    editor_engine: str = "custom"
 
     @property
     def target_paths(self) -> tuple[str, ...]:
@@ -140,6 +147,21 @@ class MultiAgentRequest:
             # authorization to use local AI.
             ai_mode = True
 
+        editor_engine = str(
+            payload.get(
+                "editor_engine",
+                "custom",
+            )
+        ).strip().lower()
+
+        if editor_engine not in {
+            "custom",
+            "aider",
+        }:
+            raise ValueError(
+                "editor_engine must be custom or aider"
+            )
+
         return cls(
             repository=Path(
                 payload["repository"]
@@ -166,6 +188,7 @@ class MultiAgentRequest:
             ai_mode=ai_mode,
             operation=operation,
             allowed_paths=allowed_paths,
+            editor_engine=editor_engine,
         )
 
 
@@ -1758,6 +1781,22 @@ def run_multi_agent(request: MultiAgentRequest, output_root: Path) -> Path:
             "authorized target path"
         )
 
+    if request.editor_engine not in {
+        "custom",
+        "aider",
+    }:
+        raise ValueError(
+            "editor_engine must be custom or aider"
+        )
+
+    if (
+        request.editor_engine == "aider"
+        and request.operation != "ai_generate"
+    ):
+        raise ValueError(
+            "aider editor_engine requires ai_generate"
+        )
+
     use_ai = (
         request.ai_mode
         or request.operation == "ai_generate"
@@ -1912,6 +1951,8 @@ Return ONLY the required structured JSON object.
                         request.test_command,
                     "change_operation":
                         request.operation,
+                    "editor_engine":
+                        request.editor_engine,
                     "allowed_paths":
                         list(target_paths),
                     "timeout_seconds":
@@ -2050,6 +2091,8 @@ Return ONLY the required structured JSON object.
                     "created_at": now,
                     "change_operation":
                         request.operation,
+                    "editor_engine":
+                        request.editor_engine,
                     "context_bundle_ref":
                         "ContextBundle.json",
                     "context_selection_sha256":
@@ -2129,6 +2172,7 @@ Return ONLY the required structured JSON object.
         "selection_reason": "Minimum roles for plan, implementation, test, and independent review; conditional roles by risk and path",
         "max_repair_attempts": request.max_repair_attempts, "test_command": request.test_command,
         "change_operation": request.operation,
+        "editor_engine": request.editor_engine,
         "allowed_paths": list(target_paths),
         "timeout_seconds": request.timeout_seconds, "requires_human_gate": True,
         "memory_snapshot_ref": "MemorySnapshot.json", "context_bundle_ref": "ContextBundle.json",
@@ -2309,35 +2353,114 @@ Rules:
                 )
             )
 
-            developer_response = (
-                ai_router.execute(
-                    TaskClass.S2,
-                    developer_prompt,
-                    "implement",
-                    Role.DEVELOPER.value,
-                    (
-                        "Generate bounded multi-file patch"
-                        if len(target_paths) > 1
-                        else "Generate bounded single-file patch"
-                    ),
-                    request.timeout_seconds,
-                    response_format=developer_schema,
-                )
-            )
-
             developer_route = ai_router.route(
                 TaskClass.S2
             )
+            editor_metadata: dict[str, Any] = {
+                "engine": request.editor_engine,
+                "chatgpt_assistance": 0,
+            }
 
             try:
-                generated_patch = (
-                    _validate_ai_developer_patch(
-                        developer_response.text,
-                        target_paths,
-                        source_texts,
-                        require_all_paths=False,
+                if request.editor_engine == "aider":
+                    aider_executable = os.environ.get(
+                        "FORGELAB_AIDER_EXECUTABLE",
+                        "aider",
                     )
-                )
+                    aider_objective = (
+                        request.objective
+                        + "\n\nBinding Project Manager acceptance contract:\n"
+                        + plan_contract_text
+                        + "\n\nGoverned read-only repository context:\n"
+                        + governed_context
+                    )
+                    try:
+                        editor_result = AiderCliAdapter(
+                            AiderCliConfig(
+                                executable=(aider_executable,),
+                                edit_format="whole",
+                            )
+                        ).run(
+                            EditorRequest(
+                                repository=workspace.path,  # type: ignore[arg-type]
+                                objective=aider_objective,
+                                allowed_paths=target_paths,
+                                model=developer_route.model,
+                                timeout_seconds=request.timeout_seconds,
+                            )
+                        )
+                    except EditorAdapterError as error:
+                        raise AIDeveloperFormatError(
+                            f"Aider editor failed before governed write: {error}"
+                        ) from error
+
+                    if (
+                        editor_result.exit_status != 0
+                        or editor_result.timed_out
+                    ):
+                        raise AIDeveloperFormatError(
+                            "Aider editor did not complete successfully: "
+                            f"exit={editor_result.exit_status}, "
+                            f"timed_out={editor_result.timed_out}"
+                        )
+
+                    if not editor_result.changed_paths:
+                        raise AIDeveloperFormatError(
+                            "Aider editor returned no authorized changes"
+                        )
+
+                    generated_patch = {
+                        "schema_version": "2.0",
+                        "summary": (
+                            "Aider reusable editor produced a bounded "
+                            "full-file candidate set"
+                        ),
+                        "changes": [
+                            {
+                                "path": path,
+                                "old_text": source_texts[path],
+                                "new_text": editor_result.files[path],
+                                "summary": (
+                                    "Reusable Aider editor candidate"
+                                ),
+                            }
+                            for path in editor_result.changed_paths
+                        ],
+                    }
+                    editor_metadata.update({
+                        "engine": "aider-cli",
+                        "exit_status": editor_result.exit_status,
+                        "timed_out": editor_result.timed_out,
+                        "duration_ms": editor_result.duration_ms,
+                        "changed_paths": list(
+                            editor_result.changed_paths
+                        ),
+                    })
+                else:
+                    developer_response = (
+                        ai_router.execute(
+                            TaskClass.S2,
+                            developer_prompt,
+                            "implement",
+                            Role.DEVELOPER.value,
+                            (
+                                "Generate bounded multi-file patch"
+                                if len(target_paths) > 1
+                                else "Generate bounded single-file patch"
+                            ),
+                            request.timeout_seconds,
+                            response_format=developer_schema,
+                        )
+                    )
+                    generated_patch = (
+                        _validate_ai_developer_patch(
+                            developer_response.text,
+                            target_paths,
+                            source_texts,
+                            require_all_paths=False,
+                        )
+                    )
+
                 _validate_ai_developer_candidate_syntax(
                     generated_patch,
                     source_texts,
@@ -2527,6 +2650,8 @@ For Python files, return complete syntactically valid Python.
                 "syntax_repair_attempts":
                     syntax_repair_attempts,
                 "repair_attempts": [],
+                "editor": editor_metadata,
+                "chatgpt_assistance_in_target_product_run": 0,
                 "context_bundle_ref": "ContextBundle.json",
                 "context_selection_sha256": context_bundle["selection_sha256"],
             }
@@ -5333,6 +5458,9 @@ Return ONLY the required JSON object.
         "repair_attempts": repair_attempts, "risk": "Patch only; source unchanged" if source_unchanged else "Source integrity failed",
         "model_usage": "Ollama local" if use_ai else "None", "decision": "Human gate pending" if passed else "Repair required", "created_at": now,
         "change_operation": request.operation,
+        "editor_engine": request.editor_engine,
+        "chatgpt_assistance_in_target_product_run": 0,
+        "product_owner_run_actions": 1,
         "context_bundle_ref": "ContextBundle.json",
         "context_selection_sha256": context_bundle["selection_sha256"],
         "context_selected_paths": context_bundle["selected_paths"],
