@@ -11,6 +11,8 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
+Current canonical `main` at this checkpoint: `566ffa0cdc7b4f3212709bbb6efc290f553728e6` (merge of PR #58).
+
 Current canonical `main`: `1fac126023444052623da0c8027cc7209522bbbb` (merge of PR #50 editor bakeoff harness).
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
@@ -360,6 +362,33 @@ Smallest remediation:
 - approved Dental Quote must be launchable and usable.
 
 The game is Golden Path #2 and cannot replace or defer Dental Quote.
+
+## Current checkpoint after PR #58
+
+Latest merged remediation:
+
+`PR #58 — MVP-1: write valid empty YAML mapping for Aider config`
+
+Latest verified real Dental dashboard run:
+
+`run-ebf29be889fe`
+
+That run occurred before PR #58 and failed because the isolated Aider config was a zero-byte YAML document. The dashboard exposed Aider exit 2 and the exact parser error. PR #58 fixes that integration bug by writing a valid empty YAML mapping `{}\n` and includes a focused regression.
+
+Evidence state now:
+
+- current canonical main: `566ffa0cdc7b4f3212709bbb6efc290f553728e6`;
+- PR #58: MERGED;
+- previous Aider empty-config blocker: FIXED IN CODE;
+- post-PR58 real Dental dashboard run: PENDING;
+- Dental Golden Path #1: NOT PASS YET;
+- next blocker: UNKNOWN UNTIL THE NEXT DASHBOARD RUN.
+
+Single current product action:
+
+`RERUN_DENTAL_QUOTE_DASHBOARD_ON_MAIN_566FFA0`
+
+Do not start a new infrastructure milestone or Product Owner diagnostic PowerShell loop before this run.
 
 ## Product direction
 
@@ -1112,8 +1141,6 @@ Evidence state:
 
 ## Single next action
 
-`HUMAN_REVIEW_EDITOR_ADAPTER_BAKEOFF_HARNESS`
+`RERUN_DENTAL_QUOTE_DASHBOARD_ON_MAIN_566FFA0`
 
-The candidate implements only the isolated editor boundary and deterministic bakeoff harness. It does not integrate Aider into the production Golden Path and does not add Aider as a ForgeLab runtime dependency.
-
-After explicit merge approval, the next development phase is the real bounded Aider/Ollama boundary experiment. No Product Owner PowerShell debug loop is authorized.
+Synchronize local ForgeLab to `566ffa0cdc7b4f3212709bbb6efc290f553728e6`, start services once, and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop. Use the dashboard's decision/blocker evidence as the next source of truth.
