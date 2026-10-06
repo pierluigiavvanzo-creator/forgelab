@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / PR #53 TEST-FAILURE AIDER REPAIR AT HUMAN MERGE GATE`
+`RUNTIME STACK FROZEN / AIDER PREWRITE CORRECTION CANDIDATE AT HUMAN MERGE GATE`
 
 Audit:
 
@@ -134,6 +134,52 @@ repair on the same reusable Aider editor path.
 Current remediation PR:
 
 `#53 — MVP-1: keep failed-test repair on reusable Aider path`
+
+## 2026-10-06 third real Dental dashboard evidence
+
+Observed real dashboard run:
+
+`run-08dcbcbfe1a3`
+
+Visible outcome:
+
+- status: `CLOSED`;
+- gate: `Repair`;
+- deterministic tests: `FAIL`;
+- repair attempts applied: `0`;
+- provider cost: `EUR 0`;
+- dashboard reports 2 LLM calls / 3599 tokens.
+
+Interpretation:
+
+This is the first real run known to be executed on the locally synchronized
+ForgeLab runtime containing PRs #50–#53.
+
+The low LLM-call count plus `TEST FAIL / REPAIR 0` is consistent with:
+
+1. Planner succeeds;
+2. Aider initial implementation runs outside the LLM ledger;
+3. deterministic tests fail;
+4. Support diagnosis runs;
+5. Aider test-failure repair is attempted;
+6. the repair candidate fails before governed application, so the top-level
+   repair counter never increments.
+
+Code inspection confirms the Aider test-failure repair path had no bounded
+reusable-editor pre-write correction. A single invalid/no-op repair candidate
+therefore closed the run immediately.
+
+Current remediation:
+
+`mvp1-aider-prewrite-correction`
+
+Scope:
+
+- one Aider pre-write correction inside the same failed-test repair attempt;
+- correction receives the deterministic validation error;
+- no new top-level repair budget;
+- no Dental-specific product logic;
+- no custom syntax/string recovery catalogue.
 
 ## Binding Dental autonomy metrics
 

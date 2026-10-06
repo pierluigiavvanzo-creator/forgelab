@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** Second real Dental run failed tests before repair application  
-**Status:** PRE-MVP / PR #53 OPEN / HUMAN MERGE GATE
+**Checkpoint:** Synchronized Dental run confirms Aider pre-write repair blocker  
+**Status:** PRE-MVP / Aider pre-write correction candidate
 
 ## 1. Binding product priority
 
@@ -271,6 +271,39 @@ The candidate keeps:
 
 It adds no Dental-specific implementation logic.
 
+## 14. Third real Dental dashboard run — synchronized runtime
+
+Run:
+
+`run-08dcbcbfe1a3`
+
+Visible evidence:
+
+- `CLOSED`;
+- Gate `Repair`;
+- TEST `FAIL`;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- 2 LLM calls / 3599 tokens.
+
+This run was executed after local `main` synchronization, so it is valid
+evidence against the merged PR #53 runtime.
+
+Root cause class:
+
+`AIDER_FAILED_TEST_REPAIR_PREWRITE_CANDIDATE_NOT_CORRECTED`
+
+Smallest remediation:
+
+- keep the same top-level repair attempt;
+- if Aider's failed-test repair is rejected by deterministic pre-write
+  validation, send that validation error back to Aider once;
+- validate again;
+- only then allow ToolGateway apply;
+- preserve retest, Reviewer, Security and human gate.
+
+No Product Owner diagnostic action is required.
+
 ## 14. Second real Dental dashboard run
 
 Run:
@@ -305,7 +338,7 @@ No new repair budget, no paid provider, no Dental-specific product logic.
 
 ## 14. Single next action
 
-`HUMAN_REVIEW_MERGE_PR53_AIDER_TEST_FAILURE_REPAIR`
+`HUMAN_REVIEW_AIDER_PREWRITE_CORRECTION_PR`
 
 No Product Owner diagnostic command is required.
 
