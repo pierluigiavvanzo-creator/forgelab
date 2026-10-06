@@ -3356,181 +3356,121 @@ Rules:
 """
 
                 repair_id = f"repair-{repair_attempts + 1}"
-                repair_response = ai_router.execute(
-                    TaskClass.S2,
-                    repair_prompt,
-                    repair_id,
-                    Role.DEVELOPER.value,
-                    "Generate bounded AI repair",
-                    request.timeout_seconds,
-                    response_format=(
-                        _ai_developer_response_schema(
-                            target_paths,
-                            require_all_paths=False,
-                        )
-                    ),
-                )
-
                 repair_route = ai_router.route(
                     TaskClass.S2
                 )
-
                 repair_prewrite_attempts = 0
+                repair_engine = "custom"
 
-                try:
+                if request.editor_engine == "aider":
+                    reusable_editor_calls += 1
+                    repair_engine = "aider-cli"
+                    repair_aider_objective = (
+                        request.objective
+                        + "\n\nBinding Project Manager acceptance contract:\n"
+                        + plan_contract_text
+                        + "\n\nSupport diagnosis for failed deterministic test:\n"
+                        + hypothesis
+                        + "\n\nFailed test stdout:\n"
+                        + test.stdout[-2500:]
+                        + "\n\nFailed test stderr:\n"
+                        + test.stderr[-2500:]
+                        + "\n\nRepair the smallest complete cause of the "
+                        "failed test while preserving all passing behavior, "
+                        "the public API, quantitative acceptance coverage, "
+                        "and the authorized file scope. Do not weaken tests."
+                    )
+                    try:
+                        repair_editor_result = AiderCliAdapter(
+                            AiderCliConfig(
+                                executable=(
+                                    os.environ.get(
+                                        "FORGELAB_AIDER_EXECUTABLE",
+                                        "aider",
+                                    ),
+                                ),
+                                edit_format="whole",
+                            )
+                        ).run(
+                            EditorRequest(
+                                repository=workspace.path,  # type: ignore[arg-type]
+                                objective=repair_aider_objective,
+                                allowed_paths=target_paths,
+                                model=repair_route.model,
+                                timeout_seconds=request.timeout_seconds,
+                            )
+                        )
+                    except EditorAdapterError as error:
+                        raise AIDeveloperFormatError(
+                            "Aider test-failure repair failed before "
+                            f"governed write: {error}"
+                        ) from error
+
+                    if (
+                        repair_editor_result.exit_status != 0
+                        or repair_editor_result.timed_out
+                    ):
+                        raise AIDeveloperFormatError(
+                            "Aider test-failure repair did not complete "
+                            "successfully: "
+                            f"exit={repair_editor_result.exit_status}, "
+                            f"timed_out={repair_editor_result.timed_out}"
+                        )
+
+                    if not repair_editor_result.changed_paths:
+                        raise AIDeveloperFormatError(
+                            "Aider test-failure repair returned "
+                            "no authorized changes"
+                        )
+
+                    repair_patch = {
+                        "schema_version": "2.1",
+                        "summary": (
+                            "Aider reusable editor repaired failed "
+                            "deterministic tests"
+                        ),
+                        "files": [
+                            {
+                                "path": path,
+                                "new_text": repair_editor_result.files[path],
+                                "summary": (
+                                    "Reusable Aider test-failure repair"
+                                ),
+                            }
+                            for path in repair_editor_result.changed_paths
+                        ],
+                    }
                     repair_patch = (
-                        _validate_ai_developer_patch(
-                            repair_response.text,
+                        _validate_ai_developer_full_file_patch(
+                            json.dumps(
+                                repair_patch,
+                                ensure_ascii=False,
+                            ),
                             target_paths,
                             repair_source_texts,
-                            require_all_paths=False,
                         )
                     )
                     _validate_ai_developer_candidate_syntax(
                         repair_patch,
                         repair_source_texts,
                     )
-                except (
-                    AIDeveloperFormatError,
-                    AIDeveloperReferenceError,
-                    AIDeveloperSyntaxError,
-                ) as repair_prewrite_error:
-                    repair_prewrite_attempts = 1
-
-                    repair_prewrite_prompt = f"""
-You are the DEVELOPER agent in ForgeLab.
-
-Your prior test-failure repair candidate failed deterministic
-pre-write validation before any repair write occurred.
-
-Validation error:
-{repair_prewrite_error}
-
-Objective:
-{request.objective}
-
-Project Manager binding acceptance contract:
-{plan_contract_text}
-
-Original authorized paths (scope is immutable):
-{repair_authorized_list}
-
-Support hypothesis for {ev_id}:
-{hypothesis}
-
-Failed test stdout:
-{test.stdout[-2500:]}
-
-Failed test stderr:
-{test.stderr[-2500:]}
-
-Current complete authorized files AFTER the failed candidate:
-{repair_files_context}
-
-Return ONLY one corrected JSON object.
-No Markdown. No prose outside JSON.
-
-Required schema:
-{repair_schema}
-
-Rules:
-- this is the ONE bounded pre-write correction for this repair candidate.
-- every path MUST remain inside the ORIGINAL authorized path set.
-- repair only the non-empty subset actually needed.
-- multiple changes may target the same file only when their old_text regions are disjoint.
-- use at most 4 changes per authorized path.
-- old_text MUST be copied verbatim from the current corresponding file.
-- old_text MUST occur exactly once.
-- preserve valid Python syntax in every modified .py file.
-- preserve tests already reported as "ok" in the failed deterministic
-  evidence and preserve the public API contract they exercise unless
-  the Product Owner objective explicitly requires a breaking change.
-- distinguish malformed test construction from production-code defects;
-  do not redesign a working return type just to satisfy an inconsistent
-  test.
-- do not weaken tests merely to make them pass.
-- do not modify dependencies or configuration.
-- do not claim tests have run.
-"""
-
-                    repair_full_file_recovery = isinstance(
-                        repair_prewrite_error,
-                        (
-                            AIDeveloperReferenceError,
-                            AIDeveloperSyntaxError,
-                        ),
-                    )
-
-                    if repair_full_file_recovery:
-                        repair_recovery_mode = (
-                            "REFERENCE RECOVERY MODE"
-                            if isinstance(
-                                repair_prewrite_error,
-                                AIDeveloperReferenceError,
-                            )
-                            else "SYNTAX RECOVERY MODE"
-                        )
-                        repair_prewrite_prompt += f"""
-
-{repair_recovery_mode}:
-Return COMPLETE replacement content for each file that must
-change. Do not return old_text snippets.
-
-Required recovery schema:
-{{
-  "schema_version": "2.1",
-  "summary": "<short overall recovery summary>",
-  "files": [
-    {{
-      "path": "<one authorized path>",
-      "new_text": "<COMPLETE replacement file content>",
-      "summary": "<short per-file summary>"
-    }}
-  ]
-}}
-
-The current complete authorized files above are authoritative.
-For Python files, return complete syntactically valid Python.
-"""
-                        repair_response_format = (
-                            _ai_developer_full_file_response_schema(
-                                target_paths
-                            )
-                        )
-                    else:
-                        repair_response_format = (
+                else:
+                    repair_response = ai_router.execute(
+                        TaskClass.S2,
+                        repair_prompt,
+                        repair_id,
+                        Role.DEVELOPER.value,
+                        "Generate bounded AI repair",
+                        request.timeout_seconds,
+                        response_format=(
                             _ai_developer_response_schema(
                                 target_paths,
                                 require_all_paths=False,
                             )
-                        )
-
-                    prewrite_recovery_context = {
-                        "phase": "test_failure_repair",
-                        "first_error": str(
-                            repair_prewrite_error
                         ),
-                    }
-
-                    repair_response = ai_router.execute(
-                        TaskClass.S2,
-                        repair_prewrite_prompt,
-                        f"{repair_id}-prewrite",
-                        Role.DEVELOPER.value,
-                        "Correct repair pre-write validation once",
-                        request.timeout_seconds,
-                        response_format=repair_response_format,
                     )
 
-                    if repair_full_file_recovery:
-                        repair_patch = (
-                            _validate_ai_developer_full_file_patch(
-                                repair_response.text,
-                                target_paths,
-                                repair_source_texts,
-                            )
-                        )
-                    else:
+                    try:
                         repair_patch = (
                             _validate_ai_developer_patch(
                                 repair_response.text,
@@ -3539,12 +3479,166 @@ For Python files, return complete syntactically valid Python.
                                 require_all_paths=False,
                             )
                         )
+                        _validate_ai_developer_candidate_syntax(
+                            repair_patch,
+                            repair_source_texts,
+                        )
+                    except (
+                        AIDeveloperFormatError,
+                        AIDeveloperReferenceError,
+                        AIDeveloperSyntaxError,
+                    ) as repair_prewrite_error:
+                        repair_prewrite_attempts = 1
 
-                    _validate_ai_developer_candidate_syntax(
-                        repair_patch,
-                        repair_source_texts,
-                    )
-                    prewrite_recovery_context = None
+                        repair_prewrite_prompt = f"""
+    You are the DEVELOPER agent in ForgeLab.
+
+    Your prior test-failure repair candidate failed deterministic
+    pre-write validation before any repair write occurred.
+
+    Validation error:
+    {repair_prewrite_error}
+
+    Objective:
+    {request.objective}
+
+    Project Manager binding acceptance contract:
+    {plan_contract_text}
+
+    Original authorized paths (scope is immutable):
+    {repair_authorized_list}
+
+    Support hypothesis for {ev_id}:
+    {hypothesis}
+
+    Failed test stdout:
+    {test.stdout[-2500:]}
+
+    Failed test stderr:
+    {test.stderr[-2500:]}
+
+    Current complete authorized files AFTER the failed candidate:
+    {repair_files_context}
+
+    Return ONLY one corrected JSON object.
+    No Markdown. No prose outside JSON.
+
+    Required schema:
+    {repair_schema}
+
+    Rules:
+    - this is the ONE bounded pre-write correction for this repair candidate.
+    - every path MUST remain inside the ORIGINAL authorized path set.
+    - repair only the non-empty subset actually needed.
+    - multiple changes may target the same file only when their old_text regions are disjoint.
+    - use at most 4 changes per authorized path.
+    - old_text MUST be copied verbatim from the current corresponding file.
+    - old_text MUST occur exactly once.
+    - preserve valid Python syntax in every modified .py file.
+    - preserve tests already reported as "ok" in the failed deterministic
+      evidence and preserve the public API contract they exercise unless
+      the Product Owner objective explicitly requires a breaking change.
+    - distinguish malformed test construction from production-code defects;
+      do not redesign a working return type just to satisfy an inconsistent
+      test.
+    - do not weaken tests merely to make them pass.
+    - do not modify dependencies or configuration.
+    - do not claim tests have run.
+    """
+
+                        repair_full_file_recovery = isinstance(
+                            repair_prewrite_error,
+                            (
+                                AIDeveloperReferenceError,
+                                AIDeveloperSyntaxError,
+                            ),
+                        )
+
+                        if repair_full_file_recovery:
+                            repair_recovery_mode = (
+                                "REFERENCE RECOVERY MODE"
+                                if isinstance(
+                                    repair_prewrite_error,
+                                    AIDeveloperReferenceError,
+                                )
+                                else "SYNTAX RECOVERY MODE"
+                            )
+                            repair_prewrite_prompt += f"""
+
+    {repair_recovery_mode}:
+    Return COMPLETE replacement content for each file that must
+    change. Do not return old_text snippets.
+
+    Required recovery schema:
+    {{
+      "schema_version": "2.1",
+      "summary": "<short overall recovery summary>",
+      "files": [
+        {{
+          "path": "<one authorized path>",
+          "new_text": "<COMPLETE replacement file content>",
+          "summary": "<short per-file summary>"
+        }}
+      ]
+    }}
+
+    The current complete authorized files above are authoritative.
+    For Python files, return complete syntactically valid Python.
+    """
+                            repair_response_format = (
+                                _ai_developer_full_file_response_schema(
+                                    target_paths
+                                )
+                            )
+                        else:
+                            repair_response_format = (
+                                _ai_developer_response_schema(
+                                    target_paths,
+                                    require_all_paths=False,
+                                )
+                            )
+
+                        prewrite_recovery_context = {
+                            "phase": "test_failure_repair",
+                            "first_error": str(
+                                repair_prewrite_error
+                            ),
+                        }
+
+                        repair_response = ai_router.execute(
+                            TaskClass.S2,
+                            repair_prewrite_prompt,
+                            f"{repair_id}-prewrite",
+                            Role.DEVELOPER.value,
+                            "Correct repair pre-write validation once",
+                            request.timeout_seconds,
+                            response_format=repair_response_format,
+                        )
+
+                        if repair_full_file_recovery:
+                            repair_patch = (
+                                _validate_ai_developer_full_file_patch(
+                                    repair_response.text,
+                                    target_paths,
+                                    repair_source_texts,
+                                )
+                            )
+                        else:
+                            repair_patch = (
+                                _validate_ai_developer_patch(
+                                    repair_response.text,
+                                    target_paths,
+                                    repair_source_texts,
+                                    require_all_paths=False,
+                                )
+                            )
+
+                        _validate_ai_developer_candidate_syntax(
+                            repair_patch,
+                            repair_source_texts,
+                        )
+                        prewrite_recovery_context = None
+
 
                 repair_payload_key = json.dumps(
                     repair_patch,
@@ -3627,8 +3721,14 @@ For Python files, return complete syntactically valid Python.
                     "test_evidence_ref": ev_id,
                     "support_task_id": support_id,
                     "developer_task_id": repair_id,
-                    "provider": repair_route.provider,
+                    "provider": (
+                        "aider-cli"
+                        if repair_engine == "aider-cli"
+                        else repair_route.provider
+                    ),
                     "model": repair_route.model,
+                    "editor_engine": repair_engine,
+                    "chatgpt_assistance_in_target_product_run": 0,
                     "changed_paths": repair_changed_paths,
                     "patch": repair_patch,
                     "prewrite_correction_attempts":
