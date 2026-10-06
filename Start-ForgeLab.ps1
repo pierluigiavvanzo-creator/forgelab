@@ -141,6 +141,14 @@ if (-not $PythonExe -or -not (Test-Path $PythonExe)) {
 
 $env:PYTHONPATH = Join-Path $ProjectRoot "src"
 
+$RuntimeSha = (& git -C $ProjectRoot rev-parse HEAD).Trim()
+
+if (-not $RuntimeSha) {
+    throw "Impossibile determinare il Git SHA runtime ForgeLab."
+}
+
+$env:FORGELAB_RUNTIME_SHA = $RuntimeSha
+
 
 # ---------------------------------------------------------
 # NODE / COREPACK
@@ -165,6 +173,7 @@ if (
 Write-Host "Python   : $PythonExe"
 Write-Host "Node     : $NodeVersionText"
 Write-Host "Corepack : $CorepackExe"
+Write-Host "Runtime  : $RuntimeSha"
 
 
 # ---------------------------------------------------------
@@ -391,6 +400,7 @@ $DashboardProcess = Start-Process `
 # Child processes already inherited the runtime settings.
 $env:FORGELAB_API_TOKEN = $null
 $env:FORGELAB_AIDER_EXECUTABLE = $null
+$env:FORGELAB_RUNTIME_SHA = $null
 
 
 # ---------------------------------------------------------
