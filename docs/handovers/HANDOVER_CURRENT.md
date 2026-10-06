@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** Dental run still fails; terminal reason must become dashboard-visible  
-**Status:** PRE-MVP / observability candidate / HUMAN MERGE GATE
+**Checkpoint:** Dashboard exposed exact initial Aider pre-write blocker  
+**Status:** PRE-MVP / initial Aider correction candidate / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -271,6 +271,48 @@ The candidate keeps:
 
 It adds no Dental-specific implementation logic.
 
+## 14. Fifth real Dental dashboard run — exact blocker visible
+
+Run:
+
+`run-f667d5cdf772`
+
+Runner:
+
+`a9f3cb7c9511...`
+
+Dashboard blocker:
+
+`PREWRITE_RECOVERY_EXHAUSTED`
+
+Phase:
+
+`implementation`
+
+Final error:
+
+`AI Developer Python candidate does not parse in quote_calculator.py at line 50: f-string: unmatched '['`
+
+Interpretation:
+
+PR #55 observability is working. The blocker is no longer inferred.
+
+The initial Aider implementation path still sends a pre-write-invalid Aider
+candidate to the legacy custom pre-write recovery path. That violates the
+REUSE-FIRST reset and recreates the fragile editor boundary.
+
+Smallest remediation:
+
+`AIDER_INITIAL_PREWRITE_CORRECTION_ONCE`
+
+Expected path:
+
+`Aider initial candidate -> deterministic pre-write FAIL -> exact error +
+failed candidate returned to Aider once -> pre-write validation -> ToolGateway
+-> tests -> Reviewer -> Security -> human gate`
+
+No custom f-string normalization is authorized at this stage.
+
 ## 14. Fourth real Dental dashboard run
 
 Run:
@@ -380,7 +422,7 @@ No new repair budget, no paid provider, no Dental-specific product logic.
 
 ## 14. Single next action
 
-`HUMAN_REVIEW_TERMINAL_BLOCKER_OBSERVABILITY_PR`
+`HUMAN_REVIEW_INITIAL_AIDER_PREWRITE_CORRECTION_PR`
 
 No Product Owner diagnostic command is required.
 
