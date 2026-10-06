@@ -671,6 +671,199 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_aider_semantic_repair_retests_and_reaches_human_gate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_fail(
+                        "Expose ADD_OPERATION marker",
+                        (
+                            "Addition works, but the requested "
+                            "ADD_OPERATION marker is missing."
+                        ),
+                    ),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+                ProviderResponse(
+                    semantic_review_pass(),
+                    12,
+                    6,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            initial_editor = EditorResult(
+                engine="aider-cli",
+                files={
+                    "calculator.py": (
+                        "def add(a, b):\n"
+                        "    return a + b\n"
+                    ),
+                },
+                changed_paths=("calculator.py",),
+                stdout="initial aider edit",
+                stderr="",
+                exit_status=0,
+                timed_out=False,
+                duration_ms=20,
+                command=("aider",),
+            )
+            semantic_editor = EditorResult(
+                engine="aider-cli",
+                files={
+                    "calculator.py": (
+                        'ADD_OPERATION = "addition"\n\n'
+                        "def add(a, b):\n"
+                        "    return a + b\n"
+                    ),
+                },
+                changed_paths=("calculator.py",),
+                stdout="semantic aider repair",
+                stderr="",
+                exit_status=0,
+                timed_out=False,
+                duration_ms=22,
+                command=("aider",),
+            )
+
+            with (
+                patch(
+                    "forgelab.orchestrator.OllamaProvider.invoke",
+                    side_effect=scripted,
+                ) as invoke,
+                patch(
+                    "forgelab.orchestrator.AiderCliAdapter.run",
+                    side_effect=[
+                        initial_editor,
+                        semantic_editor,
+                    ],
+                ) as aider_run,
+            ):
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        objective=(
+                            "Fix addition and expose "
+                            "ADD_OPERATION marker"
+                        ),
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                        editor_engine="aider",
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            developer = json.loads(
+                (run_dir / "AIDeveloperPatch.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            review = json.loads(
+                (run_dir / "ReviewReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            evidence = json.loads(
+                (run_dir / "TestEvidence.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "READY_FOR_DECISION",
+            )
+            self.assertEqual(
+                summary["tests"],
+                "PASS",
+            )
+            self.assertEqual(
+                summary["repair_attempts"],
+                1,
+            )
+            self.assertEqual(
+                summary[
+                    "chatgpt_assistance_in_target_product_run"
+                ],
+                0,
+            )
+            self.assertEqual(
+                usage["reusable_editor_calls"],
+                2,
+            )
+            self.assertEqual(
+                usage["spent"],
+                "0",
+            )
+            self.assertEqual(
+                review["status"],
+                "PASS",
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                3,
+            )
+            self.assertEqual(
+                len(aider_run.call_args_list),
+                2,
+            )
+
+            semantic_record = developer[
+                "repair_attempts"
+            ][0]
+            self.assertEqual(
+                semantic_record["cause"],
+                "semantic_review",
+            )
+            self.assertEqual(
+                semantic_record["editor_engine"],
+                "aider-cli",
+            )
+            self.assertEqual(
+                semantic_record[
+                    "chatgpt_assistance_in_target_product_run"
+                ],
+                0,
+            )
+
+            test_checks = [
+                item
+                for item in evidence["evidence"]
+                if item["check_type"] == "tests"
+            ]
+            self.assertEqual(
+                [item["exit_status"] for item in test_checks],
+                [0, 0],
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_ai_developer_generates_patch_without_user_solution(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
