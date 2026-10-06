@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** Dashboard exposed exact Aider empty-config integration bug  
-**Status:** PRE-MVP / one-line Aider config fix / HUMAN MERGE GATE
+**Checkpoint:** PR #58 MERGED / next real Dental dashboard run pending  
+**Status:** PRE-MVP / Golden Path #1 real-product validation
 
 ## 1. Binding product priority
 
@@ -59,29 +59,30 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`1fac126023444052623da0c8027cc7209522bbbb`
+`566ffa0cdc7b4f3212709bbb6efc290f553728e6`
 
-This is the merge of PR #50:
+This is the merge of PR #58:
 
-`MVP Recovery: add bounded reusable editor bakeoff harness`
+`MVP-1: write valid empty YAML mapping for Aider config`
 
-Runtime PRs #37–#48 remain frozen and unmerged.
+PR #58 is merged. Runtime PRs #37–#48 remain frozen and unmerged.
 
-## 5. Current integration PR
+## 5. Current integration state
 
-PR:
+The active Aider/Dental integration chain through PR #58 is merged to `main`.
 
-`#51 — MVP-1: make Dental Quote dashboard run use reusable Aider editor`
+Latest merged sequence:
 
-Branch:
+- PR #51 — dashboard Dental run uses reusable Aider editor;
+- PR #52 — semantic repair stays on reusable Aider path;
+- PR #53 — failed-test repair stays on reusable Aider path;
+- PR #54 — one bounded Aider pre-write correction on failed-test repair;
+- PR #55 — dashboard terminal blocker + active runner SHA observability;
+- PR #56 — initial pre-write correction stays on reusable Aider path;
+- PR #57 — Aider stderr/stdout preserved in terminal failure evidence;
+- PR #58 — valid empty YAML mapping written for isolated Aider config.
 
-`mvp1-dental-autonomous-aider-golden-path`
-
-Purpose:
-
-Connect the merged reusable editor boundary to the **real dashboard-created Dental Quote Golden Path** with the smallest safe change.
-
-This is not a detached demo or separate CLI product path.
+There is no newer merged ForgeLab change after PR #58 at this checkpoint.
 
 ## 6. REUSE-FIRST implementation
 
@@ -492,13 +493,50 @@ Expected governed flow after merge:
 
 No new repair budget, no paid provider, no Dental-specific product logic.
 
-## 14. Single next action
+## 14. Post-PR58 evidence state
 
-`HUMAN_REVIEW_VALID_EMPTY_AIDER_CONFIG_PR`
+PR #58 is merged to canonical `main` at:
 
-No Product Owner diagnostic command is required.
+`566ffa0cdc7b4f3212709bbb6efc290f553728e6`
 
-## 15. Resume protocol
+The most recent verified real Dental dashboard run remains:
+
+`run-ebf29be889fe`
+
+That run occurred before PR #58 and therefore remains FAIL evidence for the previous runtime, not for current `main`.
+
+Its exact blocker was the zero-byte isolated Aider YAML config. PR #58 fixes that blocker by writing a valid empty YAML mapping:
+
+`{}\n`
+
+Current evidence classification:
+
+- PR #58: **MERGED**;
+- exact previous blocker: **FIXED IN CODE**;
+- post-PR58 real Dental dashboard validation: **PENDING**;
+- Dental Golden Path #1: **NOT PASS YET**;
+- next blocker: **UNKNOWN UNTIL THE NEXT DASHBOARD RUN**.
+
+No later verified Dental run after PR #58 was found at this checkpoint.
+
+## 15. Single next action
+
+`RERUN_DENTAL_QUOTE_DASHBOARD_ON_MAIN_566FFA0`
+
+Required execution:
+
+1. synchronize local ForgeLab to `566ffa0cdc7b4f3212709bbb6efc290f553728e6`;
+2. start ForgeLab services once;
+3. submit the unchanged Dental Quote objective from the dashboard once;
+4. do not manually repair Dental target code;
+5. do not begin a Product Owner PowerShell diagnostic loop;
+6. inspect the dashboard decision/blocker evidence;
+7. if `READY_FOR_DECISION`, continue to Product Owner approval and visible app validation;
+8. if `CLOSED`, treat the newly surfaced terminal blocker as the next single product gap.
+
+No new infrastructure milestone is authorized before this run.
+
+## 16. Resume protocol
 
 1. read `AGENTS_MASTER.md`;
 2. read `MANIFEST.md`;
@@ -507,9 +545,9 @@ No Product Owner diagnostic command is required.
 5. read `DECISIONS.md`;
 6. read this handover;
 7. read `DENTAL_QUOTE_AUTONOMY_GATE.md`;
-8. verify canonical `main`;
-9. verify the active integration PR head/state;
-10. stop at human merge gate unless explicit approval exists;
-11. after merge, perform the Dental product proof through the dashboard only.
+8. verify canonical `main = 566ffa0cdc7b4f3212709bbb6efc290f553728e6` or a later explicitly verified canonical main;
+9. ignore stale gates that refer to review/merge of PR #58 because PR #58 is already merged;
+10. perform the Dental product proof through the dashboard only;
+11. preserve the human promotion gate.
 
 Do not resume frozen PR #37–#48 work unless a new real product-run blocker specifically justifies a general behavior from them.
