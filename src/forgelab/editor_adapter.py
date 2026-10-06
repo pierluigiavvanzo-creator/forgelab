@@ -145,7 +145,7 @@ class AiderCliAdapter:
             raise EditorAdapterError("editor model must not be empty")
         if model.startswith(("ollama/", "ollama_chat/")):
             return model
-        return f"ollama/{model}"
+        return f"ollama_chat/{model}"
 
     @staticmethod
     def _prompt(request: EditorRequest) -> str:
