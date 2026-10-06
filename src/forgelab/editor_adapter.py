@@ -116,6 +116,10 @@ def _sandbox_environment(sandbox: Path) -> dict[str, str]:
         "HOME": str(sandbox),
         "USERPROFILE": str(sandbox),
         "AIDER_ANALYTICS": "0",
+        "OLLAMA_API_BASE": os.environ.get(
+            "FORGELAB_OLLAMA_URL",
+            "http://127.0.0.1:11434",
+        ),
     })
     return environment
 
