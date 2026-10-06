@@ -197,7 +197,7 @@ including tests only when they are inside the writable set.
             config_file = sandbox / ".forgelab-aider.conf.yml"
             env_file = sandbox / ".forgelab-aider.env"
             prompt_file.write_text(self._prompt(request), encoding="utf-8")
-            config_file.write_text("", encoding="utf-8")
+            config_file.write_text("{}\n", encoding="utf-8")
             env_file.write_text("", encoding="utf-8")
 
             command = [

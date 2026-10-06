@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-06  
-**Checkpoint:** Initial Aider correction now runs but exits 2 without process detail  
-**Status:** PRE-MVP / Aider process-evidence candidate / HUMAN MERGE GATE
+**Checkpoint:** Dashboard exposed exact Aider empty-config integration bug  
+**Status:** PRE-MVP / one-line Aider config fix / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -271,6 +271,40 @@ The candidate keeps:
 
 It adds no Dental-specific implementation logic.
 
+## 14. Seventh real Dental dashboard run — exact Aider CLI root cause
+
+Run:
+
+`run-ebf29be889fe`
+
+Runner:
+
+`df32388e1d0b...`
+
+Dashboard blocker:
+
+`PREWRITE_RECOVERY_EXHAUSTED`
+
+Aider stderr:
+
+`The config file doesn't appear to contain 'key: value' pairs ... yaml.load(.../.forgelab-aider.conf.yml) returned type 'NoneType' instead of 'dict'.`
+
+Exact root cause:
+
+ForgeLab writes `.forgelab-aider.conf.yml` as an empty file. Aider expects a
+YAML mapping, so an empty document is invalid for its config loader.
+
+Remediation:
+
+`config_file.write_text("{}\\n", encoding="utf-8")`
+
+Regression:
+
+A fake Aider process exits 2 unless the generated config is exactly a valid
+empty YAML mapping. The source repository must remain unchanged.
+
+No engine behavior beyond this integration bug is changed.
+
 ## 14. Sixth real Dental dashboard run — Aider process failure visible
 
 Run:
@@ -460,7 +494,7 @@ No new repair budget, no paid provider, no Dental-specific product logic.
 
 ## 14. Single next action
 
-`HUMAN_REVIEW_AIDER_FAILURE_OUTPUT_EVIDENCE_PR`
+`HUMAN_REVIEW_VALID_EMPTY_AIDER_CONFIG_PR`
 
 No Product Owner diagnostic command is required.
 

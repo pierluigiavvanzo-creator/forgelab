@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / AIDER FAILURE OUTPUT EVIDENCE AT HUMAN MERGE GATE`
+`RUNTIME STACK FROZEN / VALID EMPTY AIDER CONFIG AT HUMAN MERGE GATE`
 
 Audit:
 
@@ -314,6 +314,40 @@ Scope:
 - apply the same evidence behavior to initial edit, initial pre-write
   correction, failed-test repair and semantic repair;
 - no routing/model/retry/product logic change.
+
+## 2026-10-06 seventh real Dental dashboard evidence
+
+Observed synchronized dashboard run:
+
+`run-ebf29be889fe`
+
+Visible outcome:
+
+- active runner SHA: `df32388e1d0b...`;
+- status: `CLOSED`;
+- gate: `Repair`;
+- deterministic tests: `FAIL`;
+- repair attempts applied: `0`;
+- provider cost: `EUR 0`;
+- terminal blocker: `PREWRITE_RECOVERY_EXHAUSTED`;
+- blocker phase: `implementation`;
+- Aider correction process exit: `2`.
+
+The dashboard now exposes the real Aider stderr:
+
+`The config file doesn't appear to contain 'key: value' pairs ... yaml.load(.../.forgelab-aider.conf.yml) returned type 'NoneType' instead of 'dict'.`
+
+Root cause:
+
+`AiderCliAdapter` creates `.forgelab-aider.conf.yml` as a zero-byte file.
+Aider 0.86.2 parses an empty YAML document as `None`, but expects a mapping.
+
+Smallest remediation:
+
+- write a valid empty YAML mapping: `{}\n`;
+- keep the existing explicit `--config` isolation boundary;
+- no retry/model/provider/repair-budget change;
+- no Dental-specific logic.
 
 ## Binding Dental autonomy metrics
 
