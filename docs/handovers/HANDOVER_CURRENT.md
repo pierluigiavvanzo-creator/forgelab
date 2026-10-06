@@ -2,7 +2,7 @@
 
 **Checkpoint date:** 2026-10-06  
 **Checkpoint:** Dental Quote autonomous reusable-editor integration  
-**Status:** PRE-MVP / candidate branch ready for human merge review
+**Status:** PRE-MVP / PR #51 OPEN / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -67,7 +67,11 @@ This is the merge of PR #50:
 
 Runtime PRs #37–#48 remain frozen and unmerged.
 
-## 5. Current integration branch
+## 5. Current integration PR
+
+PR:
+
+`#51 — MVP-1: make Dental Quote dashboard run use reusable Aider editor`
 
 Branch:
 
@@ -232,7 +236,7 @@ Do not mark Golden Path #1 PASS until:
 
 ## 13. Single next action
 
-`HUMAN_REVIEW_MVP1_DENTAL_AUTONOMOUS_AIDER_INTEGRATION`
+`HUMAN_REVIEW_MERGE_PR51_DENTAL_AUTONOMOUS_AIDER_INTEGRATION`
 
 No Product Owner PowerShell command is required at this gate.
 
