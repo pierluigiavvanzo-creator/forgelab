@@ -43,6 +43,28 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.source,
         )
 
+    def test_ai_developer_uses_reuse_first_aider_engine(self):
+        self.assertIn(
+            'editor_engine:',
+            self.source,
+        )
+        self.assertIn(
+            '? "aider"',
+            self.source,
+        )
+        self.assertIn(
+            "REUSE-FIRST",
+            self.source,
+        )
+        self.assertIn(
+            "Aider + Ollama",
+            self.source,
+        )
+        self.assertIn(
+            "ChatGPT assistance target run: 0",
+            self.source,
+        )
+
     def test_api_failures_are_visible_inside_run_modal(self):
         self.assertIn(
             "setRunFormError(message);",
