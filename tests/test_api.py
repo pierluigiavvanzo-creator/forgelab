@@ -11,6 +11,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from forgelab.api import ApiError, make_server
+from forgelab.editor_adapter import EditorResult
 from forgelab.model_router import ProviderResponse
 from forgelab.runner import RunRequest, run_isolated
 
@@ -839,6 +840,136 @@ class ApiTests(unittest.TestCase):
             ).read_text(
                 encoding="utf-8"
             ),
+        )
+
+
+    def test_create_run_accepts_reuse_first_aider_engine(self):
+        repo = self.make_demo_repo()
+
+        scripted = [
+            ProviderResponse(
+                ai_plan(),
+                10,
+                5,
+                actual_cost=Decimal("0"),
+            ),
+            ProviderResponse(
+                semantic_review_pass(),
+                10,
+                5,
+                actual_cost=Decimal("0"),
+            ),
+        ]
+
+        editor_result = EditorResult(
+            engine="aider-cli",
+            files={
+                "calculator.py": (
+                    "def add(a, b):\n"
+                    "    return a + b\n"
+                ),
+            },
+            changed_paths=("calculator.py",),
+            stdout="aider local edit complete",
+            stderr="",
+            exit_status=0,
+            timed_out=False,
+            duration_ms=20,
+            command=(
+                "aider",
+                "--model",
+                "ollama_chat/qwen2.5-coder:7b",
+            ),
+        )
+
+        request_payload = {
+            "repository": str(repo.resolve()),
+            "objective": (
+                "Fix calculator addition "
+                "using the reusable editor"
+            ),
+            "change": {
+                "operation": "ai_generate",
+                "path": "calculator.py",
+            },
+            "editor_engine": "aider",
+            "test_command": [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-v",
+            ],
+            "timeout_seconds": 60,
+            "risk": "normal",
+            "max_repair_attempts": 0,
+        }
+
+        with (
+            patch(
+                "forgelab.orchestrator.OllamaProvider.invoke",
+                side_effect=scripted,
+            ),
+            patch(
+                "forgelab.orchestrator.AiderCliAdapter.run",
+                return_value=editor_result,
+            ),
+        ):
+            with self.request(
+                "/v1/runs",
+                "POST",
+                request_payload,
+            ) as response:
+                self.assertEqual(response.status, 201)
+                created = json.load(response)
+
+        self.assertEqual(
+            created["editor_engine"],
+            "aider",
+        )
+
+        run_dir = self.root / created["run_id"]
+        summary = json.loads(
+            (run_dir / "RunSummary.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        usage = json.loads(
+            (run_dir / "UsageReport.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        plan = json.loads(
+            (run_dir / "ExecutionPlan.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            summary["status"],
+            "READY_FOR_DECISION",
+        )
+        self.assertEqual(
+            summary["editor_engine"],
+            "aider",
+        )
+        self.assertEqual(
+            summary[
+                "chatgpt_assistance_in_target_product_run"
+            ],
+            0,
+        )
+        self.assertEqual(
+            plan["editor_engine"],
+            "aider",
+        )
+        self.assertEqual(
+            usage["reusable_editor_calls"],
+            1,
+        )
+        self.assertEqual(
+            usage["spent"],
+            "0",
         )
 
 
