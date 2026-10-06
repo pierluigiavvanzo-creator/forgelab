@@ -421,6 +421,29 @@ class ForgeLabApi:
         if not isinstance(ai_mode, bool):
             raise ApiError("ai_mode must be boolean")
 
+        editor_engine = str(
+            payload.get(
+                "editor_engine",
+                "custom",
+            )
+        ).strip().lower()
+
+        if editor_engine not in {
+            "custom",
+            "aider",
+        }:
+            raise ApiError(
+                "editor_engine must be custom or aider"
+            )
+
+        if (
+            editor_engine == "aider"
+            and operation != "ai_generate"
+        ):
+            raise ApiError(
+                "aider editor_engine requires ai_generate"
+            )
+
         if operation == "ai_generate":
             # The operation itself is explicit
             # local-AI opt-in.
@@ -442,6 +465,7 @@ class ForgeLabApi:
             ai_mode=ai_mode,
             operation=operation,
             allowed_paths=tuple(target_paths),
+            editor_engine=editor_engine,
         )
 
         try:
@@ -462,6 +486,7 @@ class ForgeLabApi:
             "decision": summary.get("decision"),
             "repository": str(repository),
             "operation": operation,
+            "editor_engine": editor_engine,
             "allowed_paths": target_paths,
             "artifacts_url": (
                 f"/v1/runs/{run_dir.name}/artifacts"
@@ -679,6 +704,13 @@ class ForgeLabApi:
             + "configuration, tests, and governance."
         )
 
+        editor_engine = str(
+            plan.get(
+                "editor_engine",
+                "custom",
+            )
+        ).strip().lower()
+
         request = MultiAgentRequest(
             repository=repository,
             objective=repaired_objective,
@@ -704,6 +736,7 @@ class ForgeLabApi:
             ai_mode=True,
             operation="ai_generate",
             allowed_paths=allowed_paths,
+            editor_engine=editor_engine,
         )
 
         try:

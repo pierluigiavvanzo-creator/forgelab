@@ -34,7 +34,7 @@ For Golden Path work:
 
 Current canonical `main`:
 
-`8b67b98c61d6bd90af839d1cad185f05454a2e66`
+`1fac126023444052623da0c8027cc7209522bbbb`
 
 ## NOW — A Product Critical
 
@@ -50,7 +50,7 @@ Do not extend the stacked recovery chain.
 
 Primary task:
 
-`EDITOR_ENGINE_BAKEOFF_01` — harness candidate implemented; human merge review is the current gate
+`DENTAL_QUOTE_AUTONOMOUS_GOLDEN_PATH` — integrate merged reusable editor harness into the real dashboard run
 
 Target architecture:
 
@@ -98,18 +98,22 @@ Harness gate completed:
 - focused verification: 10 / 10 PASS;
 - no Aider runtime dependency has been added.
 
-Current human gate:
+PR #50 editor harness is MERGED.
 
-`HUMAN_REVIEW_EDITOR_ADAPTER_BAKEOFF_HARNESS`
+Current product gate:
 
-Post-merge experiment exit gate:
+`DENTAL_QUOTE_AUTONOMY_GATE`
 
-1. run the real Aider/Ollama boundary experiment;
-2. compare edit reliability with current ForgeLab evidence;
-3. Aider materially reduces malformed-edit failures OR is rejected with evidence;
-4. only then decide whether to integrate an EditorAdapter into the Golden Path;
-5. ordinary Golden Path validation returns to the dashboard;
-6. Product Owner is not used as the repeated CLI/PowerShell test harness.
+Exit gate:
+
+1. initiate the unchanged Dental Quote objective from the dashboard;
+2. use Aider + Ollama as the initial reusable editor path;
+3. record any fallback explicitly;
+4. reach tests PASS + semantic Reviewer PASS + Security PASS;
+5. record ChatGPT assistance in target run = 0 and paid API cost EUR 0;
+6. reach READY_FOR_DECISION without Product Owner log/debug work;
+7. after approval, launch and manually verify the Dental Quote application;
+8. only then mark Golden Path #1 PASS.
 
 ### Golden Path 1 — Dental Quote resumes after bakeoff
 
@@ -123,19 +127,23 @@ ForgeLab produces the requested three-treatment application with tests/review/se
 
 ## NEXT — only after Dental Quote PASS
 
-### Golden Path 2 — Small CRUD SaaS
+### Golden Path 2 — Playable Game
+
+ForgeLab must create a small game through the same dashboard-first governed workflow. This is a visible generalization proof, not a replacement for Dental Quote.
+
+### Golden Path 3 — Small CRUD SaaS
 
 Category: `records/users/workflow`.
 
 Acceptance direction: create/read/update/delete records, bounded validation, workflow/status handling, deterministic tests, usable preview, same review and human-promotion gate.
 
-### Golden Path 3 — Automation / Reporting Tool
+### Golden Path 4 — Automation / Reporting Tool
 
 Category: `ingest -> transform -> report`.
 
 Acceptance direction: bounded input ingestion, deterministic validation/transformation, explicit invalid-record handling, generated report/output, deterministic tests, usable result, same review and human-promotion gate.
 
-Generality PASS requires the same ForgeLab workflow across all three categories without hardcoding for Dental Quote.
+Generality PASS requires the same ForgeLab workflow across Dental Quote, playable game, CRUD, and reporting without hardcoding product-specific behavior into ForgeLab.
 
 ## Failure rule
 

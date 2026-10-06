@@ -115,7 +115,7 @@ class EditorAdapterTests(unittest.TestCase):
                 command,
             )
             self.assertIn(
-                "ollama/qwen2.5-coder:7b",
+                "ollama_chat/qwen2.5-coder:7b",
                 command,
             )
 
@@ -203,6 +203,10 @@ class EditorAdapterTests(unittest.TestCase):
             self.assertNotIn("AIDER_MODEL", environment)
             self.assertEqual(environment["PATH"], "keep-me")
             self.assertEqual(environment["AIDER_ANALYTICS"], "0")
+            self.assertEqual(
+                environment["OLLAMA_API_BASE"],
+                "http://127.0.0.1:11434",
+            )
 
     def test_aider_rejects_new_source_file_creation(self):
         with tempfile.TemporaryDirectory() as folder:

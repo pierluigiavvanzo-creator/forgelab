@@ -4,12 +4,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "dashboard" / "app" / "page.tsx"
+START = ROOT / "Start-ForgeLab.ps1"
 
 
 class DashboardRunFormFeedbackTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = PAGE.read_text(encoding="utf-8-sig")
+        cls.start = START.read_text(encoding="utf-8-sig")
 
     def test_run_button_is_only_disabled_during_execution(self):
         self.assertIn(
@@ -41,6 +43,46 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
         self.assertIn(
             "Indica almeno un file autorizzato.",
             self.source,
+        )
+
+    def test_ai_developer_uses_reuse_first_aider_engine(self):
+        self.assertIn(
+            'editor_engine:',
+            self.source,
+        )
+        self.assertIn(
+            '? "aider"',
+            self.source,
+        )
+        self.assertIn(
+            "REUSE-FIRST",
+            self.source,
+        )
+        self.assertIn(
+            "Aider + Ollama",
+            self.source,
+        )
+        self.assertIn(
+            "ChatGPT assistance target run: 0",
+            self.source,
+        )
+
+    def test_launcher_bootstraps_pinned_reuse_first_editor(self):
+        self.assertIn(
+            '$AiderVersion = "0.86.2"',
+            self.start,
+        )
+        self.assertIn(
+            '"aider-chat==$AiderVersion"',
+            self.start,
+        )
+        self.assertIn(
+            "FORGELAB_AIDER_EXECUTABLE",
+            self.start,
+        )
+        self.assertIn(
+            "FORGELAB_OLLAMA_URL",
+            self.start,
         )
 
     def test_api_failures_are_visible_inside_run_modal(self):

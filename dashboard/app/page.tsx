@@ -1140,6 +1140,10 @@ export default function Home() {
             : aiMode,
         max_repair_attempts:
           maxRepairAttempts,
+        editor_engine:
+          aiDeveloperMode
+            ? "aider"
+            : "custom",
       };
 
       const response =
@@ -2658,10 +2662,11 @@ export default function Home() {
                 <div className="full modal-note">
                   <Sparkles />
                   <span>
-                    AI Developer generera autonomamente una patch
-                    bounded su 1-3 file autorizzati, usando obiettivo,
-                    contenuto corrente e test. Ogni path verra
-                    validato prima della modifica nel workspace isolato.
+                    REUSE-FIRST: ForgeLab usera Aider + Ollama locale
+                    per generare autonomamente il candidate sui file
+                    autorizzati. ForgeLab mantiene scope, compile gate,
+                    test, Reviewer, Security e ToolGateway. ChatGPT non
+                    partecipa alla run del prodotto target.
                   </span>
                 </div>
               )}
@@ -2720,7 +2725,7 @@ export default function Home() {
                     </option>
 
                     <option value="ai-developer">
-                      AI Developer - EUR 0 - genera la patch
+                      AI Developer REUSE-FIRST - Aider + Ollama - EUR 0
                     </option>
                   </select>
                 </label>
@@ -2785,7 +2790,7 @@ export default function Home() {
                 apiConnected
                   ? (
                       aiDeveloperMode
-                        ? "AI Developer multi-file attivo. Ollama puo proporre modifiche su 1-3 file autorizzati; ToolGateway applica solo i path consentiti. Costo provider EUR 0."
+                        ? "REUSE-FIRST attivo. Aider usa Ollama locale sui soli file autorizzati; ForgeLab valida e applica con ToolGateway. ChatGPT assistance target run: 0. Costo API EUR 0."
                         : aiMode
                           ? "AI assistita attiva. Ollama GPU locale verra chiamato. Costo provider EUR 0."
                           : "Runner locale autenticato. Nessun provider LLM verra chiamato."

@@ -168,6 +168,48 @@ Write-Host "Corepack : $CorepackExe"
 
 
 # ---------------------------------------------------------
+# REUSE-FIRST LOCAL EDITOR TOOLCHAIN
+# ---------------------------------------------------------
+
+$AiderVersion = "0.86.2"
+$ToolsRoot = Join-Path $ProjectRoot ".forgelab\tools"
+$AiderRoot = Join-Path $ToolsRoot "aider-$AiderVersion"
+$AiderPython = Join-Path $AiderRoot "Scripts\python.exe"
+$AiderExe = Join-Path $AiderRoot "Scripts\aider.exe"
+
+New-Item -ItemType Directory -Path $ToolsRoot -Force | Out-Null
+
+if (-not (Test-Path $AiderExe)) {
+    Write-Host ""
+    Write-Host "REUSE-FIRST: preparo Aider $AiderVersion in ambiente locale isolato..."
+
+    & $PythonExe -m venv $AiderRoot
+
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $AiderPython)) {
+        throw "Creazione ambiente Aider fallita."
+    }
+
+    & $AiderPython -m pip install --disable-pip-version-check --no-input "aider-chat==$AiderVersion"
+
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $AiderExe)) {
+        throw "Installazione Aider $AiderVersion fallita."
+    }
+}
+
+$AiderVersionText = (& $AiderExe --version 2>&1 | Out-String).Trim()
+
+if ($LASTEXITCODE -ne 0 -or $AiderVersionText -notmatch "0\.86\.2") {
+    throw "Aider locale non valido. Atteso $AiderVersion, ottenuto: $AiderVersionText"
+}
+
+$env:FORGELAB_AIDER_EXECUTABLE = $AiderExe
+$env:FORGELAB_OLLAMA_URL = "http://127.0.0.1:11434"
+
+Write-Host "Aider    : $AiderVersionText"
+Write-Host "Editor   : REUSE-FIRST / Aider + Ollama locale"
+
+
+# ---------------------------------------------------------
 # CLEAN PREVIOUS FORGELAB RUNTIMES
 # ---------------------------------------------------------
 
@@ -346,8 +388,9 @@ $DashboardProcess = Start-Process `
     -PassThru
 
 
-# Child processes already inherited the token.
+# Child processes already inherited the runtime settings.
 $env:FORGELAB_API_TOKEN = $null
+$env:FORGELAB_AIDER_EXECUTABLE = $null
 
 
 # ---------------------------------------------------------
