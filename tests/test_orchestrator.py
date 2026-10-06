@@ -841,6 +841,142 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_aider_nonzero_prewrite_correction_preserves_process_output(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            invalid_editor = EditorResult(
+                engine="aider-cli",
+                files={
+                    "calculator.py": (
+                        "def add(a, b):\n"
+                        "    data = {\"value\": a + b}\n"
+                        "    return f\"{data[\"value\"]}\"\n"
+                    ),
+                },
+                changed_paths=("calculator.py",),
+                stdout="invalid initial aider edit",
+                stderr="",
+                exit_status=0,
+                timed_out=False,
+                duration_ms=20,
+                command=("aider",),
+            )
+            failed_correction = EditorResult(
+                engine="aider-cli",
+                files={
+                    "calculator.py": (
+                        "def add(a, b):\n"
+                        "    return a - b\n"
+                    ),
+                },
+                changed_paths=(),
+                stdout="Aider startup output",
+                stderr=(
+                    "usage: aider [options] [FILE ...]\n"
+                    "aider: error: argument --edit-format: invalid choice"
+                ),
+                exit_status=2,
+                timed_out=False,
+                duration_ms=18,
+                command=("aider",),
+            )
+
+            with (
+                patch(
+                    "forgelab.orchestrator.OllamaProvider.invoke",
+                    side_effect=scripted,
+                ) as invoke,
+                patch(
+                    "forgelab.orchestrator.AiderCliAdapter.run",
+                    side_effect=[
+                        invalid_editor,
+                        failed_correction,
+                    ],
+                ) as aider_run,
+            ):
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=0,
+                        editor_engine="aider",
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            failure = json.loads(
+                (
+                    run_dir /
+                    "PrewriteRecoveryFailure.json"
+                ).read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(
+                summary["status"],
+                "CLOSED",
+            )
+            self.assertEqual(
+                failure["reason"],
+                "PREWRITE_RECOVERY_EXHAUSTED",
+            )
+            self.assertEqual(
+                failure["phase"],
+                "implementation",
+            )
+            self.assertIn(
+                "exit=2",
+                failure["final_error"],
+            )
+            self.assertIn(
+                "stderr_tail:",
+                failure["final_error"],
+            )
+            self.assertIn(
+                "invalid choice",
+                failure["final_error"],
+            )
+            self.assertIn(
+                "stdout_tail:",
+                failure["final_error"],
+            )
+            self.assertIn(
+                "Aider startup output",
+                failure["final_error"],
+            )
+            self.assertEqual(
+                len(invoke.call_args_list),
+                1,
+            )
+            self.assertEqual(
+                len(aider_run.call_args_list),
+                2,
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_aider_test_failure_repair_retests_and_reaches_human_gate(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
