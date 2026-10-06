@@ -68,6 +68,44 @@ Hold constant:
 
 PR #50 is merged. The next work is no longer a detached bakeoff: integrate the reusable editor into the real Dental Quote Golden Path while preserving dashboard/API/ToolGateway/test/review/security governance. Binding product metrics are in `docs/experiments/DENTAL_QUOTE_AUTONOMY_GATE.md`.
 
+## 2026-10-06 real Dental dashboard evidence
+
+Observed real dashboard run:
+
+`run-f03a38460154`
+
+Visible outcome:
+
+- status: `CLOSED`;
+- gate: `Repair`;
+- deterministic tests: `PASS`;
+- repair attempts applied: `0`;
+- provider cost: `EUR 0`;
+- dashboard reports 6 LLM calls / 10004 tokens.
+
+Interpretation:
+
+The product is **not PASS**. Tests succeeded, but the run did not reach
+`READY_FOR_DECISION`.
+
+Architecture trace on canonical main shows that the initial Developer edit uses
+Aider, while the semantic-review repair path still returns to the old custom
+structured/full-file Developer protocol. This is inconsistent with the
+REUSE-FIRST reset and is the next proven general blocker.
+
+Current remediation:
+
+`mvp1-aider-semantic-repair`
+
+Scope:
+
+- use Aider for the one bounded semantic-review repair when
+  `editor_engine=aider`;
+- preserve ToolGateway, deterministic retest, semantic re-review and existing
+  repair budget;
+- no new recovery catalogue;
+- no Dental-specific product logic.
+
 ## Binding Dental autonomy metrics
 
 - `CHATGPT_ASSISTANCE_IN_TARGET_PRODUCT_RUN = 0`;
