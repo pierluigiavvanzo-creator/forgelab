@@ -272,6 +272,11 @@ export default function Home() {
   ] = useState(false);
 
   const [
+    runtimeSha,
+    setRuntimeSha,
+  ] = useState("unknown");
+
+  const [
     connecting,
     setConnecting,
   ] = useState(false);
@@ -372,6 +377,19 @@ export default function Home() {
   const aiReview =
     asRecord(imported["AIReview.json"]);
 
+  const reviewReport =
+    asRecord(imported["ReviewReport.json"]);
+
+  const prewriteFailure =
+    asRecord(
+      imported["PrewriteRecoveryFailure.json"],
+    );
+
+  const providerFailure =
+    asRecord(
+      imported["ProviderFailure.json"],
+    );
+
   const rawUsageRecords =
     usage?.records;
 
@@ -427,6 +445,12 @@ export default function Home() {
     "SecurityReport.json",
     "UsageReport.json",
     "ReviewReport.json",
+    ...(imported["PrewriteRecoveryFailure.json"]
+      ? ["PrewriteRecoveryFailure.json"]
+      : []),
+    ...(imported["ProviderFailure.json"]
+      ? ["ProviderFailure.json"]
+      : []),
     ...(isLocalAi
       ? [
           "AIPlan.json",
@@ -626,6 +650,117 @@ export default function Home() {
         Number(item.exit_status) === 0,
     ).length;
 
+  const failedTestEvent =
+    [...testEvents]
+      .reverse()
+      .find(
+        (item) =>
+          Number(item.exit_status) !== 0,
+      );
+
+  const rawReviewFindings =
+    Array.isArray(reviewReport?.findings)
+      ? reviewReport.findings
+      : [];
+
+  const firstReviewFinding =
+    rawReviewFindings[0];
+
+  const firstReviewFindingRecord =
+    asRecord(firstReviewFinding);
+
+  const reviewFailureDetail =
+    firstReviewFindingRecord
+      ? String(
+          firstReviewFindingRecord.summary
+          ?? firstReviewFindingRecord.message
+          ?? firstReviewFindingRecord.finding
+          ?? JSON.stringify(
+            firstReviewFindingRecord,
+          ),
+        )
+      : firstReviewFinding !== undefined
+        ? String(firstReviewFinding)
+        : String(
+            reviewReport?.summary
+            ?? "Reviewer non ha approvato il candidate.",
+          );
+
+  const terminalBlock =
+    runState === "CLOSED"
+      ? prewriteFailure
+        ? {
+            phase: String(
+              prewriteFailure.phase
+              ?? "PREWRITE",
+            ),
+            reason: String(
+              prewriteFailure.reason
+              ?? "PREWRITE_RECOVERY_EXHAUSTED",
+            ),
+            detail: String(
+              prewriteFailure.final_error
+              ?? prewriteFailure.first_error
+              ?? "Validazione pre-write esaurita.",
+            ),
+            artifact:
+              "PrewriteRecoveryFailure.json",
+          }
+        : providerFailure
+          ? {
+              phase: String(
+                providerFailure.phase
+                ?? "PROVIDER",
+              ),
+              reason: String(
+                providerFailure.reason
+                ?? "PROVIDER_FAILURE",
+              ),
+              detail: String(
+                providerFailure.final_error
+                ?? "Provider locale non disponibile.",
+              ),
+              artifact:
+                "ProviderFailure.json",
+            }
+          : failedTestEvent
+            ? {
+                phase: "TESTING",
+                reason:
+                  "DETERMINISTIC_TEST_FAILED",
+                detail: String(
+                  failedTestEvent.stderr
+                  || failedTestEvent.stdout
+                  || failedTestEvent.summary
+                  || "Test deterministico fallito.",
+                ),
+                artifact:
+                  "TestEvidence.json",
+              }
+            : String(
+                reviewReport?.status
+                ?? "",
+              ).toUpperCase() === "FAIL"
+              ? {
+                  phase: "REVIEW",
+                  reason:
+                    "SEMANTIC_REVIEW_FAILED",
+                  detail:
+                    reviewFailureDetail,
+                  artifact:
+                    "ReviewReport.json",
+                }
+              : {
+                  phase: "RUN",
+                  reason:
+                    "CLOSED_BEFORE_DECISION_READY",
+                  detail:
+                    "La run si e chiusa senza raggiungere READY_FOR_DECISION.",
+                  artifact:
+                    "RunSummary.json",
+                }
+      : undefined;
+
   const sourceUnchanged =
     security?.source_repository_unchanged;
 
@@ -706,6 +841,36 @@ export default function Home() {
       const normalized =
         base.replace(/\/$/, "");
 
+      let discoveredRuntimeSha =
+        "unknown";
+
+      try {
+        const healthResponse =
+          await fetch(
+            `${normalized}/health`,
+          );
+
+        if (healthResponse.ok) {
+          const health =
+            await healthResponse.json() as {
+              runtime_sha?: string;
+            };
+
+          discoveredRuntimeSha =
+            String(
+              health.runtime_sha
+              ?? "unknown",
+            );
+        }
+      } catch {
+        discoveredRuntimeSha =
+          "unknown";
+      }
+
+      setRuntimeSha(
+        discoveredRuntimeSha,
+      );
+
       const listResponse =
         await fetch(
           `${normalized}/v1/runs`,
@@ -745,7 +910,7 @@ export default function Home() {
 
       setApiSetup(false);
       setNotice(
-        `Runner locale collegato ? ${latest}`,
+        `Runner locale ${discoveredRuntimeSha.slice(0, 12)} ? ${latest}`,
       );
     } catch (error) {
       setApiConnected(false);
@@ -1731,6 +1896,15 @@ export default function Home() {
                   <Activity />
                   {runState}
                 </span>
+
+                <span>
+                  <Code2 />
+                  runner {
+                    runtimeSha === "unknown"
+                      ? "SHA n/d"
+                      : runtimeSha.slice(0, 12)
+                  }
+                </span>
               </div>
             </div>
 
@@ -1830,6 +2004,49 @@ export default function Home() {
               tone="good"
             />
           </div>
+
+
+          {
+            terminalBlock &&
+            <section
+              className="terminal-blocker"
+              role="alert"
+            >
+              <div className="terminal-blocker-head">
+                <ShieldAlert />
+
+                <div>
+                  <p>BLOCCO CORRENTE</p>
+                  <strong>
+                    {terminalBlock.reason}
+                  </strong>
+                </div>
+
+                <span>
+                  {terminalBlock.phase}
+                </span>
+              </div>
+
+              <p className="terminal-blocker-detail">
+                {terminalBlock.detail}
+              </p>
+
+              <button
+                type="button"
+                className="terminal-blocker-link"
+                onClick={() => {
+                  setSelectedEvidence(
+                    terminalBlock.artifact,
+                  );
+                  setActiveTab("evidence");
+                }}
+              >
+                Apri evidenza: {
+                  terminalBlock.artifact
+                }
+              </button>
+            </section>
+          }
 
 
           <Tabs
@@ -1953,7 +2170,28 @@ export default function Home() {
                             </div>
                           ),
                         )
-                      : fallbackChanges.map(
+                      : artifactCount > 0
+                        ? (
+                            <div>
+                              <FileJson />
+
+                              <div>
+                                <strong>
+                                  Nessuna modifica applicata
+                                </strong>
+
+                                <p>
+                                  La run si e fermata prima di produrre
+                                  un change-set governato.
+                                </p>
+                              </div>
+
+                              <span>
+                                none
+                              </span>
+                            </div>
+                          )
+                        : fallbackChanges.map(
                           (change) => (
                             <div
                               key={

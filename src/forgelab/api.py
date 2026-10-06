@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import os
 import json
 import re
 import sys
@@ -34,6 +35,8 @@ ARTIFACTS = (
     "AIDeveloperPatch.json",
     "PromotionResult.json",
     "HumanRepairRequest.json",
+    "PrewriteRecoveryFailure.json",
+    "ProviderFailure.json",
 )
 TEXT_ARTIFACTS = (
     "Changes.patch",
@@ -1088,6 +1091,10 @@ def make_handler(
                     {
                         "status": "ok",
                         "version": "0.9.1",
+                        "runtime_sha": os.environ.get(
+                            "FORGELAB_RUNTIME_SHA",
+                            "unknown",
+                        ),
                     },
                 )
                 return
