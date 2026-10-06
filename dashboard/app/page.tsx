@@ -730,9 +730,9 @@ export default function Home() {
                   "DETERMINISTIC_TEST_FAILED",
                 detail: String(
                   failedTestEvent.stderr
-                  ?? failedTestEvent.stdout
-                  ?? failedTestEvent.summary
-                  ?? "Test deterministico fallito.",
+                  || failedTestEvent.stdout
+                  || failedTestEvent.summary
+                  || "Test deterministico fallito.",
                 ),
                 artifact:
                   "TestEvidence.json",
