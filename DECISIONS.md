@@ -568,3 +568,38 @@ Decision candidate:
 Rationale:
 
 ForgeLab's differentiating asset is governed software production, not custom parsing of every possible malformed model edit. Reusing a mature editor engine behind a narrow adapter can reduce model-output fragility while retaining ForgeLab's governance and lowering Product Owner time.
+
+
+---
+
+## D-023 — Dental Quote remains the first autonomous product proof
+
+**Date:** 2026-10-06
+**Status:** Proposed — pending integration PR approval
+**Class:** A — Product Critical
+
+Decision:
+
+- Dental Quote remains Golden Path #1 and must not be replaced or deferred by the playable-game proof.
+- The playable game becomes Golden Path #2 and starts only after Dental Quote product PASS.
+- ChatGPT may develop ForgeLab, but target-product execution must record `CHATGPT_ASSISTANCE_IN_TARGET_PRODUCT_RUN = 0`.
+- A Dental Quote run requiring ChatGPT-authored target-code correction is FAIL.
+- The merged `EditorAdapter` boundary is integrated into the real dashboard Golden Path using Aider as the initial Developer editor.
+- Aider is a reused editing component, not the ForgeLab control plane.
+- ForgeLab retains Planner acceptance contract, authorized scope, ToolGateway, deterministic tests, independent Reviewer, Security and human promotion gate.
+- Existing repair governance remains bounded and internal to ForgeLab; any fallback away from Aider must be recorded explicitly.
+- No paid provider fallback is authorized.
+- Test count is not a product KPI.
+- Dental Quote is PASS only after a dashboard-initiated run reaches decision-ready evidence, receives explicit human approval, and the promoted application is visibly launchable and usable.
+
+Binding autonomy/cost metrics:
+
+- `CHATGPT_ASSISTANCE_IN_TARGET_PRODUCT_RUN = 0`
+- `PRODUCT_OWNER_LOG_COPY_ACTIONS = 0`
+- `PRODUCT_OWNER_MANUAL_DEBUG_ACTIONS = 0`
+- `PRODUCT_OWNER_RUN_SUBMISSIONS = 1`
+- `PAID_API_COST_EUR = 0`
+
+Rationale:
+
+ForgeLab must prove that it can transform a Product Owner objective into a usable product with low Product Owner time. Dental Quote is the existing unresolved proof and therefore remains the priority. A second product category is useful only after the first product is actually delivered.
