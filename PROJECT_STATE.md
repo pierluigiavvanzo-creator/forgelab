@@ -19,7 +19,7 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 Status:
 
-`RUNTIME STACK FROZEN / TERMINAL BLOCKER OBSERVABILITY AT HUMAN MERGE GATE`
+`RUNTIME STACK FROZEN / INITIAL AIDER PREWRITE CORRECTION AT HUMAN MERGE GATE`
 
 Audit:
 
@@ -222,6 +222,53 @@ It must:
 
 Only a subsequent run with visible terminal evidence may justify another
 runtime repair change.
+
+## 2026-10-06 fifth real Dental dashboard evidence
+
+Observed synchronized dashboard run:
+
+`run-f667d5cdf772`
+
+Visible outcome:
+
+- active runner SHA: `a9f3cb7c9511...`;
+- status: `CLOSED`;
+- gate: `Repair`;
+- deterministic tests: `FAIL`;
+- repair attempts applied: `0`;
+- provider cost: `EUR 0`;
+- terminal blocker: `PREWRITE_RECOVERY_EXHAUSTED`;
+- blocker phase: `implementation`;
+- final error: `quote_calculator.py line 50: f-string: unmatched '['`.
+
+This is the first run where ForgeLab itself exposed the precise terminal blocker
+in Panoramica.
+
+Code inspection on the same runtime shows:
+
+1. initial implementation uses Aider;
+2. Aider candidate fails deterministic pre-write syntax validation;
+3. the initial pre-write recovery still falls back to the legacy custom
+   Developer JSON/full-file path;
+4. that recovery exhausts and closes the run before tests.
+
+Decision:
+
+Keep REUSE-FIRST. Do not restore the old custom f-string normalizer yet.
+
+Current remediation:
+
+`mvp1-aider-initial-prewrite-correction`
+
+Scope:
+
+- one Aider correction of its own initial candidate;
+- correction receives the exact deterministic validation error and failed
+  candidate content;
+- same authorized files;
+- no additional top-level repair budget;
+- no Dental-specific logic;
+- no regex/string recovery catalogue.
 
 ## Binding Dental autonomy metrics
 
