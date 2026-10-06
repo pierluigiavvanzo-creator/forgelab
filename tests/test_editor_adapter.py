@@ -119,6 +119,67 @@ class EditorAdapterTests(unittest.TestCase):
                 command,
             )
 
+    def test_aider_receives_valid_empty_yaml_config(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+
+            source = repo / "app.py"
+            source.write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+
+            fake = root / "fake_aider.py"
+            fake.write_text(
+                (
+                    "from pathlib import Path\n"
+                    "import sys\n"
+                    "args = sys.argv[1:]\n"
+                    "config = Path(args[args.index('--config') + 1])\n"
+                    "if config.read_text(encoding='utf-8') != '{}\\n':\n"
+                    "    print('invalid config', file=sys.stderr)\n"
+                    "    raise SystemExit(2)\n"
+                    "target = Path(args[-1])\n"
+                    "target.write_text('VALUE = 2\\n', encoding='utf-8')\n"
+                ),
+                encoding="utf-8",
+            )
+
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=(
+                        sys.executable,
+                        str(fake),
+                    )
+                )
+            )
+
+            result = adapter.run(
+                EditorRequest(
+                    repository=repo,
+                    objective="Change VALUE to 2.",
+                    allowed_paths=("app.py",),
+                    timeout_seconds=30,
+                )
+            )
+
+            self.assertEqual(
+                result.exit_status,
+                0,
+            )
+            self.assertEqual(
+                result.files["app.py"],
+                "VALUE = 2\n",
+            )
+            self.assertEqual(
+                source.read_text(
+                    encoding="utf-8"
+                ),
+                "VALUE = 1\n",
+            )
+
     def test_aider_rejects_read_only_mutation(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
