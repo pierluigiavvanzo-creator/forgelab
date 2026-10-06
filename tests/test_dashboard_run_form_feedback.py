@@ -4,12 +4,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "dashboard" / "app" / "page.tsx"
+START = ROOT / "Start-ForgeLab.ps1"
 
 
 class DashboardRunFormFeedbackTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = PAGE.read_text(encoding="utf-8-sig")
+        cls.start = START.read_text(encoding="utf-8-sig")
 
     def test_run_button_is_only_disabled_during_execution(self):
         self.assertIn(
@@ -63,6 +65,24 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
         self.assertIn(
             "ChatGPT assistance target run: 0",
             self.source,
+        )
+
+    def test_launcher_bootstraps_pinned_reuse_first_editor(self):
+        self.assertIn(
+            '$AiderVersion = "0.86.2"',
+            self.start,
+        )
+        self.assertIn(
+            '"aider-chat==$AiderVersion"',
+            self.start,
+        )
+        self.assertIn(
+            "FORGELAB_AIDER_EXECUTABLE",
+            self.start,
+        )
+        self.assertIn(
+            "FORGELAB_OLLAMA_URL",
+            self.start,
         )
 
     def test_api_failures_are_visible_inside_run_modal(self):
