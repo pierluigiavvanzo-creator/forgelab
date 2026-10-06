@@ -2476,13 +2476,6 @@ Rules:
                 AIDeveloperReferenceError,
                 AIDeveloperSyntaxError,
             ) as prewrite_error:
-                if request.editor_engine == "aider":
-                    editor_metadata["fallback"] = (
-                        "custom_prewrite_repair"
-                    )
-                    editor_metadata["aider_error"] = str(
-                        prewrite_error
-                    )
                 prewrite_repair_attempts = 1
                 format_repair_attempts = int(
                     isinstance(
@@ -2503,7 +2496,123 @@ Rules:
                     )
                 )
 
-                prewrite_repair_prompt = f"""
+                prewrite_recovery_context = {
+                    "phase": "implementation",
+                    "first_error": str(prewrite_error),
+                }
+
+                if request.editor_engine == "aider":
+                    editor_metadata["fallback"] = (
+                        "aider_prewrite_correction"
+                    )
+                    editor_metadata["aider_error"] = str(
+                        prewrite_error
+                    )
+
+                    failed_candidate_context = "\n\n".join(
+                        (
+                            f"FILE {path}:\n"
+                            + editor_result.files[path]
+                        )
+                        for path in editor_result.changed_paths
+                    )
+
+                    correction_objective = (
+                        request.objective
+                        + "\n\nBinding Project Manager acceptance contract:\n"
+                        + plan_contract_text
+                        + "\n\nYour first implementation candidate failed "
+                        "ForgeLab deterministic pre-write validation. "
+                        "Correct the candidate once while keeping the same "
+                        "authorized scope and without weakening tests.\n"
+                        + "Validation error:\n"
+                        + str(prewrite_error)
+                        + "\n\nFailed candidate content:\n"
+                        + failed_candidate_context
+                    )
+
+                    reusable_editor_calls += 1
+
+                    try:
+                        corrected_editor_result = AiderCliAdapter(
+                            AiderCliConfig(
+                                executable=(
+                                    os.environ.get(
+                                        "FORGELAB_AIDER_EXECUTABLE",
+                                        "aider",
+                                    ),
+                                ),
+                                edit_format="whole",
+                            )
+                        ).run(
+                            EditorRequest(
+                                repository=workspace.path,  # type: ignore[arg-type]
+                                objective=correction_objective,
+                                allowed_paths=target_paths,
+                                model=developer_route.model,
+                                timeout_seconds=request.timeout_seconds,
+                            )
+                        )
+                    except EditorAdapterError as error:
+                        raise AIDeveloperFormatError(
+                            "Aider initial pre-write correction failed "
+                            f"before governed write: {error}"
+                        ) from error
+
+                    if (
+                        corrected_editor_result.exit_status != 0
+                        or corrected_editor_result.timed_out
+                    ):
+                        raise AIDeveloperFormatError(
+                            "Aider initial pre-write correction did not "
+                            "complete successfully: "
+                            f"exit={corrected_editor_result.exit_status}, "
+                            f"timed_out={corrected_editor_result.timed_out}"
+                        )
+
+                    if not corrected_editor_result.changed_paths:
+                        raise AIDeveloperFormatError(
+                            "Aider initial pre-write correction returned "
+                            "no authorized changes"
+                        )
+
+                    generated_patch = {
+                        "schema_version": "2.0",
+                        "summary": (
+                            "Aider reusable editor corrected its initial "
+                            "candidate after deterministic pre-write failure"
+                        ),
+                        "changes": [
+                            {
+                                "path": path,
+                                "old_text": source_texts[path],
+                                "new_text": corrected_editor_result.files[path],
+                                "summary": (
+                                    "Reusable Aider initial pre-write correction"
+                                ),
+                            }
+                            for path in corrected_editor_result.changed_paths
+                        ],
+                    }
+
+                    _validate_ai_developer_candidate_syntax(
+                        generated_patch,
+                        source_texts,
+                    )
+
+                    editor_metadata.update({
+                        "prewrite_correction_engine": "aider-cli",
+                        "prewrite_correction_exit_status":
+                            corrected_editor_result.exit_status,
+                        "prewrite_correction_timed_out":
+                            corrected_editor_result.timed_out,
+                        "prewrite_correction_duration_ms":
+                            corrected_editor_result.duration_ms,
+                        "prewrite_correction_changed_paths":
+                            list(corrected_editor_result.changed_paths),
+                    })
+                else:
+                    prewrite_repair_prompt = f"""
 You are the DEVELOPER agent in ForgeLab.
 
 Your prior response failed deterministic pre-write
@@ -2548,24 +2657,24 @@ Rules:
 - do not create dependencies.
 """
 
-                full_file_recovery = isinstance(
-                    prewrite_error,
-                    (
-                        AIDeveloperReferenceError,
-                        AIDeveloperSyntaxError,
-                    ),
-                )
-
-                if full_file_recovery:
-                    recovery_mode = (
-                        "REFERENCE RECOVERY MODE"
-                        if isinstance(
-                            prewrite_error,
+                    full_file_recovery = isinstance(
+                        prewrite_error,
+                        (
                             AIDeveloperReferenceError,
-                        )
-                        else "SYNTAX RECOVERY MODE"
+                            AIDeveloperSyntaxError,
+                        ),
                     )
-                    prewrite_repair_prompt += f"""
+
+                    if full_file_recovery:
+                        recovery_mode = (
+                            "REFERENCE RECOVERY MODE"
+                            if isinstance(
+                                prewrite_error,
+                                AIDeveloperReferenceError,
+                            )
+                            else "SYNTAX RECOVERY MODE"
+                        )
+                        prewrite_repair_prompt += f"""
 
 {recovery_mode}:
 Return COMPLETE replacement content for each file that must
@@ -2587,51 +2696,47 @@ Required recovery schema:
 The current complete authorized files above are authoritative.
 For Python files, return complete syntactically valid Python.
 """
-                    prewrite_response_format = (
-                        _ai_developer_full_file_response_schema(
-                            target_paths
+                        prewrite_response_format = (
+                            _ai_developer_full_file_response_schema(
+                                target_paths
+                            )
                         )
-                    )
-                else:
-                    prewrite_response_format = developer_schema
+                    else:
+                        prewrite_response_format = developer_schema
 
-                prewrite_recovery_context = {
-                    "phase": "implementation",
-                    "first_error": str(prewrite_error),
-                }
-
-                developer_response = ai_router.execute(
-                    TaskClass.S2,
-                    prewrite_repair_prompt,
-                    "implement-prewrite-repair",
-                    Role.DEVELOPER.value,
-                    "Repair AI Developer pre-write validation once",
-                    request.timeout_seconds,
-                    response_format=prewrite_response_format,
-                )
-
-                if full_file_recovery:
-                    generated_patch = (
-                        _validate_ai_developer_full_file_patch(
-                            developer_response.text,
-                            target_paths,
-                            source_texts,
-                        )
-                    )
-                else:
-                    generated_patch = (
-                        _validate_ai_developer_patch(
-                            developer_response.text,
-                            target_paths,
-                            source_texts,
-                            require_all_paths=False,
-                        )
+                    developer_response = ai_router.execute(
+                        TaskClass.S2,
+                        prewrite_repair_prompt,
+                        "implement-prewrite-repair",
+                        Role.DEVELOPER.value,
+                        "Repair AI Developer pre-write validation once",
+                        request.timeout_seconds,
+                        response_format=prewrite_response_format,
                     )
 
-                _validate_ai_developer_candidate_syntax(
-                    generated_patch,
-                    source_texts,
-                )
+                    if full_file_recovery:
+                        generated_patch = (
+                            _validate_ai_developer_full_file_patch(
+                                developer_response.text,
+                                target_paths,
+                                source_texts,
+                            )
+                        )
+                    else:
+                        generated_patch = (
+                            _validate_ai_developer_patch(
+                                developer_response.text,
+                                target_paths,
+                                source_texts,
+                                require_all_paths=False,
+                            )
+                        )
+
+                    _validate_ai_developer_candidate_syntax(
+                        generated_patch,
+                        source_texts,
+                    )
+
                 prewrite_recovery_context = None
 
             generated_changes = (
