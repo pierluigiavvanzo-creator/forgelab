@@ -11,9 +11,9 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `aae8c5a5c0c9ed7a35ce897e5bd09c399ee91670` (merge of PR #60).
+Current canonical `main` at this checkpoint: `b20a4236bee1a12d7a4703cacbd7c8ab50cf8bf2` (merge of PR #61).
 
-Runtime code on this main includes the separated bounded Aider editor timeout contract from PR #60.
+Runtime code on this main includes the separated bounded Aider editor timeout contract from PR #60 and governed reusable-editor execution failures from PR #61.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -1199,6 +1199,50 @@ Structural remediation candidate:
 - do not consume a pre-write correction when no candidate exists;
 - preserve source protection, repair cap and EUR 0 provider policy.
 
+## 2026-10-07 post-PR61 Dental run — tool metadata / workspace collision
+
+Run:
+
+`run-0a7fb9e16cf5`
+
+Runner:
+
+`b20a4236bee1...`
+
+Observed dashboard evidence:
+
+- status `CLOSED`;
+- gate `Repair`;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- blocker `EDITOR_EXECUTION_FAILED`;
+- phase `implementation`;
+- final error reports Aider-created files outside authorized scope:
+  - `.aider/analytics.json`;
+  - `.aider/caches/model_prices_and_context_window.json`;
+  - `.aider/installs.json`.
+
+Interpretation:
+
+PR #61 worked: the editor failure is governed and visible instead of escaping the API. The current blocker is a sandbox-boundary design issue.
+
+Root cause:
+
+The Aider adapter uses the same temporary directory as both code workspace and Aider `HOME` / `USERPROFILE`. Aider legitimately writes tool metadata under `HOME/.aider`, and ForgeLab then scans the same tree as though every file belonged to the target product.
+
+Structural remediation candidate:
+
+- branch `mvp1-isolate-aider-tool-home`;
+- PR #62;
+- code candidate `a92195cdd35903ca9d3e4af79b0a6b9a38a0617f`;
+- split the disposable sandbox into `workspace/` and `tool-home/`;
+- run Aider with `cwd=workspace`;
+- point `HOME` and `USERPROFILE` at `tool-home`;
+- store ForgeLab/Aider control files in `tool-home`;
+- scan only `workspace` for unauthorized product-file creation;
+- remove the prior blanket hidden-file exemption so unauthorized dotfiles inside `workspace` are rejected;
+- preserve source isolation, editor timeout policy, repair cap and EUR 0 provider policy.
+
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
@@ -1209,6 +1253,6 @@ Structural remediation candidate:
 
 ## Single next action
 
-`HUMAN_REVIEW_GOVERN_AIDER_EXECUTION_FAILURES_PR_61`
+`HUMAN_REVIEW_ISOLATE_AIDER_TOOL_HOME_PR_62`
 
-PR #60 is already merged. Do not rerun Dental until PR #61 is reviewed. If PR #61 is explicitly approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.
+PR #61 is already merged and its governed failure boundary worked in the real Dental run. Do not rerun Dental until PR #62 is reviewed. If PR #62 is explicitly approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.

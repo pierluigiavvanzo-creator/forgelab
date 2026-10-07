@@ -103,7 +103,7 @@ _PAID_PROVIDER_KEY_NAMES = {
 }
 
 
-def _sandbox_environment(sandbox: Path) -> dict[str, str]:
+def _sandbox_environment(tool_home: Path) -> dict[str, str]:
     environment = {
         key: value
         for key, value in os.environ.items()
@@ -113,8 +113,8 @@ def _sandbox_environment(sandbox: Path) -> dict[str, str]:
         )
     }
     environment.update({
-        "HOME": str(sandbox),
-        "USERPROFILE": str(sandbox),
+        "HOME": str(tool_home),
+        "USERPROFILE": str(tool_home),
         "AIDER_ANALYTICS": "0",
         "OLLAMA_API_BASE": os.environ.get(
             "FORGELAB_OLLAMA_URL",
@@ -185,20 +185,40 @@ including tests only when they are inside the writable set.
         with tempfile.TemporaryDirectory(
             prefix="forgelab-editor-aider-"
         ) as folder:
-            sandbox = Path(folder)
+            sandbox_root = Path(folder)
+            workspace = sandbox_root / "workspace"
+            tool_home = sandbox_root / "tool-home"
+            workspace.mkdir()
+            tool_home.mkdir()
+
             visible_paths = request.allowed_paths + request.read_only_paths
             for path in visible_paths:
-                _copy_authorized(source_root, sandbox, path)
+                _copy_authorized(source_root, workspace, path)
 
-            before_writable = _read_files(sandbox, request.allowed_paths)
-            before_read_only = _read_files(sandbox, request.read_only_paths)
+            before_writable = _read_files(
+                workspace,
+                request.allowed_paths,
+            )
+            before_read_only = _read_files(
+                workspace,
+                request.read_only_paths,
+            )
 
-            prompt_file = sandbox / ".forgelab-aider-prompt.txt"
-            config_file = sandbox / ".forgelab-aider.conf.yml"
-            env_file = sandbox / ".forgelab-aider.env"
-            prompt_file.write_text(self._prompt(request), encoding="utf-8")
-            config_file.write_text("{}\n", encoding="utf-8")
-            env_file.write_text("", encoding="utf-8")
+            prompt_file = tool_home / ".forgelab-aider-prompt.txt"
+            config_file = tool_home / ".forgelab-aider.conf.yml"
+            env_file = tool_home / ".forgelab-aider.env"
+            prompt_file.write_text(
+                self._prompt(request),
+                encoding="utf-8",
+            )
+            config_file.write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            env_file.write_text(
+                "",
+                encoding="utf-8",
+            )
 
             command = [
                 *self.config.executable,
@@ -222,12 +242,12 @@ including tests only when they are inside the writable set.
                 command.extend(["--read", path])
             command.extend(request.allowed_paths)
 
-            environment = _sandbox_environment(sandbox)
+            environment = _sandbox_environment(tool_home)
             started = time.monotonic()
             try:
                 completed = subprocess.run(
                     command,
-                    cwd=sandbox,
+                    cwd=workspace,
                     capture_output=True,
                     text=True,
                     encoding="utf-8",
@@ -256,17 +276,30 @@ including tests only when they are inside the writable set.
                     tuple(command),
                 )
 
-            if _read_files(sandbox, request.read_only_paths) != before_read_only:
-                raise EditorAdapterError("Aider modified read-only sandbox files")
+            if (
+                _read_files(
+                    workspace,
+                    request.read_only_paths,
+                )
+                != before_read_only
+            ):
+                raise EditorAdapterError(
+                    "Aider modified read-only sandbox files"
+                )
 
             allowed_visible = set(visible_paths)
             created = sorted(
-                str(path.relative_to(sandbox)).replace("\\", "/")
-                for path in sandbox.rglob("*")
-                if path.is_file()
-                and not path.name.startswith(".")
-                and str(path.relative_to(sandbox)).replace("\\", "/")
-                not in allowed_visible
+                str(
+                    path.relative_to(workspace)
+                ).replace("\\", "/")
+                for path in workspace.rglob("*")
+                if (
+                    path.is_file()
+                    and str(
+                        path.relative_to(workspace)
+                    ).replace("\\", "/")
+                    not in allowed_visible
+                )
             )
             if created:
                 raise EditorAdapterError(
@@ -274,7 +307,10 @@ including tests only when they are inside the writable set.
                     + ", ".join(created)
                 )
 
-            after = _read_files(sandbox, request.allowed_paths)
+            after = _read_files(
+                workspace,
+                request.allowed_paths,
+            )
             changed = tuple(
                 path for path in request.allowed_paths
                 if after[path] != before_writable[path]

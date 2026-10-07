@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-07  
-**Checkpoint:** PR #60 merged / post-PR60 submission exposed uncaught editor-boundary failure / PR #61 open  
-**Status:** PRE-MVP / Golden Path #1 editor-boundary remediation / HUMAN MERGE GATE
+**Checkpoint:** PR #61 merged / real Dental run exposed Aider tool-home/workspace collision / PR #62 open  
+**Status:** PRE-MVP / Golden Path #1 sandbox-boundary remediation / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -59,13 +59,13 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`aae8c5a5c0c9ed7a35ce897e5bd09c399ee91670`
+`b20a4236bee1a12d7a4703cacbd7c8ab50cf8bf2`
 
-This is the merge of PR #60:
+This is the merge of PR #61:
 
-`MVP-1: separate bounded timeout for local Aider editor`
+`MVP-1: govern reusable editor execution failures`
 
-PR #60 is merged. The runtime now separates the generic 60-second pipeline/test timeout from the bounded 300-second reusable-editor timeout. Runtime PRs #37–#48 remain frozen and unmerged.
+PR #61 is merged. The runtime now distinguishes reusable-editor process/sandbox failures from candidate-validation failures and emits `EditorFailure.json` rather than leaking an API-level exception. PR #60's separated timeout contract remains active. Runtime PRs #37–#48 remain frozen and unmerged.
 
 ## 5. Current integration state
 
@@ -610,13 +610,73 @@ PR:
 
 `#61 — MVP-1: govern reusable editor execution failures`
 
-## 17. Single next action
+## 17. Post-PR61 real Dental run — tool metadata isolated incorrectly
 
-`HUMAN_REVIEW_GOVERN_AIDER_EXECUTION_FAILURES_PR_61`
+Run:
 
-Do not submit another Dental run before PR #61 is explicitly reviewed. After merge, synchronize local ForgeLab once and run the unchanged Dental objective once.
+`run-0a7fb9e16cf5`
 
-## 18. Resume protocol
+Runner:
+
+`b20a4236bee1...`
+
+Outcome:
+
+- `CLOSED`;
+- gate `Repair`;
+- `EDITOR_EXECUTION_FAILED`;
+- phase `implementation`;
+- repair attempts `0`;
+- provider cost `EUR 0`;
+- one local LLM call;
+- Aider tool metadata was reported as unauthorized:
+  - `.aider/analytics.json`;
+  - `.aider/caches/model_prices_and_context_window.json`;
+  - `.aider/installs.json`.
+
+This proves PR #61's governed editor-failure path is active and working.
+
+Exact root cause:
+
+The Aider adapter currently uses one temporary directory for both the disposable code workspace and Aider's `HOME` / `USERPROFILE`. Aider's normal tool metadata therefore appears inside the same filesystem tree that ForgeLab validates as target-product scope.
+
+PR #62 remediation:
+
+```text
+temporary sandbox
+├── workspace/     # authorized target/read-only files only
+└── tool-home/     # HOME/USERPROFILE, Aider config/prompt/env and .aider metadata
+```
+
+Candidate behavior:
+
+- Aider runs with `cwd=workspace`;
+- `HOME` and `USERPROFILE` point to `tool-home`;
+- ForgeLab/Aider control files live in `tool-home`;
+- only `workspace` is checked for product scope;
+- any unauthorized file inside `workspace`, including hidden files, remains a hard failure;
+- source repository remains untouched;
+- no retry, provider, dependency, repair-budget or Dental-specific behavior is added.
+
+Candidate branch:
+
+`mvp1-isolate-aider-tool-home`
+
+Code candidate:
+
+`a92195cdd35903ca9d3e4af79b0a6b9a38a0617f`
+
+PR:
+
+`#62 — MVP-1: isolate Aider tool home from editor workspace`
+
+## 18. Single next action
+
+`HUMAN_REVIEW_ISOLATE_AIDER_TOOL_HOME_PR_62`
+
+Do not submit another Dental run before PR #62 is explicitly reviewed. After merge, synchronize local ForgeLab once and run the unchanged Dental objective once.
+
+## 19. Resume protocol
 
 1. read `AGENTS_MASTER.md`;
 2. read `MANIFEST.md`;
