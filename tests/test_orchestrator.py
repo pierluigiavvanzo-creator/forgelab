@@ -17,9 +17,11 @@ from forgelab.model_router import (
     ProviderTransientError,
 )
 from forgelab.orchestrator import (
+    AIEditorExecutionError,
     MultiAgentRequest,
     TaskGraphError,
     _ai_review_response_schema,
+    _run_aider_editor,
     _validate_ai_review,
     run_multi_agent,
     select_roles,
@@ -494,6 +496,87 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+
+    def test_central_aider_boundary_governs_adapter_failures_for_every_phase(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = make_demo(Path(folder))
+            phases = (
+                "implementation",
+                "initial_prewrite_correction",
+                "test_failure_repair",
+                "semantic_review_repair",
+            )
+
+            for phase in phases:
+                with self.subTest(phase=phase):
+                    with patch(
+                        "forgelab.orchestrator.AiderCliAdapter.run",
+                        side_effect=EditorAdapterError(
+                            "sandbox contract failed"
+                        ),
+                    ):
+                        with self.assertRaises(
+                            AIEditorExecutionError
+                        ) as raised:
+                            _run_aider_editor(
+                                repository=repo,
+                                objective="Make a bounded change.",
+                                allowed_paths=("calculator.py",),
+                                model="qwen2.5-coder:7b",
+                                timeout_seconds=300,
+                                phase=phase,
+                            )
+
+                    self.assertEqual(
+                        raised.exception.phase,
+                        phase,
+                    )
+                    self.assertIn(
+                        "sandbox contract failed",
+                        str(raised.exception),
+                    )
+
+    def test_central_aider_boundary_preserves_process_failure_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = make_demo(Path(folder))
+            failed = EditorResult(
+                engine="aider-cli",
+                files={"calculator.py": "broken\n"},
+                changed_paths=("calculator.py",),
+                stdout="bounded stdout",
+                stderr="bounded stderr",
+                exit_status=2,
+                timed_out=False,
+                duration_ms=20,
+                command=("aider",),
+            )
+
+            with patch(
+                "forgelab.orchestrator.AiderCliAdapter.run",
+                return_value=failed,
+            ):
+                with self.assertRaises(
+                    AIEditorExecutionError
+                ) as raised:
+                    _run_aider_editor(
+                        repository=repo,
+                        objective="Make a bounded change.",
+                        allowed_paths=("calculator.py",),
+                        model="qwen2.5-coder:7b",
+                        timeout_seconds=300,
+                        phase="implementation",
+                    )
+
+            message = str(raised.exception)
+            self.assertIn("exit=2", message)
+            self.assertIn(
+                "bounded stderr",
+                message,
+            )
+            self.assertIn(
+                "bounded stdout",
+                message,
+            )
 
     def test_aider_editor_engine_reaches_decision_ready_without_chatgpt(self):
         with tempfile.TemporaryDirectory() as folder:

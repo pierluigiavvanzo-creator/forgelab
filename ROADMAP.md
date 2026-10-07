@@ -34,9 +34,42 @@ For Golden Path work:
 
 Current canonical `main`:
 
-`1fac126023444052623da0c8027cc7209522bbbb`
+`59aa35b15a86bd527cc1fc75df5863673ed8b811`
 
 ## NOW — A Product Critical
+
+### Aider Integration Stabilization Gate — PR #64
+
+**Status:** HUMAN REVIEW / MERGE GATE
+
+The sequence PR #60–#63 proved that Aider integration must be validated as a complete reusable component rather than by repeated Dental target runs.
+
+Binding gate before another Dental run:
+
+`FORGELAB_AIDER_INTEGRATION_STABILIZATION_GATE`
+
+Deliverables in one PR:
+
+1. stabilized reusable-editor process/filesystem/environment boundary;
+2. one centralized Aider execution contract across implementation and repair phases;
+3. focused internal regression matrix;
+4. launcher-enforced preflight against the actual pinned Aider 0.86.2 runtime;
+5. dependency fingerprint evidence;
+6. long-run API/dashboard lifecycle with immediate run id and observable status;
+7. formal audit and residual-risk register.
+
+Exit condition:
+
+```text
+PR #64 MERGED
+  -> local sync once
+  -> Start-ForgeLab.ps1
+  -> [PASS] Aider stabilization gate
+  -> API/dashboard readiness PASS
+  -> exactly one unchanged Dental run
+```
+
+Do not create another symptom-specific Aider PR before this gate is evaluated.
 
 ### MVP Recovery — Editor Boundary Reset
 

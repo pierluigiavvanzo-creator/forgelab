@@ -287,6 +287,17 @@ export default function Home() {
   ] = useState(false);
 
   const [
+    activeRun,
+    setActiveRun,
+  ] = useState<{
+    run_id: string;
+    status: string;
+    repository: string;
+    objective: string;
+    editor_engine: string;
+  } | null>(null);
+
+  const [
     runFormError,
     setRunFormError,
   ] = useState("");
@@ -435,7 +446,8 @@ export default function Home() {
     );
 
   const isAiDeveloper =
-    summary?.change_operation ===
+    activeRun?.editor_engine === "aider"
+    || summary?.change_operation ===
       "ai_generate";
 
   const isLocalAi =
@@ -443,6 +455,9 @@ export default function Home() {
     && llmCalls > 0;
 
   const evidenceFiles = [
+    ...(imported["RunStatus.json"]
+      ? ["RunStatus.json"]
+      : []),
     "Changes.patch",
     "ExecutionPlan.json",
     "RunSummary.json",
@@ -574,31 +589,39 @@ export default function Home() {
   const runId = useMemo(
     () =>
       String(
-        summary?.run_id ??
+        activeRun?.run_id ??
+          summary?.run_id ??
           summary?.runId ??
           "run-m8-2-local",
       ),
-    [summary],
+    [activeRun, summary],
   );
 
   const runTitle = String(
-    summary?.plan ??
+    activeRun?.objective ??
+      summary?.plan ??
       "ForgeLab Local Control Plane",
   );
 
   const repositoryLabel = String(
-    summary?.repository ??
+    activeRun?.repository ??
+      summary?.repository ??
       "repository locale",
   );
 
   const runState = String(
-    summary?.status ??
+    activeRun?.status ??
+      summary?.status ??
       "READY",
   );
 
   const testState = String(
-    summary?.tests ??
-      "?",
+    activeRun
+      ? "PENDING"
+      : (
+          summary?.tests ??
+          "?"
+        ),
   );
 
   const repairAttempts =
@@ -833,6 +856,7 @@ export default function Home() {
       payload.artifacts ?? {};
 
     setImported(artifacts);
+    setActiveRun(null);
 
     const gateArtifact = asRecord(
       artifacts["GateDecision.json"],
@@ -853,6 +877,90 @@ export default function Home() {
     setApiConnected(true);
 
     return artifacts;
+  };
+
+
+  const waitForRunCompletion = async (
+    requestedRunId: string,
+    base = apiBase,
+    token = apiToken,
+  ) => {
+    const normalized =
+      base.replace(/\/$/, "");
+
+    while (true) {
+      const response = await fetch(
+        `${normalized}/v1/runs/${encodeURIComponent(
+          requestedRunId,
+        )}/status`,
+        {
+          headers: apiHeaders(token),
+        },
+      );
+
+      const payload =
+        await response.json() as {
+          run_id?: string;
+          status?: string;
+          terminal?: boolean;
+          error?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error ??
+            `Run status ${response.status}`,
+        );
+      }
+
+      const status =
+        String(
+          payload.status ??
+            "RUNNING",
+        ).toUpperCase();
+
+      setActiveRun(
+        (current) =>
+          current
+            ? {
+                ...current,
+                status,
+              }
+            : current,
+      );
+
+      setNotice(
+        `Run ${requestedRunId} in corso ? ${status}`,
+      );
+
+      if (payload.terminal) {
+        if (
+          status === "FAILED"
+          || status === "INTERRUPTED"
+        ) {
+          throw new Error(
+            payload.error ??
+              `Run terminata: ${status}`,
+          );
+        }
+
+        await loadRunFromApi(
+          requestedRunId,
+          normalized,
+          token,
+        );
+
+        return payload;
+      }
+
+      await new Promise(
+        (resolve) =>
+          window.setTimeout(
+            resolve,
+            1000,
+          ),
+      );
+    }
   };
 
 
@@ -915,27 +1023,113 @@ export default function Home() {
         await listResponse.json() as {
           runs?: Array<{
             run_id: string;
+            status?: string;
+            terminal?: boolean;
           }>;
         };
 
       const latest =
-        list.runs?.[0]?.run_id;
+        list.runs?.[0];
 
-      if (!latest) {
+      if (!latest?.run_id) {
         throw new Error(
           "Nessuna run disponibile",
         );
       }
 
+      setApiBase(normalized);
+      setApiToken(token);
+      setApiConnected(true);
+      setApiSetup(false);
+
+      if (latest.terminal === false) {
+        const statusResponse =
+          await fetch(
+            `${normalized}/v1/runs/${encodeURIComponent(
+              latest.run_id,
+            )}/status`,
+            {
+              headers:
+                apiHeaders(token),
+            },
+          );
+
+        const statusPayload =
+          await statusResponse.json() as {
+            run_id?: string;
+            status?: string;
+            repository?: string;
+            objective?: string;
+            editor_engine?: string;
+            error?: string;
+          };
+
+        if (!statusResponse.ok) {
+          throw new Error(
+            statusPayload.error ??
+              `Run status ${statusResponse.status}`,
+          );
+        }
+
+        setImported({});
+        setGate("pending");
+        setActiveRun({
+          run_id:
+            latest.run_id,
+          status:
+            String(
+              statusPayload.status ??
+                latest.status ??
+                "RUNNING",
+            ).toUpperCase(),
+          repository:
+            String(
+              statusPayload.repository ??
+                "repository locale",
+            ),
+          objective:
+            String(
+              statusPayload.objective ??
+                "Run ForgeLab in corso",
+            ),
+          editor_engine:
+            String(
+              statusPayload.editor_engine ??
+                "custom",
+            ),
+        });
+
+        setNotice(
+          `Runner locale ${discoveredRuntimeSha.slice(0, 12)} ? ripresa run ${latest.run_id}`,
+        );
+
+        void waitForRunCompletion(
+          latest.run_id,
+          normalized,
+          token,
+        ).catch(
+          (error) => {
+            setNotice(
+              `Run ${latest.run_id} interrotta: ${
+                error instanceof Error
+                  ? error.message
+                  : "errore sconosciuto"
+              }`,
+            );
+          },
+        );
+
+        return;
+      }
+
       await loadRunFromApi(
-        latest,
+        latest.run_id,
         normalized,
         token,
       );
 
-      setApiSetup(false);
       setNotice(
-        `Runner locale ${discoveredRuntimeSha.slice(0, 12)} ? ${latest}`,
+        `Runner locale ${discoveredRuntimeSha.slice(0, 12)} ? ${latest.run_id}`,
       );
     } catch (error) {
       setApiConnected(false);
@@ -1323,6 +1517,10 @@ export default function Home() {
           parsedCommand,
 
         timeout_seconds: 60,
+        editor_timeout_seconds:
+          aiDeveloperMode
+            ? 300
+            : 60,
         risk,
         ai_mode:
           aiDeveloperMode
@@ -1373,16 +1571,39 @@ export default function Home() {
         );
       }
 
-      await loadRunFromApi(
-        result.run_id,
-      );
+      setImported({});
+      setGate("pending");
+      setActiveRun({
+        run_id: result.run_id,
+        status: String(
+          result.status ??
+            "QUEUED",
+        ).toUpperCase(),
+        repository:
+          repository.trim(),
+        objective:
+          objective.trim(),
+        editor_engine:
+          aiDeveloperMode
+            ? "aider"
+            : "custom",
+      });
 
       setRunFormError("");
       setNewRun(false);
 
       setNotice(
+        `Run ${result.run_id} accettata ? monitoraggio in corso`,
+      );
+
+      const completed =
+        await waitForRunCompletion(
+          result.run_id,
+        );
+
+      setNotice(
         `Run ${result.run_id} completata ? ${
-          result.status ??
+          completed.status ??
           "stato disponibile"
         }`,
       );

@@ -603,3 +603,48 @@ Binding autonomy/cost metrics:
 Rationale:
 
 ForgeLab must prove that it can transform a Product Owner objective into a usable product with low Product Owner time. Dental Quote is the existing unresolved proof and therefore remains the priority. A second product category is useful only after the first product is actually delivered.
+
+
+---
+
+## D-024 — Stabilize Aider as a complete reusable component before another Dental run
+
+**Date:** 2026-10-07
+**Status:** Proposed — PR #64 human merge gate
+**Class:** A — Product Critical
+
+Evidence:
+
+PR #60–#63 and the associated real Dental runs exposed multiple symptoms of one incomplete Aider integration contract: cross-phase timeout coupling, incorrect editor-result lifecycle handling, tool-home/workspace collision and CWD-relative Aider history.
+
+Continuing with one Dental run per integration edge transfers QA cost to the Product Owner and conflicts with the Golden Path autonomy objective.
+
+Decision:
+
+- stop real Dental reruns until the Aider component passes a focused internal stabilization gate;
+- consolidate hardening in one PR (#64), not a sequence of symptom-specific PRs;
+- preserve Aider as a reused component behind ForgeLab's control plane;
+- centralize all Aider process/error handling in one orchestrator boundary;
+- make the Aider subprocess deterministic and non-interactive through explicit 0.86.2 CLI flags;
+- isolate product workspace, tool state, history, model metadata and environment;
+- inherit only a minimal safe set of process environment variables;
+- require loopback-only Ollama;
+- add best-effort proxy-based external HTTP egress suppression, while explicitly recording that this is not OS-level network isolation;
+- keep source scope strict and ToolGateway authoritative;
+- preserve generic timeout and editor timeout as separate bounded contracts;
+- fingerprint transitive Aider dependencies rather than inventing an unverified lockfile in this PR;
+- make top-level long-running runs asynchronous and observable with one-active-run boundedness and durable status;
+- make `Start-ForgeLab.ps1` execute the focused stabilization test set before normal runtime startup;
+- prohibit another Dental Golden Path run unless the launcher gate passes;
+- keep paid API cost EUR 0, ChatGPT target-run assistance 0 and human promotion gating unchanged.
+
+Rationale:
+
+The economic/product objective is to reduce Product Owner time while increasing usable output reliability. Testing foreseeable reusable-editor integration failures internally is higher-value than repeatedly using the Dental product proof as the integration test harness.
+
+Residual risk accepted for this gate:
+
+- subprocess HTTP proxy control is best-effort and is not an OS firewall;
+- transitive Aider dependencies are observable through a frozen snapshot/fingerprint but are not yet fully locked.
+
+These residuals must not be silently upgraded to stronger guarantees in product evidence.

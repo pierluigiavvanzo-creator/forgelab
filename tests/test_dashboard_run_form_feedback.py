@@ -67,6 +67,20 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.source,
         )
 
+    def test_dashboard_sends_separate_bounded_editor_timeout(self):
+        self.assertIn(
+            "timeout_seconds: 60",
+            self.source,
+        )
+        self.assertIn(
+            "editor_timeout_seconds:",
+            self.source,
+        )
+        self.assertIn(
+            "? 300",
+            self.source,
+        )
+
     def test_launcher_bootstraps_pinned_reuse_first_editor(self):
         self.assertIn(
             '$AiderVersion = "0.86.2"',
@@ -82,6 +96,38 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
         )
         self.assertIn(
             "FORGELAB_OLLAMA_URL",
+            self.start,
+        )
+        self.assertIn(
+            "Verifica contratto Aider",
+            self.start,
+        )
+        self.assertIn(
+            "pip check",
+            self.start,
+        )
+        self.assertIn(
+            "aider-freeze.txt",
+            self.start,
+        )
+        self.assertIn(
+            "Aider stabilization gate",
+            self.start,
+        )
+        self.assertIn(
+            '"test_editor_adapter.py"',
+            self.start,
+        )
+        self.assertIn(
+            '"test_orchestrator.py"',
+            self.start,
+        )
+        self.assertIn(
+            '"test_api.py"',
+            self.start,
+        )
+        self.assertIn(
+            '"test_dashboard_run_form_feedback.py"',
             self.start,
         )
 
@@ -140,6 +186,46 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
         )
         self.assertIn(
             "artifactCount > 0",
+            self.source,
+        )
+
+    def test_dashboard_polls_accepted_run_until_terminal(self):
+        self.assertIn(
+            "waitForRunCompletion",
+            self.source,
+        )
+        self.assertIn(
+            "/status",
+            self.source,
+        )
+        self.assertIn(
+            "payload.terminal",
+            self.source,
+        )
+        self.assertIn(
+            "monitoraggio in corso",
+            self.source,
+        )
+        self.assertIn(
+            "setActiveRun",
+            self.source,
+        )
+
+    def test_dashboard_resumes_polling_after_refresh(self):
+        self.assertIn(
+            "latest.terminal === false",
+            self.source,
+        )
+        self.assertIn(
+            "ripresa run",
+            self.source,
+        )
+        self.assertIn(
+            "void waitForRunCompletion",
+            self.source,
+        )
+        self.assertIn(
+            '"RunStatus.json"',
             self.source,
         )
 

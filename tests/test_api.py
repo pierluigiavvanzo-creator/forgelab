@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 from pathlib import Path
@@ -148,6 +149,30 @@ class ApiTests(unittest.TestCase):
                 method=method,
             ),
             timeout=15,
+        )
+
+    def wait_for_run(
+        self,
+        run_id: str,
+        timeout_seconds: float = 10.0,
+    ) -> dict:
+        deadline = (
+            time.monotonic()
+            + timeout_seconds
+        )
+        while time.monotonic() < deadline:
+            with self.request(
+                f"/v1/runs/{run_id}/status"
+            ) as response:
+                payload = json.load(response)
+
+            if payload.get("terminal"):
+                return payload
+
+            time.sleep(0.02)
+
+        self.fail(
+            f"run did not terminate: {run_id}"
         )
 
     def make_demo_repo(self) -> Path:
@@ -737,6 +762,197 @@ class ApiTests(unittest.TestCase):
             )
         self.assertEqual(second.exception.code, 400)
 
+    def test_create_run_returns_immediately_and_blocks_concurrent_submission(self):
+        repo = self.make_demo_repo()
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_run(
+            request,
+            runs_root,
+            *,
+            run_id=None,
+        ):
+            self.assertIsNotNone(
+                run_id
+            )
+            started.set()
+            self.assertTrue(
+                release.wait(
+                    timeout=5,
+                )
+            )
+            directory = (
+                runs_root /
+                str(run_id)
+            )
+            directory.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+            (
+                directory /
+                "RunSummary.json"
+            ).write_text(
+                json.dumps({
+                    "run_id": run_id,
+                    "status":
+                        "READY_FOR_DECISION",
+                    "created_at":
+                        "2026-10-07T00:00:00+00:00",
+                    "decision":
+                        "Human gate pending",
+                }),
+                encoding="utf-8",
+            )
+            return directory
+
+        request_payload = {
+            "repository":
+                str(repo.resolve()),
+            "objective":
+                "Exercise asynchronous run lifecycle",
+            "change": {
+                "operation":
+                    "replace_text",
+                "path":
+                    "calculator.py",
+                "old":
+                    "return a - b",
+                "new":
+                    "return a + b",
+            },
+            "test_command": [
+                sys.executable,
+                "-m",
+                "unittest",
+            ],
+            "timeout_seconds": 60,
+            "risk": "normal",
+            "max_repair_attempts": 1,
+        }
+
+        with patch(
+            "forgelab.api.run_multi_agent",
+            side_effect=slow_run,
+        ):
+            with self.request(
+                "/v1/runs",
+                "POST",
+                request_payload,
+            ) as response:
+                self.assertEqual(
+                    response.status,
+                    202,
+                )
+                created = json.load(
+                    response
+                )
+
+            self.assertTrue(
+                created["accepted"]
+            )
+            self.assertTrue(
+                started.wait(
+                    timeout=2,
+                )
+            )
+
+            with self.request(
+                f"/v1/runs/{created['run_id']}/status"
+            ) as response:
+                running = json.load(
+                    response
+                )
+
+            self.assertEqual(
+                running["status"],
+                "RUNNING",
+            )
+            self.assertFalse(
+                running["terminal"],
+            )
+
+            with self.assertRaises(
+                HTTPError
+            ) as conflict:
+                self.request(
+                    "/v1/runs",
+                    "POST",
+                    request_payload,
+                )
+
+            self.assertEqual(
+                conflict.exception.code,
+                409,
+            )
+
+            release.set()
+            completed = (
+                self.wait_for_run(
+                    created["run_id"]
+                )
+            )
+
+        self.assertEqual(
+            completed["status"],
+            "READY_FOR_DECISION",
+        )
+        self.assertTrue(
+            completed["terminal"],
+        )
+
+    def test_api_restart_marks_inflight_status_interrupted(self):
+        stale = (
+            self.root /
+            "run-stale123"
+        )
+        stale.mkdir()
+        (
+            stale /
+            "RunStatus.json"
+        ).write_text(
+            json.dumps({
+                "run_id":
+                    "run-stale123",
+                "status":
+                    "RUNNING",
+                "terminal":
+                    False,
+                "created_at":
+                    "2026-10-07T00:00:00+00:00",
+            }),
+            encoding="utf-8",
+        )
+
+        replacement = make_server(
+            self.root,
+            TOKEN,
+            "http://localhost:5173",
+            port=0,
+        )
+        try:
+            api = replacement.RequestHandlerClass
+            del api
+            status = json.loads(
+                (
+                    stale /
+                    "RunStatus.json"
+                ).read_text(
+                    encoding="utf-8",
+                )
+            )
+        finally:
+            replacement.server_close()
+
+        self.assertEqual(
+            status["status"],
+            "INTERRUPTED",
+        )
+        self.assertTrue(
+            status["terminal"],
+        )
+
     def test_create_run_executes_multi_agent_pipeline(self):
         repo = self.make_demo_repo()
 
@@ -771,18 +987,28 @@ class ApiTests(unittest.TestCase):
         ) as response:
             self.assertEqual(
                 response.status,
-                201,
+                202,
             )
             created = json.load(response)
 
         run_id = created["run_id"]
+        completed = self.wait_for_run(
+            run_id
+        )
 
         self.assertTrue(
             run_id.startswith("run-")
         )
 
-        self.assertEqual(
+        self.assertTrue(
+            created["accepted"],
+        )
+        self.assertIn(
             created["status"],
+            {"QUEUED", "RUNNING"},
+        )
+        self.assertEqual(
+            completed["status"],
             "READY_FOR_DECISION",
         )
 
@@ -895,16 +1121,24 @@ class ApiTests(unittest.TestCase):
 
                 self.assertEqual(
                     response.status,
-                    201,
+                    202,
                 )
 
                 created = json.load(
                     response
                 )
 
+            completed = self.wait_for_run(
+                created["run_id"]
+            )
+
         self.assertEqual(
             created["operation"],
             "ai_generate",
+        )
+        self.assertEqual(
+            completed["status"],
+            "READY_FOR_DECISION",
         )
 
         run_dir = (
@@ -1021,12 +1255,20 @@ class ApiTests(unittest.TestCase):
                 "POST",
                 request_payload,
             ) as response:
-                self.assertEqual(response.status, 201)
+                self.assertEqual(response.status, 202)
                 created = json.load(response)
+
+            completed = self.wait_for_run(
+                created["run_id"]
+            )
 
         self.assertEqual(
             created["editor_engine"],
             "aider",
+        )
+        self.assertEqual(
+            completed["status"],
+            "READY_FOR_DECISION",
         )
 
         run_dir = self.root / created["run_id"]
@@ -1189,10 +1431,18 @@ class ApiTests(unittest.TestCase):
             ) as response:
                 self.assertEqual(
                     response.status,
-                    201,
+                    202,
                 )
                 created = json.load(response)
 
+            completed = self.wait_for_run(
+                created["run_id"]
+            )
+
+        self.assertEqual(
+            completed["status"],
+            "READY_FOR_DECISION",
+        )
         self.assertEqual(
             created["allowed_paths"],
             [

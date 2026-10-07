@@ -6,6 +6,8 @@ import json
 import re
 import sys
 from datetime import datetime, timezone
+from threading import Lock, Thread
+from uuid import uuid4
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -38,6 +40,7 @@ ARTIFACTS = (
     "PrewriteRecoveryFailure.json",
     "ProviderFailure.json",
     "EditorFailure.json",
+    "RunStatus.json",
 )
 TEXT_ARTIFACTS = (
     "Changes.patch",
@@ -47,6 +50,32 @@ DECISIONS = {"approve": "APPROVE", "repair": "REPAIR", "reject": "REJECT"}
 
 class ApiError(ValueError):
     pass
+
+
+class ApiConflict(ApiError):
+    pass
+
+
+def _write_json_atomic(
+    path: Path,
+    payload: dict[str, Any],
+) -> None:
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    temporary = path.with_suffix(
+        path.suffix + ".tmp"
+    )
+    temporary.write_text(
+        json.dumps(
+            payload,
+            indent=2,
+            sort_keys=True,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    temporary.replace(path)
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -125,6 +154,166 @@ class ForgeLabApi:
         self.runs_root.mkdir(parents=True, exist_ok=True)
         self.token = token
         self.allowed_origin = allowed_origin.rstrip("/")
+        self._run_lock = Lock()
+        self._active_run_id: str | None = None
+        self._recover_interrupted_runs()
+
+    def _recover_interrupted_runs(self) -> None:
+        for directory in self.runs_root.iterdir():
+            if (
+                not directory.is_dir()
+                or not RUN_ID.fullmatch(
+                    directory.name
+                )
+            ):
+                continue
+            status_path = (
+                directory /
+                "RunStatus.json"
+            )
+            if not status_path.is_file():
+                continue
+            try:
+                status = _read_json(
+                    status_path
+                )
+            except (
+                ApiError,
+                json.JSONDecodeError,
+                OSError,
+            ):
+                continue
+            if (
+                str(
+                    status.get(
+                        "status",
+                        "",
+                    )
+                ).upper()
+                in {"QUEUED", "RUNNING"}
+            ):
+                summary_path = (
+                    directory /
+                    "RunSummary.json"
+                )
+                if summary_path.is_file():
+                    try:
+                        summary = _read_json(
+                            summary_path
+                        )
+                    except (
+                        ApiError,
+                        json.JSONDecodeError,
+                        OSError,
+                    ):
+                        summary = {}
+                    if summary:
+                        status.update({
+                            "status":
+                                summary.get(
+                                    "status",
+                                    "UNKNOWN",
+                                ),
+                            "decision":
+                                summary.get(
+                                    "decision"
+                                ),
+                            "terminal": True,
+                            "completed_at":
+                                datetime.now(
+                                    timezone.utc
+                                ).isoformat(),
+                        })
+                        _write_json_atomic(
+                            status_path,
+                            status,
+                        )
+                        continue
+
+                status.update({
+                    "status": "INTERRUPTED",
+                    "terminal": True,
+                    "completed_at":
+                        datetime.now(
+                            timezone.utc
+                        ).isoformat(),
+                    "error": (
+                        "ForgeLab API restarted "
+                        "before run completion"
+                    ),
+                })
+                _write_json_atomic(
+                    status_path,
+                    status,
+                )
+
+    def _write_run_status(
+        self,
+        run_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        if not RUN_ID.fullmatch(run_id):
+            raise ApiError(
+                "invalid run id"
+            )
+        directory = (
+            self.runs_root /
+            run_id
+        ).resolve()
+        if directory.parent != self.runs_root:
+            raise ApiError(
+                "invalid run id"
+            )
+        _write_json_atomic(
+            directory /
+            "RunStatus.json",
+            payload,
+        )
+
+    def run_status(
+        self,
+        run_id: str,
+    ) -> dict[str, Any]:
+        directory = self.run_dir(
+            run_id
+        )
+        status_path = (
+            directory /
+            "RunStatus.json"
+        )
+        if status_path.is_file():
+            return _read_json(
+                status_path
+            )
+
+        summary_path = (
+            directory /
+            "RunSummary.json"
+        )
+        if summary_path.is_file():
+            summary = _read_json(
+                summary_path
+            )
+            return {
+                "run_id": run_id,
+                "status": summary.get(
+                    "status",
+                    "UNKNOWN",
+                ),
+                "terminal": True,
+                "created_at":
+                    summary.get(
+                        "created_at"
+                    ),
+                "decision":
+                    summary.get(
+                        "decision"
+                    ),
+            }
+
+        raise ApiError(
+            "run has no status"
+        )
 
     def authorize(self, header: str | None) -> bool:
         if not header or not header.startswith("Bearer "):
@@ -142,23 +331,84 @@ class ForgeLabApi:
     def list_runs(self) -> list[dict[str, Any]]:
         runs: list[dict[str, Any]] = []
         for directory in self.runs_root.iterdir():
-            if not directory.is_dir() or not RUN_ID.fullmatch(directory.name):
+            if (
+                not directory.is_dir()
+                or not RUN_ID.fullmatch(
+                    directory.name
+                )
+            ):
                 continue
-            summary_path = directory / "RunSummary.json"
-            if not summary_path.is_file():
+            summary_path = (
+                directory /
+                "RunSummary.json"
+            )
+            status_path = (
+                directory /
+                "RunStatus.json"
+            )
+            if summary_path.is_file():
+                summary = _read_json(
+                    summary_path
+                )
+                runs.append({
+                    "run_id":
+                        directory.name,
+                    "status":
+                        summary.get(
+                            "status",
+                            "UNKNOWN",
+                        ),
+                    "created_at":
+                        summary.get(
+                            "created_at"
+                        ),
+                    "decision":
+                        summary.get(
+                            "decision"
+                        ),
+                    "terminal": True,
+                })
                 continue
-            summary = _read_json(summary_path)
-            runs.append({
-                "run_id": directory.name,
-                "status": summary.get("status", "UNKNOWN"),
-                "created_at": summary.get("created_at"),
-                "decision": summary.get("decision"),
-            })
+
+            if status_path.is_file():
+                status = _read_json(
+                    status_path
+                )
+                runs.append({
+                    "run_id":
+                        directory.name,
+                    "status":
+                        status.get(
+                            "status",
+                            "UNKNOWN",
+                        ),
+                    "created_at":
+                        status.get(
+                            "created_at"
+                        ),
+                    "decision":
+                        status.get(
+                            "decision"
+                        ),
+                    "terminal":
+                        bool(
+                            status.get(
+                                "terminal",
+                                False,
+                            )
+                        ),
+                })
+
         return sorted(
             runs,
-            key=lambda item: str(item.get("created_at") or ""),
+            key=lambda item: str(
+                item.get(
+                    "created_at"
+                ) or ""
+            ),
             reverse=True,
         )
+
 
     def artifacts(self, run_id: str) -> dict[str, Any]:
         directory = self.run_dir(run_id)
@@ -493,30 +743,184 @@ class ForgeLabApi:
             editor_engine=editor_engine,
         )
 
-        try:
-            run_dir = run_multi_agent(
-                request,
-                self.runs_root,
-            )
-        except Exception as error:
-            raise ApiError(
-                f"run execution failed: {type(error).__name__}: {error}"
-            ) from error
+        created_at = datetime.now(
+            timezone.utc
+        ).isoformat()
 
-        summary = _read_json(run_dir / "RunSummary.json")
+        with self._run_lock:
+            if self._active_run_id is not None:
+                raise ApiConflict(
+                    "another ForgeLab run is already active: "
+                    + self._active_run_id
+                )
+
+            run_id = (
+                f"run-{uuid4().hex[:12]}"
+            )
+            self._active_run_id = run_id
+
+            queued_status = {
+                "run_id": run_id,
+                "status": "QUEUED",
+                "terminal": False,
+                "created_at": created_at,
+                "repository":
+                    str(repository),
+                "objective":
+                    objective,
+                "operation":
+                    operation,
+                "editor_engine":
+                    editor_engine,
+                "allowed_paths":
+                    target_paths,
+            }
+            self._write_run_status(
+                run_id,
+                queued_status,
+            )
+
+            worker = Thread(
+                target=self._execute_run,
+                args=(
+                    run_id,
+                    request,
+                ),
+                daemon=True,
+                name=(
+                    "forgelab-run-"
+                    + run_id
+                ),
+            )
+
+            try:
+                worker.start()
+            except RuntimeError as error:
+                self._active_run_id = None
+                failed = dict(
+                    queued_status
+                )
+                failed.update({
+                    "status": "FAILED",
+                    "terminal": True,
+                    "completed_at":
+                        datetime.now(
+                            timezone.utc
+                        ).isoformat(),
+                    "error":
+                        "run worker could not start: "
+                        + str(error),
+                })
+                self._write_run_status(
+                    run_id,
+                    failed,
+                )
+                raise ApiError(
+                    failed["error"]
+                ) from error
 
         return {
-            "run_id": run_dir.name,
-            "status": summary.get("status"),
-            "decision": summary.get("decision"),
+            "run_id": run_id,
+            "status": "QUEUED",
+            "terminal": False,
+            "accepted": True,
             "repository": str(repository),
             "operation": operation,
             "editor_engine": editor_engine,
             "allowed_paths": target_paths,
+            "status_url": (
+                f"/v1/runs/{run_id}/status"
+            ),
             "artifacts_url": (
-                f"/v1/runs/{run_dir.name}/artifacts"
+                f"/v1/runs/{run_id}/artifacts"
             ),
         }
+
+    def _execute_run(
+        self,
+        run_id: str,
+        request: MultiAgentRequest,
+    ) -> None:
+        started_at = datetime.now(
+            timezone.utc
+        ).isoformat()
+        try:
+            current = self.run_status(
+                run_id
+            )
+            current.update({
+                "status": "RUNNING",
+                "terminal": False,
+                "started_at": started_at,
+            })
+            self._write_run_status(
+                run_id,
+                current,
+            )
+
+            run_dir = run_multi_agent(
+                request,
+                self.runs_root,
+                run_id=run_id,
+            )
+            summary = _read_json(
+                run_dir /
+                "RunSummary.json"
+            )
+            current.update({
+                "status":
+                    summary.get(
+                        "status",
+                        "UNKNOWN",
+                    ),
+                "decision":
+                    summary.get(
+                        "decision"
+                    ),
+                "terminal": True,
+                "completed_at":
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat(),
+            })
+            self._write_run_status(
+                run_id,
+                current,
+            )
+        except Exception as error:
+            try:
+                current = self.run_status(
+                    run_id
+                )
+            except ApiError:
+                current = {
+                    "run_id": run_id,
+                    "created_at":
+                        started_at,
+                }
+            current.update({
+                "status": "FAILED",
+                "terminal": True,
+                "completed_at":
+                    datetime.now(
+                        timezone.utc
+                    ).isoformat(),
+                "error": (
+                    f"{type(error).__name__}: "
+                    f"{error}"
+                ),
+            })
+            self._write_run_status(
+                run_id,
+                current,
+            )
+        finally:
+            with self._run_lock:
+                if (
+                    self._active_run_id
+                    == run_id
+                ):
+                    self._active_run_id = None
 
     def request_repair(
         self,
@@ -1138,6 +1542,23 @@ def make_handler(
                     )
                     return
 
+                status_match = re.fullmatch(
+                    r"/v1/runs/([^/]+)/status",
+                    path,
+                )
+
+                if status_match:
+                    run_id = (
+                        status_match.group(1)
+                    )
+                    self._send(
+                        HTTPStatus.OK,
+                        api.run_status(
+                            run_id
+                        ),
+                    )
+                    return
+
                 match = re.fullmatch(
                     r"/v1/runs/([^/]+)/artifacts",
                     path,
@@ -1190,7 +1611,7 @@ def make_handler(
                     )
 
                     self._send(
-                        HTTPStatus.CREATED,
+                        HTTPStatus.ACCEPTED,
                         created,
                     )
                     return
@@ -1242,6 +1663,11 @@ def make_handler(
                     {"error": "not_found"},
                 )
 
+            except ApiConflict as error:
+                self._send(
+                    HTTPStatus.CONFLICT,
+                    {"error": str(error)},
+                )
             except (
                 ApiError,
                 json.JSONDecodeError,
