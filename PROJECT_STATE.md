@@ -11,9 +11,9 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `795e0c0942dfbb2f80a628ee60d3e49a4825334f` (merge of PR #59, documentation sync after PR #58).
+Current canonical `main` at this checkpoint: `aae8c5a5c0c9ed7a35ce897e5bd09c399ee91670` (merge of PR #60).
 
-Runtime code on this main remains the PR #58 code baseline plus documentation-only PR #59.
+Runtime code on this main includes the separated bounded Aider editor timeout contract from PR #60.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -1167,6 +1167,38 @@ Structural remediation candidate:
 
 This change closes the identified timeout-coupling class rather than increasing the timeout of one Dental run manually.
 
+## 2026-10-07 post-PR60 submission — uncaught editor-boundary failure
+
+After synchronizing to PR #60 and submitting the unchanged Dental objective, the dashboard did not produce a new governed run result. Instead the create-run request surfaced:
+
+`run execution failed: UnboundLocalError: cannot access local variable 'editor_result' where it is not associated with a value`
+
+The evidence cards still visible in the dashboard belong to the previous run:
+
+`run-a949ce0afbb9`
+
+and remain FAIL evidence for the pre-PR60 runtime.
+
+Root cause in current code:
+
+- an `EditorAdapterError` before Aider returns `EditorResult` is wrapped as `AIDeveloperFormatError`;
+- the initial pre-write recovery handler interprets that as a candidate-validation failure;
+- it then attempts to read `editor_result.files` although no `editor_result` exists;
+- the resulting `UnboundLocalError` escapes the governed run-finalization path.
+
+Structural remediation candidate:
+
+- branch `mvp1-govern-aider-execution-failures`;
+- PR #61;
+- introduce a distinct `AIEditorExecutionError` contract;
+- classify process/sandbox failures separately from candidate format/reference/syntax failures;
+- apply the distinction to initial implementation, pre-write correction, failed-test repair and semantic-review repair;
+- emit `EditorFailure.json` with reason `EDITOR_EXECUTION_FAILED`;
+- close the state machine as `CLOSED` rather than throwing out of the API;
+- expose the failure artifact through API and dashboard;
+- do not consume a pre-write correction when no candidate exists;
+- preserve source protection, repair cap and EUR 0 provider policy.
+
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
@@ -1177,6 +1209,6 @@ This change closes the identified timeout-coupling class rather than increasing 
 
 ## Single next action
 
-`HUMAN_REVIEW_AIDER_PHASE_TIMEOUT_POLICY_PR_60`
+`HUMAN_REVIEW_GOVERN_AIDER_EXECUTION_FAILURES_PR_61`
 
-Review PR #60 as one Product Critical runtime fix. Do not rerun Dental on the old runtime again. If PR #60 is approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.
+PR #60 is already merged. Do not rerun Dental until PR #61 is reviewed. If PR #61 is explicitly approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.

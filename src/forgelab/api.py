@@ -37,6 +37,7 @@ ARTIFACTS = (
     "HumanRepairRequest.json",
     "PrewriteRecoveryFailure.json",
     "ProviderFailure.json",
+    "EditorFailure.json",
 )
 TEXT_ARTIFACTS = (
     "Changes.patch",

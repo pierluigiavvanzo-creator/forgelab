@@ -476,6 +476,14 @@ def _ai_developer_full_file_response_schema(
     }
 
 
+class AIEditorExecutionError(RuntimeError):
+    """Governed reusable-editor process or sandbox failure."""
+
+    def __init__(self, phase: str, message: str) -> None:
+        self.phase = phase
+        super().__init__(message)
+
+
 class AIDeveloperFormatError(ValueError):
     """Recoverable structured-output contract error."""
 
@@ -2449,19 +2457,21 @@ Rules:
                             )
                         )
                     except EditorAdapterError as error:
-                        raise AIDeveloperFormatError(
-                            f"Aider editor failed before governed write: {error}"
+                        raise AIEditorExecutionError(
+                            "implementation",
+                            f"Aider editor failed before governed write: {error}",
                         ) from error
 
                     if (
                         editor_result.exit_status != 0
                         or editor_result.timed_out
                     ):
-                        raise AIDeveloperFormatError(
+                        raise AIEditorExecutionError(
+                            "implementation",
                             _aider_process_failure_message(
                                 "Aider editor did not complete successfully",
                                 editor_result,
-                            )
+                            ),
                         )
 
                     if not editor_result.changed_paths:
@@ -2608,20 +2618,22 @@ Rules:
                             )
                         )
                     except EditorAdapterError as error:
-                        raise AIDeveloperFormatError(
+                        raise AIEditorExecutionError(
+                            "initial_prewrite_correction",
                             "Aider initial pre-write correction failed "
-                            f"before governed write: {error}"
+                            f"before governed write: {error}",
                         ) from error
 
                     if (
                         corrected_editor_result.exit_status != 0
                         or corrected_editor_result.timed_out
                     ):
-                        raise AIDeveloperFormatError(
+                        raise AIEditorExecutionError(
+                            "initial_prewrite_correction",
                             _aider_process_failure_message(
                                 "Aider initial pre-write correction did not complete successfully",
                                 corrected_editor_result,
-                            )
+                            ),
                         )
 
                     if not corrected_editor_result.changed_paths:
@@ -3565,20 +3577,22 @@ Rules:
                                 )
                             )
                         except EditorAdapterError as error:
-                            raise AIDeveloperFormatError(
+                            raise AIEditorExecutionError(
+                                "test_failure_repair",
                                 "Aider test-failure repair failed before "
-                                f"governed write: {error}"
+                                f"governed write: {error}",
                             ) from error
 
                         if (
                             editor_result.exit_status != 0
                             or editor_result.timed_out
                         ):
-                            raise AIDeveloperFormatError(
+                            raise AIEditorExecutionError(
+                                "test_failure_repair",
                                 _aider_process_failure_message(
                                     "Aider test-failure repair did not complete successfully",
                                     editor_result,
-                                )
+                                ),
                             )
 
                         if not editor_result.changed_paths:
@@ -4823,20 +4837,22 @@ Return ONLY the required structured JSON object.
                             )
                         )
                     except EditorAdapterError as error:
-                        raise AIDeveloperFormatError(
+                        raise AIEditorExecutionError(
+                            "semantic_review_repair",
                             "Aider semantic repair failed before governed write: "
-                            f"{error}"
+                            f"{error}",
                         ) from error
 
                     if (
                         semantic_editor_result.exit_status != 0
                         or semantic_editor_result.timed_out
                     ):
-                        raise AIDeveloperFormatError(
+                        raise AIEditorExecutionError(
+                            "semantic_review_repair",
                             _aider_process_failure_message(
                                 "Aider semantic repair did not complete successfully",
                                 semantic_editor_result,
-                            )
+                            ),
                         )
 
                     if not semantic_editor_result.changed_paths:
@@ -5711,6 +5727,44 @@ Return ONLY the required JSON object.
                     machine.transition(
                         RunStatus.READY_FOR_DECISION
                     )
+    except AIEditorExecutionError as editor_error:
+        editor_failure = {
+            "run_id": run_id,
+            "status": "FAIL",
+            "reason": "EDITOR_EXECUTION_FAILED",
+            "phase": editor_error.phase,
+            "final_error_type": type(editor_error).__name__,
+            "final_error": str(editor_error),
+            "source_repository_write_performed": False,
+        }
+        store.write_optional_json(
+            "EditorFailure.json",
+            editor_failure,
+        )
+        evidence.append({
+            "evidence_id": "ev-editor-execution-failed",
+            "check_type": "editor_execution",
+            "command_or_tool": "aider-cli",
+            "exit_status": 1,
+            "summary": str(editor_error),
+            "artifact_ref": "EditorFailure.json",
+            "phase": editor_error.phase,
+        })
+        results.append(
+            AgentResult(
+                ResultStatus.FAIL,
+                "Reusable editor execution failed inside governed run",
+                [],
+                ["ev-editor-execution-failed"],
+                [],
+                [],
+                "Inspect editor failure evidence",
+            ).to_dict()
+        )
+        if machine.status != RunStatus.CLOSED:
+            machine.transition(
+                RunStatus.CLOSED
+            )
     except ProviderTransientError as provider_error:
         _, provider_evidence = _record_provider_failure(
             store,

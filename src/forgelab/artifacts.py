@@ -18,7 +18,7 @@ MANDATORY_ARTIFACTS = (
 )
 
 OPTIONAL_ARTIFACTS = ("Changes.patch",)
-OPTIONAL_JSON_ARTIFACTS = ("MemorySnapshot.json", "ContextBundle.json", "ToolAudit.json", "PromotionResult.json", "PrewriteRecoveryFailure.json", "ProviderFailure.json")
+OPTIONAL_JSON_ARTIFACTS = ("MemorySnapshot.json", "ContextBundle.json", "ToolAudit.json", "PromotionResult.json", "PrewriteRecoveryFailure.json", "ProviderFailure.json", "EditorFailure.json")
 
 
 class ArtifactStore:

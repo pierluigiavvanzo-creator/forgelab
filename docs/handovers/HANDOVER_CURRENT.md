@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-07  
-**Checkpoint:** real Dental run exposed cross-phase Aider timeout coupling / PR #60 open  
-**Status:** PRE-MVP / Golden Path #1 runtime remediation / HUMAN MERGE GATE
+**Checkpoint:** PR #60 merged / post-PR60 submission exposed uncaught editor-boundary failure / PR #61 open  
+**Status:** PRE-MVP / Golden Path #1 editor-boundary remediation / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -59,13 +59,13 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`795e0c0942dfbb2f80a628ee60d3e49a4825334f`
+`aae8c5a5c0c9ed7a35ce897e5bd09c399ee91670`
 
-This is the merge of PR #59:
+This is the merge of PR #60:
 
-`Docs: sync ForgeLab handover after PR #58`
+`MVP-1: separate bounded timeout for local Aider editor`
 
-PR #59 is documentation-only. Runtime code remains the PR #58 baseline until PR #60 is explicitly approved and merged. Runtime PRs #37–#48 remain frozen and unmerged.
+PR #60 is merged. The runtime now separates the generic 60-second pipeline/test timeout from the bounded 300-second reusable-editor timeout. Runtime PRs #37–#48 remain frozen and unmerged.
 
 ## 5. Current integration state
 
@@ -572,13 +572,51 @@ PR:
 
 `#60 — MVP-1: separate bounded timeout for local Aider editor`
 
-## 16. Single next action
+## 16. Post-PR60 submission — editor result lifecycle bug
 
-`HUMAN_REVIEW_AIDER_PHASE_TIMEOUT_POLICY_PR_60`
+After PR #60 was merged and the local runtime was restarted, the unchanged Dental submission did not create a new governed result. The dashboard surfaced:
 
-Do not perform another Dental rerun on the old runtime. Review PR #60 as one bounded Product Critical fix. After explicit merge approval and merge, synchronize local ForgeLab once and run the unchanged Dental objective from the dashboard.
+`run execution failed: UnboundLocalError: cannot access local variable 'editor_result' where it is not associated with a value`
 
-## 17. Resume protocol
+The evidence still visible for `run-a949ce0afbb9` is historical FAIL evidence and must not be approved.
+
+Exact root cause:
+
+`EditorAdapterError -> AIDeveloperFormatError -> pre-write correction path -> editor_result.files -> UnboundLocalError`
+
+When Aider fails before returning an `EditorResult`, the runtime incorrectly treats the process/sandbox failure as if a candidate existed and tries to correct that nonexistent candidate.
+
+PR #61 remediation:
+
+- distinct `AIEditorExecutionError` for reusable-editor process/sandbox failures;
+- no candidate correction when no candidate exists;
+- consistent classification across initial implementation, initial pre-write correction, failed-test repair and semantic-review repair;
+- governed terminal artifact `EditorFailure.json`;
+- reason `EDITOR_EXECUTION_FAILED`;
+- API exposes the artifact;
+- dashboard displays it as the current blocker;
+- state machine closes as `CLOSED` instead of leaking an API-level exception;
+- no extra retry, no paid provider and no Dental-specific logic.
+
+Candidate branch:
+
+`mvp1-govern-aider-execution-failures`
+
+Code candidate:
+
+`77ad51de6337b09a5782341ef1777311589440a9`
+
+PR:
+
+`#61 — MVP-1: govern reusable editor execution failures`
+
+## 17. Single next action
+
+`HUMAN_REVIEW_GOVERN_AIDER_EXECUTION_FAILURES_PR_61`
+
+Do not submit another Dental run before PR #61 is explicitly reviewed. After merge, synchronize local ForgeLab once and run the unchanged Dental objective once.
+
+## 18. Resume protocol
 
 1. read `AGENTS_MASTER.md`;
 2. read `MANIFEST.md`;
