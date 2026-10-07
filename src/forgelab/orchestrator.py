@@ -2162,7 +2162,9 @@ Return ONLY the required structured JSON object.
                     "status": "NOT_RUN",
                     "findings": [],
                     "source_repository_unchanged": True,
-                    "network_used": False,
+                    "network_used": True,
+                    "network_scope": "loopback_only",
+                    "external_network_allowed": False,
                     "tool_policy_denials": 0,
                 },
             )
@@ -2487,7 +2489,22 @@ Rules:
             editor_metadata: dict[str, Any] = {
                 "engine": request.editor_engine,
                 "chatgpt_assistance": 0,
+                "editor_timeout_seconds":
+                    request.editor_timeout_seconds,
             }
+            if request.editor_engine == "aider":
+                editor_metadata.update({
+                    "integration_contract":
+                        "aider-stabilization-v1",
+                    "tool_state_policy":
+                        "isolated_tool_home",
+                    "model_metadata_policy":
+                        "local_explicit_metadata",
+                    "network_policy":
+                        "loopback_ollama_with_process_env_egress_guard",
+                    "environment_policy":
+                        "minimal_safe_allowlist",
+                })
 
             try:
                 if request.editor_engine == "aider":
@@ -5824,8 +5841,22 @@ Return ONLY the required JSON object.
     tool_audit = gateway.report()
     store.write_optional_json("ToolAudit.json", tool_audit)
     store.write("SecurityReport.json", {
-        "run_id": run_id, **security_report, "source_repository_unchanged": source_unchanged,
-        "network_used": False, "tool_audit_ref": "ToolAudit.json",
+        "run_id": run_id,
+        **security_report,
+        "source_repository_unchanged": source_unchanged,
+        "network_used": bool(use_ai),
+        "network_scope": (
+            "loopback_only"
+            if use_ai
+            else "none"
+        ),
+        "external_network_allowed": False,
+        "editor_egress_guard": (
+            "process_env_proxy_guard"
+            if request.editor_engine == "aider"
+            else "not_applicable"
+        ),
+        "tool_audit_ref": "ToolAudit.json",
         "tool_policy_denials": tool_audit["denied_count"],
     })
     if use_ai:
@@ -5836,7 +5867,16 @@ Return ONLY the required JSON object.
             "runtime": "hybrid_local_ai",
             "provider_mode": "local_zero_spend",
             "editor_engine": request.editor_engine,
+            "editor_timeout_seconds":
+                request.editor_timeout_seconds,
             "reusable_editor_calls": reusable_editor_calls,
+            "network_scope": "loopback_only",
+            "external_network_allowed": False,
+            "editor_egress_guard": (
+                "process_env_proxy_guard"
+                if request.editor_engine == "aider"
+                else "not_applicable"
+            ),
             "chatgpt_assistance_in_target_product_run": 0,
         })
         store.write(

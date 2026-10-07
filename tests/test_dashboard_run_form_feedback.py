@@ -67,6 +67,20 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.source,
         )
 
+    def test_dashboard_sends_separate_bounded_editor_timeout(self):
+        self.assertIn(
+            "timeout_seconds: 60",
+            self.source,
+        )
+        self.assertIn(
+            "editor_timeout_seconds:",
+            self.source,
+        )
+        self.assertIn(
+            "? 300",
+            self.source,
+        )
+
     def test_launcher_bootstraps_pinned_reuse_first_editor(self):
         self.assertIn(
             '$AiderVersion = "0.86.2"',
@@ -82,6 +96,22 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
         )
         self.assertIn(
             "FORGELAB_OLLAMA_URL",
+            self.start,
+        )
+        self.assertIn(
+            "Verifica contratto Aider",
+            self.start,
+        )
+        self.assertIn(
+            "pip check",
+            self.start,
+        )
+        self.assertIn(
+            "aider-freeze.txt",
+            self.start,
+        )
+        self.assertIn(
+            "Aider integration contract",
             self.start,
         )
 

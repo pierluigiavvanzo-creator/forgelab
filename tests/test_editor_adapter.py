@@ -297,6 +297,9 @@ class EditorAdapterTests(unittest.TestCase):
                     "AWS_SECRET_ACCESS_KEY": "should-not-pass",
                     "GITHUB_TOKEN": "should-not-pass",
                     "HF_TOKEN": "should-not-pass",
+                    "FORGELAB_API_TOKEN": "should-not-pass",
+                    "STRIPE_SECRET_KEY": "should-not-pass",
+                    "DATABASE_URL": "should-not-pass",
                     "PYTHONPATH": "should-not-pass",
                     "VIRTUAL_ENV": "should-not-pass",
                 },
@@ -312,6 +315,9 @@ class EditorAdapterTests(unittest.TestCase):
             self.assertNotIn("AWS_SECRET_ACCESS_KEY", environment)
             self.assertNotIn("GITHUB_TOKEN", environment)
             self.assertNotIn("HF_TOKEN", environment)
+            self.assertNotIn("FORGELAB_API_TOKEN", environment)
+            self.assertNotIn("STRIPE_SECRET_KEY", environment)
+            self.assertNotIn("DATABASE_URL", environment)
             self.assertNotIn("PYTHONPATH", environment)
             self.assertNotIn("VIRTUAL_ENV", environment)
             self.assertEqual(environment["PATH"], "keep-me")

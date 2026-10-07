@@ -260,6 +260,19 @@ if ($LASTEXITCODE -ne 0) {
     throw "Dipendenze Aider incoerenti: pip check fallito."
 }
 
+$AiderFreeze = Join-Path $RuntimeRoot "aider-freeze.txt"
+$AiderFreezeText = (& $AiderPython -m pip freeze 2>&1 | Out-String)
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Impossibile acquisire il fingerprint dipendenze Aider."
+}
+
+$AiderFreezeText | Set-Content $AiderFreeze -Encoding UTF8
+
+$AiderFreezeSha256 = (
+    Get-FileHash -Algorithm SHA256 -Path $AiderFreeze
+).Hash.ToLowerInvariant()
+
 & $PythonExe -m unittest discover -s (Join-Path $ProjectRoot "tests") -p "test_editor_adapter.py" -q
 
 if ($LASTEXITCODE -ne 0) {
@@ -620,6 +633,9 @@ $Metadata = [ordered]@{
     dashboard_listener_pid = $Listener5173.OwningProcess
     dashboard_launcher_pid = $DashboardProcess.Id
     mode = "production-local"
+    aider_version = $AiderVersion
+    aider_dependency_fingerprint = $AiderFreezeSha256
+    aider_dependency_snapshot = $AiderFreeze
 }
 
 $Metadata |

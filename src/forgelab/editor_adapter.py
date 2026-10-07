@@ -112,52 +112,22 @@ def _process_output(value: object) -> str:
     return str(value)
 
 
-_PAID_PROVIDER_KEY_NAMES = {
-    "ANTHROPIC_API_KEY",
-    "AZURE_OPENAI_API_KEY",
-    "CEREBRAS_API_KEY",
-    "COHERE_API_KEY",
-    "DEEPSEEK_API_KEY",
-    "GEMINI_API_KEY",
-    "GROQ_API_KEY",
-    "MISTRAL_API_KEY",
-    "OPENAI_API_KEY",
-    "OPENROUTER_API_KEY",
-    "TOGETHERAI_API_KEY",
-    "GOOGLE_API_KEY",
-    "GOOGLE_APPLICATION_CREDENTIALS",
-    "AWS_ACCESS_KEY_ID",
-    "AWS_SECRET_ACCESS_KEY",
-    "AWS_SESSION_TOKEN",
-    "AZURE_CLIENT_SECRET",
-    "AZURE_CLIENT_ID",
-    "AZURE_TENANT_ID",
-    "GITHUB_TOKEN",
-    "GH_TOKEN",
-    "HF_TOKEN",
-    "HUGGINGFACEHUB_API_TOKEN",
-    "OLLAMA_API_KEY",
+_SAFE_INHERITED_ENV_NAMES = {
+    "COMSPEC",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "NUMBER_OF_PROCESSORS",
+    "OS",
+    "PATH",
+    "PATHEXT",
+    "SYSTEMDRIVE",
+    "SYSTEMROOT",
+    "TEMP",
+    "TMP",
+    "TZ",
+    "WINDIR",
 }
-
-_RUNTIME_ENV_BLOCKLIST = {
-    "PYTHONHOME",
-    "PYTHONPATH",
-    "VIRTUAL_ENV",
-    "PIP_CONFIG_FILE",
-    "PIP_INDEX_URL",
-    "PIP_EXTRA_INDEX_URL",
-}
-
-_SENSITIVE_ENV_MARKERS = (
-    "API_KEY",
-    "ACCESS_KEY",
-    "ACCESS_TOKEN",
-    "AUTH_TOKEN",
-    "CLIENT_SECRET",
-    "PRIVATE_KEY",
-    "PASSWORD",
-    "CREDENTIAL",
-)
 
 _LOOPBACK_HOSTS = {
     "127.0.0.1",
@@ -166,21 +136,6 @@ _LOOPBACK_HOSTS = {
 }
 
 _BLOCKED_PROXY = "http://127.0.0.1:9"
-
-
-def _is_sensitive_environment_name(name: str) -> bool:
-    upper = name.upper()
-    if upper.startswith("AIDER_"):
-        return True
-    if upper in _PAID_PROVIDER_KEY_NAMES:
-        return True
-    if upper in _RUNTIME_ENV_BLOCKLIST:
-        return True
-    return any(
-        marker in upper
-        for marker in _SENSITIVE_ENV_MARKERS
-    )
-
 
 def _ollama_url() -> str:
     raw = os.environ.get(
@@ -204,7 +159,7 @@ def _sandbox_environment(tool_home: Path) -> dict[str, str]:
     environment = {
         key: value
         for key, value in os.environ.items()
-        if not _is_sensitive_environment_name(key)
+        if key.upper() in _SAFE_INHERITED_ENV_NAMES
     }
     ollama_url = _ollama_url()
     environment.update({

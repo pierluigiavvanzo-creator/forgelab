@@ -1323,6 +1323,10 @@ export default function Home() {
           parsedCommand,
 
         timeout_seconds: 60,
+        editor_timeout_seconds:
+          aiDeveloperMode
+            ? 300
+            : 60,
         risk,
         ai_mode:
           aiDeveloperMode
