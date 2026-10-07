@@ -111,7 +111,23 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.start,
         )
         self.assertIn(
-            "Aider integration contract",
+            "Aider stabilization gate",
+            self.start,
+        )
+        self.assertIn(
+            '"test_editor_adapter.py"',
+            self.start,
+        )
+        self.assertIn(
+            '"test_orchestrator.py"',
+            self.start,
+        )
+        self.assertIn(
+            '"test_api.py"',
+            self.start,
+        )
+        self.assertIn(
+            '"test_dashboard_run_form_feedback.py"',
             self.start,
         )
 

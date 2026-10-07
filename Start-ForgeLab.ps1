@@ -273,13 +273,24 @@ $AiderFreezeSha256 = (
     Get-FileHash -Algorithm SHA256 -Path $AiderFreeze
 ).Hash.ToLowerInvariant()
 
-& $PythonExe -m unittest discover -s (Join-Path $ProjectRoot "tests") -p "test_editor_adapter.py" -q
+$AiderGatePatterns = @(
+    "test_editor_adapter.py",
+    "test_orchestrator.py",
+    "test_api.py",
+    "test_dashboard_run_form_feedback.py"
+)
 
-if ($LASTEXITCODE -ne 0) {
-    throw "Aider integration preflight fallito."
+foreach ($pattern in $AiderGatePatterns) {
+    Write-Host "Aider gate: $pattern"
+
+    & $PythonExe -m unittest discover -s (Join-Path $ProjectRoot "tests") -p $pattern -q
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Aider stabilization gate fallito: $pattern"
+    }
 }
 
-Write-Host "[PASS] Aider integration contract"
+Write-Host "[PASS] Aider stabilization gate"
 $env:FORGELAB_AIDER_EXECUTABLE = $AiderExe
 $env:FORGELAB_OLLAMA_URL = "http://127.0.0.1:11434"
 
