@@ -173,6 +173,28 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.source,
         )
 
+    def test_dashboard_polls_accepted_run_until_terminal(self):
+        self.assertIn(
+            "waitForRunCompletion",
+            self.source,
+        )
+        self.assertIn(
+            "/status",
+            self.source,
+        )
+        self.assertIn(
+            "payload.terminal",
+            self.source,
+        )
+        self.assertIn(
+            "monitoraggio in corso",
+            self.source,
+        )
+        self.assertIn(
+            "setActiveRun",
+            self.source,
+        )
+
     def test_api_failures_are_visible_inside_run_modal(self):
         self.assertIn(
             "setRunFormError(message);",

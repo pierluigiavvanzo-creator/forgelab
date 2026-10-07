@@ -287,6 +287,17 @@ export default function Home() {
   ] = useState(false);
 
   const [
+    activeRun,
+    setActiveRun,
+  ] = useState<{
+    run_id: string;
+    status: string;
+    repository: string;
+    objective: string;
+    editor_engine: string;
+  } | null>(null);
+
+  const [
     runFormError,
     setRunFormError,
   ] = useState("");
@@ -435,7 +446,8 @@ export default function Home() {
     );
 
   const isAiDeveloper =
-    summary?.change_operation ===
+    activeRun?.editor_engine === "aider"
+    || summary?.change_operation ===
       "ai_generate";
 
   const isLocalAi =
@@ -574,31 +586,39 @@ export default function Home() {
   const runId = useMemo(
     () =>
       String(
-        summary?.run_id ??
+        activeRun?.run_id ??
+          summary?.run_id ??
           summary?.runId ??
           "run-m8-2-local",
       ),
-    [summary],
+    [activeRun, summary],
   );
 
   const runTitle = String(
-    summary?.plan ??
+    activeRun?.objective ??
+      summary?.plan ??
       "ForgeLab Local Control Plane",
   );
 
   const repositoryLabel = String(
-    summary?.repository ??
+    activeRun?.repository ??
+      summary?.repository ??
       "repository locale",
   );
 
   const runState = String(
-    summary?.status ??
+    activeRun?.status ??
+      summary?.status ??
       "READY",
   );
 
   const testState = String(
-    summary?.tests ??
-      "?",
+    activeRun
+      ? "PENDING"
+      : (
+          summary?.tests ??
+          "?"
+        ),
   );
 
   const repairAttempts =
@@ -833,6 +853,7 @@ export default function Home() {
       payload.artifacts ?? {};
 
     setImported(artifacts);
+    setActiveRun(null);
 
     const gateArtifact = asRecord(
       artifacts["GateDecision.json"],
@@ -853,6 +874,90 @@ export default function Home() {
     setApiConnected(true);
 
     return artifacts;
+  };
+
+
+  const waitForRunCompletion = async (
+    requestedRunId: string,
+    base = apiBase,
+    token = apiToken,
+  ) => {
+    const normalized =
+      base.replace(/\/$/, "");
+
+    while (true) {
+      const response = await fetch(
+        `${normalized}/v1/runs/${encodeURIComponent(
+          requestedRunId,
+        )}/status`,
+        {
+          headers: apiHeaders(token),
+        },
+      );
+
+      const payload =
+        await response.json() as {
+          run_id?: string;
+          status?: string;
+          terminal?: boolean;
+          error?: string;
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error ??
+            `Run status ${response.status}`,
+        );
+      }
+
+      const status =
+        String(
+          payload.status ??
+            "RUNNING",
+        ).toUpperCase();
+
+      setActiveRun(
+        (current) =>
+          current
+            ? {
+                ...current,
+                status,
+              }
+            : current,
+      );
+
+      setNotice(
+        `Run ${requestedRunId} in corso ? ${status}`,
+      );
+
+      if (payload.terminal) {
+        if (
+          status === "FAILED"
+          || status === "INTERRUPTED"
+        ) {
+          throw new Error(
+            payload.error ??
+              `Run terminata: ${status}`,
+          );
+        }
+
+        await loadRunFromApi(
+          requestedRunId,
+          normalized,
+          token,
+        );
+
+        return payload;
+      }
+
+      await new Promise(
+        (resolve) =>
+          window.setTimeout(
+            resolve,
+            1000,
+          ),
+      );
+    }
   };
 
 
@@ -1377,16 +1482,39 @@ export default function Home() {
         );
       }
 
-      await loadRunFromApi(
-        result.run_id,
-      );
+      setImported({});
+      setGate("pending");
+      setActiveRun({
+        run_id: result.run_id,
+        status: String(
+          result.status ??
+            "QUEUED",
+        ).toUpperCase(),
+        repository:
+          repository.trim(),
+        objective:
+          objective.trim(),
+        editor_engine:
+          aiDeveloperMode
+            ? "aider"
+            : "custom",
+      });
 
       setRunFormError("");
       setNewRun(false);
 
       setNotice(
+        `Run ${result.run_id} accettata ? monitoraggio in corso`,
+      );
+
+      const completed =
+        await waitForRunCompletion(
+          result.run_id,
+        );
+
+      setNotice(
         `Run ${result.run_id} completata ? ${
-          result.status ??
+          completed.status ??
           "stato disponibile"
         }`,
       );

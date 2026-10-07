@@ -1827,8 +1827,13 @@ def _render_governed_context(context_bundle: dict[str, object]) -> str:
     return "\n\n".join(sections)
 
 
-def run_multi_agent(request: MultiAgentRequest, output_root: Path) -> Path:
-    run_id = f"run-{uuid4().hex[:12]}"
+def run_multi_agent(
+    request: MultiAgentRequest,
+    output_root: Path,
+    *,
+    run_id: str | None = None,
+) -> Path:
+    run_id = run_id or f"run-{uuid4().hex[:12]}"
     run_dir = output_root.resolve() / run_id
     store = ArtifactStore(run_dir)
     machine = RunStateMachine()
