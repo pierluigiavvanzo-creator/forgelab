@@ -11,9 +11,9 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `b20a4236bee1a12d7a4703cacbd7c8ab50cf8bf2` (merge of PR #61).
+Current canonical `main` at this checkpoint: `96b1083ecb2e67f79728338fdbaaa3ed6f3f948b` (merge of PR #62).
 
-Runtime code on this main includes the separated bounded Aider editor timeout contract from PR #60 and governed reusable-editor execution failures from PR #61.
+Runtime code on this main includes the separated bounded Aider editor timeout contract from PR #60, governed reusable-editor execution failures from PR #61, and physical tool-home/workspace isolation from PR #62.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -1243,6 +1243,41 @@ Structural remediation candidate:
 - remove the prior blanket hidden-file exemption so unauthorized dotfiles inside `workspace` are rejected;
 - preserve source isolation, editor timeout policy, repair cap and EUR 0 provider policy.
 
+## 2026-10-07 post-PR62 Dental run — Aider chat history still defaults to workspace
+
+Run:
+
+`run-f564070471df`
+
+Runner:
+
+`96b1083ecb2e...`
+
+Observed dashboard evidence:
+
+- status `CLOSED`;
+- gate `Repair`;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- blocker `EDITOR_EXECUTION_FAILED`;
+- phase `implementation`;
+- final error: `Aider created files outside authorized scope: .aider.chat.history.md`.
+
+Interpretation:
+
+PR #62 worked for HOME-owned Aider metadata, but Aider's chat history has an independent default path relative to the current working directory. The workspace remains correctly strict and therefore blocks the history file.
+
+Aider exposes explicit `--chat-history-file` and `--input-history-file` options. The correct remediation is to route those tool-owned history files to `tool-home`, not to whitelist them inside the product workspace.
+
+Structural remediation candidate:
+
+- branch `mvp1-route-aider-history-to-tool-home`;
+- code candidate `a1c379c1c799338ac223384f573bdb8216b4bc84`;
+- route chat history to `tool-home/.aider.chat.history.md`;
+- route input history to `tool-home/.aider.input.history`;
+- preserve strict rejection of every unauthorized file created inside `workspace`;
+- preserve source isolation, editor timeout policy, repair cap and EUR 0 provider policy.
+
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
@@ -1253,6 +1288,6 @@ Structural remediation candidate:
 
 ## Single next action
 
-`HUMAN_REVIEW_ISOLATE_AIDER_TOOL_HOME_PR_62`
+`HUMAN_REVIEW_ROUTE_AIDER_HISTORY_TO_TOOL_HOME_PR_63`
 
-PR #61 is already merged and its governed failure boundary worked in the real Dental run. Do not rerun Dental until PR #62 is reviewed. If PR #62 is explicitly approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.
+PR #62 is already merged and its physical tool-home/workspace isolation worked for HOME-owned metadata. Do not rerun Dental until PR #63 is reviewed. If PR #63 is explicitly approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.
