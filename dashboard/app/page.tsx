@@ -455,6 +455,9 @@ export default function Home() {
     && llmCalls > 0;
 
   const evidenceFiles = [
+    ...(imported["RunStatus.json"]
+      ? ["RunStatus.json"]
+      : []),
     "Changes.patch",
     "ExecutionPlan.json",
     "RunSummary.json",
@@ -1020,27 +1023,113 @@ export default function Home() {
         await listResponse.json() as {
           runs?: Array<{
             run_id: string;
+            status?: string;
+            terminal?: boolean;
           }>;
         };
 
       const latest =
-        list.runs?.[0]?.run_id;
+        list.runs?.[0];
 
-      if (!latest) {
+      if (!latest?.run_id) {
         throw new Error(
           "Nessuna run disponibile",
         );
       }
 
+      setApiBase(normalized);
+      setApiToken(token);
+      setApiConnected(true);
+      setApiSetup(false);
+
+      if (latest.terminal === false) {
+        const statusResponse =
+          await fetch(
+            `${normalized}/v1/runs/${encodeURIComponent(
+              latest.run_id,
+            )}/status`,
+            {
+              headers:
+                apiHeaders(token),
+            },
+          );
+
+        const statusPayload =
+          await statusResponse.json() as {
+            run_id?: string;
+            status?: string;
+            repository?: string;
+            objective?: string;
+            editor_engine?: string;
+            error?: string;
+          };
+
+        if (!statusResponse.ok) {
+          throw new Error(
+            statusPayload.error ??
+              `Run status ${statusResponse.status}`,
+          );
+        }
+
+        setImported({});
+        setGate("pending");
+        setActiveRun({
+          run_id:
+            latest.run_id,
+          status:
+            String(
+              statusPayload.status ??
+                latest.status ??
+                "RUNNING",
+            ).toUpperCase(),
+          repository:
+            String(
+              statusPayload.repository ??
+                "repository locale",
+            ),
+          objective:
+            String(
+              statusPayload.objective ??
+                "Run ForgeLab in corso",
+            ),
+          editor_engine:
+            String(
+              statusPayload.editor_engine ??
+                "custom",
+            ),
+        });
+
+        setNotice(
+          `Runner locale ${discoveredRuntimeSha.slice(0, 12)} ? ripresa run ${latest.run_id}`,
+        );
+
+        void waitForRunCompletion(
+          latest.run_id,
+          normalized,
+          token,
+        ).catch(
+          (error) => {
+            setNotice(
+              `Run ${latest.run_id} interrotta: ${
+                error instanceof Error
+                  ? error.message
+                  : "errore sconosciuto"
+              }`,
+            );
+          },
+        );
+
+        return;
+      }
+
       await loadRunFromApi(
-        latest,
+        latest.run_id,
         normalized,
         token,
       );
 
-      setApiSetup(false);
       setNotice(
-        `Runner locale ${discoveredRuntimeSha.slice(0, 12)} ? ${latest}`,
+        `Runner locale ${discoveredRuntimeSha.slice(0, 12)} ? ${latest.run_id}`,
       );
     } catch (error) {
       setApiConnected(false);

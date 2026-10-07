@@ -195,6 +195,24 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.source,
         )
 
+    def test_dashboard_resumes_polling_after_refresh(self):
+        self.assertIn(
+            "latest.terminal === false",
+            self.source,
+        )
+        self.assertIn(
+            "ripresa run",
+            self.source,
+        )
+        self.assertIn(
+            "void waitForRunCompletion",
+            self.source,
+        )
+        self.assertIn(
+            '"RunStatus.json"',
+            self.source,
+        )
+
     def test_api_failures_are_visible_inside_run_modal(self):
         self.assertIn(
             "setRunFormError(message);",

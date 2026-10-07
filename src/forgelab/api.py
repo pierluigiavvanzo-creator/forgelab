@@ -766,6 +766,8 @@ class ForgeLabApi:
                 "created_at": created_at,
                 "repository":
                     str(repository),
+                "objective":
+                    objective,
                 "operation":
                     operation,
                 "editor_engine":
