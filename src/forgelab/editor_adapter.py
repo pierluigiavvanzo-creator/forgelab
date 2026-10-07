@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -8,6 +9,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+from urllib.parse import urlparse
 
 
 class EditorAdapterError(RuntimeError):
@@ -82,10 +84,32 @@ def _copy_authorized(
 
 
 def _read_files(root: Path, paths: tuple[str, ...]) -> dict[str, str]:
-    return {
-        path: (root / path).read_text(encoding="utf-8")
-        for path in paths
-    }
+    files: dict[str, str] = {}
+    for path in paths:
+        target = root / path
+        try:
+            files[path] = target.read_text(encoding="utf-8")
+        except FileNotFoundError as error:
+            raise EditorAdapterError(
+                f"editor file disappeared from sandbox: {path}"
+            ) from error
+        except UnicodeError as error:
+            raise EditorAdapterError(
+                f"editor file must be UTF-8 text: {path}"
+            ) from error
+        except OSError as error:
+            raise EditorAdapterError(
+                f"editor file could not be read: {path}: {error}"
+            ) from error
+    return files
+
+
+def _process_output(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
 
 
 _PAID_PROVIDER_KEY_NAMES = {
@@ -100,26 +124,102 @@ _PAID_PROVIDER_KEY_NAMES = {
     "OPENAI_API_KEY",
     "OPENROUTER_API_KEY",
     "TOGETHERAI_API_KEY",
+    "GOOGLE_API_KEY",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AZURE_CLIENT_SECRET",
+    "AZURE_CLIENT_ID",
+    "AZURE_TENANT_ID",
+    "GITHUB_TOKEN",
+    "GH_TOKEN",
+    "HF_TOKEN",
+    "HUGGINGFACEHUB_API_TOKEN",
+    "OLLAMA_API_KEY",
 }
+
+_RUNTIME_ENV_BLOCKLIST = {
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "VIRTUAL_ENV",
+    "PIP_CONFIG_FILE",
+    "PIP_INDEX_URL",
+    "PIP_EXTRA_INDEX_URL",
+}
+
+_SENSITIVE_ENV_MARKERS = (
+    "API_KEY",
+    "ACCESS_KEY",
+    "ACCESS_TOKEN",
+    "AUTH_TOKEN",
+    "CLIENT_SECRET",
+    "PRIVATE_KEY",
+    "PASSWORD",
+    "CREDENTIAL",
+)
+
+_LOOPBACK_HOSTS = {
+    "127.0.0.1",
+    "localhost",
+    "::1",
+}
+
+_BLOCKED_PROXY = "http://127.0.0.1:9"
+
+
+def _is_sensitive_environment_name(name: str) -> bool:
+    upper = name.upper()
+    if upper.startswith("AIDER_"):
+        return True
+    if upper in _PAID_PROVIDER_KEY_NAMES:
+        return True
+    if upper in _RUNTIME_ENV_BLOCKLIST:
+        return True
+    return any(
+        marker in upper
+        for marker in _SENSITIVE_ENV_MARKERS
+    )
+
+
+def _ollama_url() -> str:
+    raw = os.environ.get(
+        "FORGELAB_OLLAMA_URL",
+        "http://127.0.0.1:11434",
+    ).strip()
+    parsed = urlparse(raw)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or parsed.hostname not in _LOOPBACK_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        raise EditorAdapterError(
+            "FORGELAB_OLLAMA_URL must use a loopback-only HTTP endpoint"
+        )
+    return raw.rstrip("/")
 
 
 def _sandbox_environment(tool_home: Path) -> dict[str, str]:
     environment = {
         key: value
         for key, value in os.environ.items()
-        if (
-            not key.upper().startswith("AIDER_")
-            and key.upper() not in _PAID_PROVIDER_KEY_NAMES
-        )
+        if not _is_sensitive_environment_name(key)
     }
+    ollama_url = _ollama_url()
     environment.update({
         "HOME": str(tool_home),
         "USERPROFILE": str(tool_home),
         "AIDER_ANALYTICS": "0",
-        "OLLAMA_API_BASE": os.environ.get(
-            "FORGELAB_OLLAMA_URL",
-            "http://127.0.0.1:11434",
-        ),
+        "OLLAMA_API_BASE": ollama_url,
+        "HTTP_PROXY": _BLOCKED_PROXY,
+        "HTTPS_PROXY": _BLOCKED_PROXY,
+        "ALL_PROXY": _BLOCKED_PROXY,
+        "NO_PROXY": "127.0.0.1,localhost,::1",
+        "http_proxy": _BLOCKED_PROXY,
+        "https_proxy": _BLOCKED_PROXY,
+        "all_proxy": _BLOCKED_PROXY,
+        "no_proxy": "127.0.0.1,localhost,::1",
     })
     return environment
 
@@ -175,6 +275,10 @@ including tests only when they are inside the writable set.
             )
         if not self.config.executable:
             raise EditorAdapterError("Aider executable must not be empty")
+        if request.timeout_seconds < 1 or request.timeout_seconds > 600:
+            raise EditorAdapterError(
+                "editor timeout_seconds must be between 1 and 600"
+            )
 
         source_root = request.repository.resolve()
         if not source_root.is_dir():
@@ -192,7 +296,17 @@ including tests only when they are inside the writable set.
             tool_home.mkdir()
 
             visible_paths = request.allowed_paths + request.read_only_paths
+            resolved_scope: dict[str, str] = {}
             for path in visible_paths:
+                source = _source_file(source_root, path)
+                identity = os.path.normcase(str(source.resolve()))
+                previous = resolved_scope.get(identity)
+                if previous is not None and previous != path:
+                    raise EditorAdapterError(
+                        "editor paths alias the same source file: "
+                        f"{previous}, {path}"
+                    )
+                resolved_scope[identity] = path
                 _copy_authorized(source_root, workspace, path)
 
             before_writable = _read_files(
@@ -213,6 +327,9 @@ including tests only when they are inside the writable set.
             input_history_file = (
                 tool_home / ".aider.input.history"
             )
+            model_metadata_file = (
+                tool_home / ".forgelab-aider.model.metadata.json"
+            )
             prompt_file.write_text(
                 self._prompt(request),
                 encoding="utf-8",
@@ -225,23 +342,52 @@ including tests only when they are inside the writable set.
                 "",
                 encoding="utf-8",
             )
+            model_name = self._model(request.model)
+            model_metadata_file.write_text(
+                json.dumps(
+                    {
+                        model_name: {
+                            "litellm_provider": "ollama_chat",
+                            "mode": "chat",
+                        }
+                    },
+                    indent=2,
+                    sort_keys=True,
+                ) + "\n",
+                encoding="utf-8",
+            )
 
             command = [
                 *self.config.executable,
-                "--model", self._model(request.model),
+                "--model", model_name,
                 "--edit-format", self.config.edit_format,
+                "--timeout", str(request.timeout_seconds),
+                "--map-tokens", "0",
                 "--no-git",
+                "--no-gitignore",
+                "--no-add-gitignore-files",
                 "--no-auto-commits",
                 "--no-dirty-commits",
                 "--no-auto-lint",
                 "--no-auto-test",
+                "--no-watch-files",
+                "--no-cache-prompts",
+                "--no-restore-chat-history",
                 "--no-suggest-shell-commands",
+                "--no-notifications",
+                "--no-detect-urls",
+                "--no-pretty",
+                "--no-stream",
+                "--no-show-model-warnings",
+                "--no-check-model-accepts-settings",
                 "--analytics-disable",
                 "--no-check-update",
                 "--no-show-release-notes",
                 "--yes-always",
                 "--config", str(config_file),
                 "--env-file", str(env_file),
+                "--model-metadata-file",
+                str(model_metadata_file),
                 "--message-file", str(prompt_file),
                 "--chat-history-file",
                 str(chat_history_file),
@@ -278,13 +424,17 @@ including tests only when they are inside the writable set.
                     self.name,
                     before_writable,
                     (),
-                    error.stdout or "",
-                    error.stderr or "",
+                    _process_output(error.stdout),
+                    _process_output(error.stderr),
                     124,
                     True,
                     int((time.monotonic() - started) * 1000),
                     tuple(command),
                 )
+            except OSError as error:
+                raise EditorAdapterError(
+                    f"Aider CLI could not be executed: {error}"
+                ) from error
 
             if (
                 _read_files(

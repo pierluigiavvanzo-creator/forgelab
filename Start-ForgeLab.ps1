@@ -211,6 +211,62 @@ if ($LASTEXITCODE -ne 0 -or $AiderVersionText -notmatch "0\.86\.2") {
     throw "Aider locale non valido. Atteso $AiderVersion, ottenuto: $AiderVersionText"
 }
 
+Write-Host ""
+Write-Host "Verifica contratto Aider..."
+
+$AiderHelp = (& $AiderExe --help 2>&1 | Out-String)
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Aider --help fallito durante il preflight."
+}
+
+$RequiredAiderFlags = @(
+    "--model-metadata-file",
+    "--timeout",
+    "--map-tokens",
+    "--no-git",
+    "--no-gitignore",
+    "--no-add-gitignore-files",
+    "--no-auto-commits",
+    "--no-dirty-commits",
+    "--no-auto-lint",
+    "--no-auto-test",
+    "--no-watch-files",
+    "--no-cache-prompts",
+    "--no-restore-chat-history",
+    "--no-suggest-shell-commands",
+    "--no-notifications",
+    "--no-detect-urls",
+    "--no-pretty",
+    "--no-stream",
+    "--no-show-model-warnings",
+    "--no-check-model-accepts-settings",
+    "--analytics-disable",
+    "--no-check-update",
+    "--no-show-release-notes",
+    "--chat-history-file",
+    "--input-history-file"
+)
+
+foreach ($flag in $RequiredAiderFlags) {
+    if ($AiderHelp -notmatch [regex]::Escape($flag)) {
+        throw "Aider $AiderVersion non espone il flag richiesto: $flag"
+    }
+}
+
+& $AiderPython -m pip check | Out-Host
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Dipendenze Aider incoerenti: pip check fallito."
+}
+
+& $PythonExe -m unittest discover -s (Join-Path $ProjectRoot "tests") -p "test_editor_adapter.py" -q
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Aider integration preflight fallito."
+}
+
+Write-Host "[PASS] Aider integration contract"
 $env:FORGELAB_AIDER_EXECUTABLE = $AiderExe
 $env:FORGELAB_OLLAMA_URL = "http://127.0.0.1:11434"
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -114,6 +115,35 @@ class EditorAdapterTests(unittest.TestCase):
                 "--message-file",
                 command,
             )
+            for required_flag in (
+                "--no-git",
+                "--no-gitignore",
+                "--no-add-gitignore-files",
+                "--no-auto-commits",
+                "--no-dirty-commits",
+                "--no-auto-lint",
+                "--no-auto-test",
+                "--no-watch-files",
+                "--no-cache-prompts",
+                "--no-restore-chat-history",
+                "--no-suggest-shell-commands",
+                "--no-notifications",
+                "--no-detect-urls",
+                "--no-pretty",
+                "--no-stream",
+                "--no-show-model-warnings",
+                "--no-check-model-accepts-settings",
+                "--analytics-disable",
+                "--no-check-update",
+                "--no-show-release-notes",
+                "--model-metadata-file",
+                "--timeout",
+                "--map-tokens",
+            ):
+                self.assertIn(
+                    required_flag,
+                    command,
+                )
             self.assertIn(
                 "--chat-history-file",
                 command,
@@ -262,6 +292,13 @@ class EditorAdapterTests(unittest.TestCase):
                     "ANTHROPIC_API_KEY": "should-not-pass",
                     "PATH": "keep-me",
                     "AIDER_MODEL": "ignore-user-config",
+                    "GOOGLE_API_KEY": "should-not-pass",
+                    "AWS_ACCESS_KEY_ID": "should-not-pass",
+                    "AWS_SECRET_ACCESS_KEY": "should-not-pass",
+                    "GITHUB_TOKEN": "should-not-pass",
+                    "HF_TOKEN": "should-not-pass",
+                    "PYTHONPATH": "should-not-pass",
+                    "VIRTUAL_ENV": "should-not-pass",
                 },
                 clear=True,
             ):
@@ -270,6 +307,13 @@ class EditorAdapterTests(unittest.TestCase):
             self.assertNotIn("OPENAI_API_KEY", environment)
             self.assertNotIn("ANTHROPIC_API_KEY", environment)
             self.assertNotIn("AIDER_MODEL", environment)
+            self.assertNotIn("GOOGLE_API_KEY", environment)
+            self.assertNotIn("AWS_ACCESS_KEY_ID", environment)
+            self.assertNotIn("AWS_SECRET_ACCESS_KEY", environment)
+            self.assertNotIn("GITHUB_TOKEN", environment)
+            self.assertNotIn("HF_TOKEN", environment)
+            self.assertNotIn("PYTHONPATH", environment)
+            self.assertNotIn("VIRTUAL_ENV", environment)
             self.assertEqual(environment["PATH"], "keep-me")
             self.assertEqual(environment["AIDER_ANALYTICS"], "0")
             self.assertEqual(
@@ -284,6 +328,32 @@ class EditorAdapterTests(unittest.TestCase):
                 environment["OLLAMA_API_BASE"],
                 "http://127.0.0.1:11434",
             )
+            self.assertEqual(
+                environment["HTTPS_PROXY"],
+                "http://127.0.0.1:9",
+            )
+            self.assertEqual(
+                environment["NO_PROXY"],
+                "127.0.0.1,localhost,::1",
+            )
+
+    def test_external_ollama_endpoint_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.dict(
+                "os.environ",
+                {
+                    "FORGELAB_OLLAMA_URL":
+                        "https://example.com:11434",
+                },
+                clear=True,
+            ):
+                with self.assertRaisesRegex(
+                    EditorAdapterError,
+                    "loopback-only",
+                ):
+                    _sandbox_environment(
+                        Path(folder)
+                    )
 
     def test_aider_history_files_are_routed_to_tool_home(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -515,6 +585,246 @@ class EditorAdapterTests(unittest.TestCase):
                 ))
 
             self.assertFalse((repo / "outside.py").exists())
+
+    def test_aider_model_metadata_is_local_and_minimal(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "app.py").write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+
+            fake = root / "fake_aider.py"
+            fake.write_text(
+                (
+                    "import json\n"
+                    "from pathlib import Path\n"
+                    "import sys\n"
+                    "args = sys.argv[1:]\n"
+                    "metadata = Path(args[args.index('--model-metadata-file') + 1])\n"
+                    "data = json.loads(metadata.read_text(encoding='utf-8'))\n"
+                    "model = 'ollama_chat/qwen2.5-coder:7b'\n"
+                    "entry = data.get(model, {})\n"
+                    "if entry.get('litellm_provider') != 'ollama_chat':\n"
+                    "    raise SystemExit(7)\n"
+                    "if entry.get('mode') != 'chat':\n"
+                    "    raise SystemExit(8)\n"
+                    "target = Path(args[-1])\n"
+                    "target.write_text('VALUE = 2\\n', encoding='utf-8')\n"
+                ),
+                encoding="utf-8",
+            )
+
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=(
+                        sys.executable,
+                        str(fake),
+                    )
+                )
+            )
+            result = adapter.run(
+                EditorRequest(
+                    repository=repo,
+                    objective="Change VALUE.",
+                    allowed_paths=("app.py",),
+                    timeout_seconds=30,
+                )
+            )
+
+            self.assertEqual(
+                result.exit_status,
+                0,
+            )
+            self.assertEqual(
+                result.changed_paths,
+                ("app.py",),
+            )
+
+    def test_aider_timeout_is_bounded_and_output_is_normalized(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "app.py").write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=("fake-aider",)
+                )
+            )
+
+            timeout = subprocess.TimeoutExpired(
+                cmd=["fake-aider"],
+                timeout=30,
+                output=b"partial stdout",
+                stderr=b"partial stderr",
+            )
+            with patch(
+                "forgelab.editor_adapter.subprocess.run",
+                side_effect=timeout,
+            ):
+                result = adapter.run(
+                    EditorRequest(
+                        repository=repo,
+                        objective="Change VALUE.",
+                        allowed_paths=("app.py",),
+                        timeout_seconds=30,
+                    )
+                )
+
+            self.assertTrue(
+                result.timed_out
+            )
+            self.assertEqual(
+                result.exit_status,
+                124,
+            )
+            self.assertEqual(
+                result.stdout,
+                "partial stdout",
+            )
+            self.assertEqual(
+                result.stderr,
+                "partial stderr",
+            )
+
+    def test_aider_os_execution_error_is_governed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "app.py").write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=("fake-aider",)
+                )
+            )
+
+            with patch(
+                "forgelab.editor_adapter.subprocess.run",
+                side_effect=PermissionError(
+                    "execution denied"
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    EditorAdapterError,
+                    "could not be executed",
+                ):
+                    adapter.run(
+                        EditorRequest(
+                            repository=repo,
+                            objective="Change VALUE.",
+                            allowed_paths=("app.py",),
+                            timeout_seconds=30,
+                        )
+                    )
+
+    def test_aider_deleted_writable_file_is_governed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "app.py").write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+
+            fake = root / "fake_aider.py"
+            fake.write_text(
+                (
+                    "from pathlib import Path\n"
+                    "import sys\n"
+                    "Path(sys.argv[-1]).unlink()\n"
+                ),
+                encoding="utf-8",
+            )
+
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=(
+                        sys.executable,
+                        str(fake),
+                    )
+                )
+            )
+
+            with self.assertRaisesRegex(
+                EditorAdapterError,
+                "disappeared from sandbox",
+            ):
+                adapter.run(
+                    EditorRequest(
+                        repository=repo,
+                        objective="Change VALUE.",
+                        allowed_paths=("app.py",),
+                        timeout_seconds=30,
+                    )
+                )
+
+    def test_non_utf8_authorized_file_is_governed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "app.py").write_bytes(
+                b"\xff\xfe\x00\x00"
+            )
+
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=("fake-aider",)
+                )
+            )
+
+            with self.assertRaisesRegex(
+                EditorAdapterError,
+                "UTF-8",
+            ):
+                adapter.run(
+                    EditorRequest(
+                        repository=repo,
+                        objective="Change VALUE.",
+                        allowed_paths=("app.py",),
+                        timeout_seconds=30,
+                    )
+                )
+
+    def test_editor_timeout_contract_rejects_invalid_values(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            (repo / "app.py").write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=("fake-aider",)
+                )
+            )
+            for timeout_seconds in (0, 601):
+                with self.subTest(
+                    timeout_seconds=timeout_seconds
+                ):
+                    with self.assertRaisesRegex(
+                        EditorAdapterError,
+                        "timeout_seconds",
+                    ):
+                        adapter.run(
+                            EditorRequest(
+                                repository=repo,
+                                objective="Change VALUE.",
+                                allowed_paths=("app.py",),
+                                timeout_seconds=timeout_seconds,
+                            )
+                        )
 
     def test_aider_rejects_scope_escape(self):
         with tempfile.TemporaryDirectory() as folder:

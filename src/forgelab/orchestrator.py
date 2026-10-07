@@ -1498,6 +1498,68 @@ def _aider_process_failure_message(
     return "\n".join(parts)
 
 
+def _run_aider_editor(
+    *,
+    repository: Path,
+    objective: str,
+    allowed_paths: tuple[str, ...],
+    model: str,
+    timeout_seconds: int,
+    phase: str,
+) -> EditorResult:
+    labels = {
+        "implementation": "Aider editor",
+        "initial_prewrite_correction":
+            "Aider initial pre-write correction",
+        "test_failure_repair":
+            "Aider test-failure repair",
+        "semantic_review_repair":
+            "Aider semantic repair",
+    }
+    label = labels.get(
+        phase,
+        "Aider reusable editor",
+    )
+    executable = os.environ.get(
+        "FORGELAB_AIDER_EXECUTABLE",
+        "aider",
+    )
+    try:
+        result = AiderCliAdapter(
+            AiderCliConfig(
+                executable=(executable,),
+                edit_format="whole",
+            )
+        ).run(
+            EditorRequest(
+                repository=repository,
+                objective=objective,
+                allowed_paths=allowed_paths,
+                model=model,
+                timeout_seconds=timeout_seconds,
+            )
+        )
+    except EditorAdapterError as error:
+        raise AIEditorExecutionError(
+            phase,
+            f"{label} failed before governed write: {error}",
+        ) from error
+
+    if (
+        result.exit_status != 0
+        or result.timed_out
+    ):
+        raise AIEditorExecutionError(
+            phase,
+            _aider_process_failure_message(
+                f"{label} did not complete successfully",
+                result,
+            ),
+        )
+
+    return result
+
+
 def _validate_ai_developer_candidate_syntax(
     payload: dict[str, Any],
     source_texts: dict[str, str],
@@ -2430,10 +2492,6 @@ Rules:
             try:
                 if request.editor_engine == "aider":
                     reusable_editor_calls += 1
-                    aider_executable = os.environ.get(
-                        "FORGELAB_AIDER_EXECUTABLE",
-                        "aider",
-                    )
                     aider_objective = (
                         request.objective
                         + "\n\nBinding Project Manager acceptance contract:\n"
@@ -2441,38 +2499,14 @@ Rules:
                         + "\n\nGoverned read-only repository context:\n"
                         + governed_context
                     )
-                    try:
-                        editor_result = AiderCliAdapter(
-                            AiderCliConfig(
-                                executable=(aider_executable,),
-                                edit_format="whole",
-                            )
-                        ).run(
-                            EditorRequest(
-                                repository=workspace.path,  # type: ignore[arg-type]
-                                objective=aider_objective,
-                                allowed_paths=target_paths,
-                                model=developer_route.model,
-                                timeout_seconds=request.editor_timeout_seconds,
-                            )
-                        )
-                    except EditorAdapterError as error:
-                        raise AIEditorExecutionError(
-                            "implementation",
-                            f"Aider editor failed before governed write: {error}",
-                        ) from error
-
-                    if (
-                        editor_result.exit_status != 0
-                        or editor_result.timed_out
-                    ):
-                        raise AIEditorExecutionError(
-                            "implementation",
-                            _aider_process_failure_message(
-                                "Aider editor did not complete successfully",
-                                editor_result,
-                            ),
-                        )
+                    editor_result = _run_aider_editor(
+                        repository=workspace.path,  # type: ignore[arg-type]
+                        objective=aider_objective,
+                        allowed_paths=target_paths,
+                        model=developer_route.model,
+                        timeout_seconds=request.editor_timeout_seconds,
+                        phase="implementation",
+                    )
 
                     if not editor_result.changed_paths:
                         raise AIDeveloperFormatError(
@@ -2597,44 +2631,14 @@ Rules:
 
                     reusable_editor_calls += 1
 
-                    try:
-                        corrected_editor_result = AiderCliAdapter(
-                            AiderCliConfig(
-                                executable=(
-                                    os.environ.get(
-                                        "FORGELAB_AIDER_EXECUTABLE",
-                                        "aider",
-                                    ),
-                                ),
-                                edit_format="whole",
-                            )
-                        ).run(
-                            EditorRequest(
-                                repository=workspace.path,  # type: ignore[arg-type]
-                                objective=correction_objective,
-                                allowed_paths=target_paths,
-                                model=developer_route.model,
-                                timeout_seconds=request.editor_timeout_seconds,
-                            )
-                        )
-                    except EditorAdapterError as error:
-                        raise AIEditorExecutionError(
-                            "initial_prewrite_correction",
-                            "Aider initial pre-write correction failed "
-                            f"before governed write: {error}",
-                        ) from error
-
-                    if (
-                        corrected_editor_result.exit_status != 0
-                        or corrected_editor_result.timed_out
-                    ):
-                        raise AIEditorExecutionError(
-                            "initial_prewrite_correction",
-                            _aider_process_failure_message(
-                                "Aider initial pre-write correction did not complete successfully",
-                                corrected_editor_result,
-                            ),
-                        )
+                    corrected_editor_result = _run_aider_editor(
+                        repository=workspace.path,  # type: ignore[arg-type]
+                        objective=correction_objective,
+                        allowed_paths=target_paths,
+                        model=developer_route.model,
+                        timeout_seconds=request.editor_timeout_seconds,
+                        phase="initial_prewrite_correction",
+                    )
 
                     if not corrected_editor_result.changed_paths:
                         raise AIDeveloperFormatError(
@@ -3556,44 +3560,14 @@ Rules:
                     ) -> dict[str, Any]:
                         nonlocal reusable_editor_calls
                         reusable_editor_calls += 1
-                        try:
-                            editor_result = AiderCliAdapter(
-                                AiderCliConfig(
-                                    executable=(
-                                        os.environ.get(
-                                            "FORGELAB_AIDER_EXECUTABLE",
-                                            "aider",
-                                        ),
-                                    ),
-                                    edit_format="whole",
-                                )
-                            ).run(
-                                EditorRequest(
-                                    repository=workspace.path,  # type: ignore[arg-type]
-                                    objective=objective,
-                                    allowed_paths=target_paths,
-                                    model=repair_route.model,
-                                    timeout_seconds=request.editor_timeout_seconds,
-                                )
-                            )
-                        except EditorAdapterError as error:
-                            raise AIEditorExecutionError(
-                                "test_failure_repair",
-                                "Aider test-failure repair failed before "
-                                f"governed write: {error}",
-                            ) from error
-
-                        if (
-                            editor_result.exit_status != 0
-                            or editor_result.timed_out
-                        ):
-                            raise AIEditorExecutionError(
-                                "test_failure_repair",
-                                _aider_process_failure_message(
-                                    "Aider test-failure repair did not complete successfully",
-                                    editor_result,
-                                ),
-                            )
+                        editor_result = _run_aider_editor(
+                            repository=workspace.path,  # type: ignore[arg-type]
+                            objective=objective,
+                            allowed_paths=target_paths,
+                            model=repair_route.model,
+                            timeout_seconds=request.editor_timeout_seconds,
+                            phase="test_failure_repair",
+                        )
 
                         if not editor_result.changed_paths:
                             raise AIDeveloperFormatError(
@@ -4816,44 +4790,14 @@ Return ONLY the required structured JSON object.
                         "preserving passing tests and unrelated behavior. "
                         "Stay inside the authorized files."
                     )
-                    try:
-                        semantic_editor_result = AiderCliAdapter(
-                            AiderCliConfig(
-                                executable=(
-                                    os.environ.get(
-                                        "FORGELAB_AIDER_EXECUTABLE",
-                                        "aider",
-                                    ),
-                                ),
-                                edit_format="whole",
-                            )
-                        ).run(
-                            EditorRequest(
-                                repository=workspace.path,  # type: ignore[arg-type]
-                                objective=semantic_aider_objective,
-                                allowed_paths=target_paths,
-                                model=semantic_repair_route.model,
-                                timeout_seconds=request.editor_timeout_seconds,
-                            )
-                        )
-                    except EditorAdapterError as error:
-                        raise AIEditorExecutionError(
-                            "semantic_review_repair",
-                            "Aider semantic repair failed before governed write: "
-                            f"{error}",
-                        ) from error
-
-                    if (
-                        semantic_editor_result.exit_status != 0
-                        or semantic_editor_result.timed_out
-                    ):
-                        raise AIEditorExecutionError(
-                            "semantic_review_repair",
-                            _aider_process_failure_message(
-                                "Aider semantic repair did not complete successfully",
-                                semantic_editor_result,
-                            ),
-                        )
+                    semantic_editor_result = _run_aider_editor(
+                        repository=workspace.path,  # type: ignore[arg-type]
+                        objective=semantic_aider_objective,
+                        allowed_paths=target_paths,
+                        model=semantic_repair_route.model,
+                        timeout_seconds=request.editor_timeout_seconds,
+                        phase="semantic_review_repair",
+                    )
 
                     if not semantic_editor_result.changed_paths:
                         raise AIDeveloperFormatError(
