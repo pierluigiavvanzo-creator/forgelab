@@ -662,6 +662,10 @@ class MultiAgentTests(unittest.TestCase):
                 ("calculator.py",),
             )
             self.assertEqual(
+                editor_request.timeout_seconds,
+                300,
+            )
+            self.assertEqual(
                 git(
                     repo,
                     "status",
@@ -828,6 +832,10 @@ class MultiAgentTests(unittest.TestCase):
             self.assertIn(
                 "Failed candidate content",
                 correction_request.objective,
+            )
+            self.assertEqual(
+                correction_request.timeout_seconds,
+                300,
             )
             self.assertFalse(
                 (

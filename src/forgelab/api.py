@@ -401,6 +401,26 @@ class ForgeLabApi:
             )
 
         try:
+            editor_timeout_seconds = int(
+                payload.get(
+                    "editor_timeout_seconds",
+                    300,
+                )
+            )
+        except (TypeError, ValueError) as error:
+            raise ApiError(
+                "editor_timeout_seconds must be an integer"
+            ) from error
+
+        if (
+            editor_timeout_seconds < 60
+            or editor_timeout_seconds > 600
+        ):
+            raise ApiError(
+                "editor_timeout_seconds must be between 60 and 600"
+            )
+
+        try:
             max_repair_attempts = int(
                 payload.get("max_repair_attempts", 1)
             )
@@ -463,6 +483,7 @@ class ForgeLabApi:
                 list(command)
             ),
             timeout_seconds=timeout_seconds,
+            editor_timeout_seconds=editor_timeout_seconds,
             risk=risk,
             max_repair_attempts=max_repair_attempts,
             ai_mode=ai_mode,
@@ -727,6 +748,12 @@ class ForgeLabApi:
                 plan.get(
                     "timeout_seconds",
                     60,
+                )
+            ),
+            editor_timeout_seconds=int(
+                plan.get(
+                    "editor_timeout_seconds",
+                    300,
                 )
             ),
             risk=risk,

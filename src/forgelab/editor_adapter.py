@@ -20,7 +20,7 @@ class EditorRequest:
     objective: str
     allowed_paths: tuple[str, ...]
     model: str = "qwen2.5-coder:7b"
-    timeout_seconds: int = 180
+    timeout_seconds: int = 300
     read_only_paths: tuple[str, ...] = ()
 
 

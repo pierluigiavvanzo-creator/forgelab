@@ -379,6 +379,7 @@ class ApiTests(unittest.TestCase):
                     "test_calculator.py",
                 ],
                 "timeout_seconds": 60,
+                "editor_timeout_seconds": 420,
             }),
             encoding="utf-8",
         )
@@ -473,6 +474,14 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(
             request.max_repair_attempts,
             1,
+        )
+        self.assertEqual(
+            request.timeout_seconds,
+            60,
+        )
+        self.assertEqual(
+            request.editor_timeout_seconds,
+            420,
         )
         self.assertIn(
             feedback,
@@ -1033,6 +1042,14 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(
             plan["editor_engine"],
             "aider",
+        )
+        self.assertEqual(
+            plan["timeout_seconds"],
+            60,
+        )
+        self.assertEqual(
+            plan["editor_timeout_seconds"],
+            300,
         )
         self.assertEqual(
             usage["reusable_editor_calls"],

@@ -42,6 +42,7 @@ class MultiAgentRequest:
     new_text: str
     test_command: list[str]
     timeout_seconds: int = 60
+    editor_timeout_seconds: int = 300
     initial_new_text: str | None = None
     risk: str = "normal"
     max_repair_attempts: int = 1
@@ -86,6 +87,22 @@ class MultiAgentRequest:
             raise ValueError(
                 "max_repair_attempts must be "
                 "between 0 and 3"
+            )
+
+        editor_timeout_seconds = int(
+            payload.get(
+                "editor_timeout_seconds",
+                300,
+            )
+        )
+
+        if (
+            editor_timeout_seconds < 60
+            or editor_timeout_seconds > 600
+        ):
+            raise ValueError(
+                "editor_timeout_seconds must be "
+                "between 60 and 600"
             )
 
         ai_mode = payload.get(
@@ -180,6 +197,7 @@ class MultiAgentRequest:
                     60,
                 )
             ),
+            editor_timeout_seconds=editor_timeout_seconds,
             risk=payload.get(
                 "risk",
                 "normal",
@@ -1988,6 +2006,8 @@ Return ONLY the required structured JSON object.
                         list(target_paths),
                     "timeout_seconds":
                         request.timeout_seconds,
+                    "editor_timeout_seconds":
+                        request.editor_timeout_seconds,
                     "requires_human_gate": True,
                     "memory_snapshot_ref":
                         "MemorySnapshot.json",
@@ -2209,7 +2229,9 @@ Return ONLY the required structured JSON object.
         "change_operation": request.operation,
         "editor_engine": request.editor_engine,
         "allowed_paths": list(target_paths),
-        "timeout_seconds": request.timeout_seconds, "requires_human_gate": True,
+        "timeout_seconds": request.timeout_seconds,
+        "editor_timeout_seconds": request.editor_timeout_seconds,
+        "requires_human_gate": True,
         "memory_snapshot_ref": "MemorySnapshot.json", "context_bundle_ref": "ContextBundle.json",
         "memory_manifest_sha256": memory_snapshot["manifest_sha256"],
         "context_selection": {
@@ -2423,7 +2445,7 @@ Rules:
                                 objective=aider_objective,
                                 allowed_paths=target_paths,
                                 model=developer_route.model,
-                                timeout_seconds=request.timeout_seconds,
+                                timeout_seconds=request.editor_timeout_seconds,
                             )
                         )
                     except EditorAdapterError as error:
@@ -2582,7 +2604,7 @@ Rules:
                                 objective=correction_objective,
                                 allowed_paths=target_paths,
                                 model=developer_route.model,
-                                timeout_seconds=request.timeout_seconds,
+                                timeout_seconds=request.editor_timeout_seconds,
                             )
                         )
                     except EditorAdapterError as error:
@@ -3539,7 +3561,7 @@ Rules:
                                     objective=objective,
                                     allowed_paths=target_paths,
                                     model=repair_route.model,
-                                    timeout_seconds=request.timeout_seconds,
+                                    timeout_seconds=request.editor_timeout_seconds,
                                 )
                             )
                         except EditorAdapterError as error:
@@ -4797,7 +4819,7 @@ Return ONLY the required structured JSON object.
                                 objective=semantic_aider_objective,
                                 allowed_paths=target_paths,
                                 model=semantic_repair_route.model,
-                                timeout_seconds=request.timeout_seconds,
+                                timeout_seconds=request.editor_timeout_seconds,
                             )
                         )
                     except EditorAdapterError as error:
