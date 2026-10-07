@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-07  
-**Checkpoint:** PR #62 merged / real Dental run exposed CWD-relative Aider history file / PR #63 open  
-**Status:** PRE-MVP / Golden Path #1 tool-state routing remediation / HUMAN MERGE GATE
+**Checkpoint:** PR #63 merged / complete Aider stabilization sweep built / PR #64 open  
+**Status:** PRE-MVP / Golden Path #1 Aider stabilization / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -59,13 +59,13 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`96b1083ecb2e67f79728338fdbaaa3ed6f3f948b`
+`59aa35b15a86bd527cc1fc75df5863673ed8b811`
 
-This is the merge of PR #62:
+This is the merge of PR #63:
 
-`MVP-1: isolate Aider tool home from editor workspace`
+`MVP-1: route Aider history files to tool home`
 
-PR #62 is merged. The reusable editor now uses separate `workspace/` and `tool-home/` directories; `HOME` / `USERPROFILE` and Aider control files live outside the product workspace. PR #61's governed failure contract and PR #60's separated timeout contract remain active. Runtime PRs #37–#48 remain frozen and unmerged.
+PR #60–#63 are merged. Runtime PRs #37–#48 remain frozen and unmerged. PR #64 is the only active Aider stabilization candidate and must be evaluated as one consolidated milestone.
 
 ## 5. Current integration state
 
@@ -716,13 +716,65 @@ PR:
 
 `#63 — MVP-1: route Aider history files to tool home`
 
-## 19. Single next action
+## 19. Complete Aider stabilization sweep — PR #64
 
-`HUMAN_REVIEW_ROUTE_AIDER_HISTORY_TO_TOOL_HOME_PR_63`
+Product Owner instruction:
 
-Do not submit another Dental run before PR #63 is explicitly reviewed. After merge, synchronize local ForgeLab once and run the unchanged Dental objective once.
+Stop symptom-by-symptom Aider PRs and stabilize the component comprehensively before another Dental run.
 
-## 20. Resume protocol
+PR:
+
+`#64 — MVP-1: complete Aider integration stabilization gate`
+
+Branch:
+
+`mvp1-aider-integration-stabilization-gate`
+
+Audit:
+
+`docs/audits/FORGELAB_AIDER_INTEGRATION_STABILIZATION_AUDIT_2026-10-07.md`
+
+Consolidated behavior:
+
+- one Aider execution/error boundary across all four editor phases;
+- explicit deterministic 0.86.2 CLI profile;
+- strict product workspace + isolated tool-home/history/model metadata;
+- minimal safe inherited environment;
+- loopback-only Ollama validation;
+- best-effort subprocess egress guard;
+- governed delete/non-UTF8/OS-launch/timeout edge cases;
+- dashboard explicitly sends 300-second editor timeout while generic pipeline timeout remains 60 seconds;
+- runtime evidence records editor/network policy;
+- launcher validates required Aider CLI flags and `pip check`;
+- launcher captures dependency freeze + SHA-256 fingerprint;
+- launcher executes adapter/orchestrator/API/dashboard focused tests;
+- create-run returns `202 + run_id` immediately;
+- durable `RunStatus.json` + polling;
+- browser refresh resumes active polling;
+- only one top-level run can be active;
+- stale in-flight status is recovered after API restart.
+
+Validation truth:
+
+This candidate has regression coverage but has not yet produced Windows/local PASS evidence. No GitHub Actions workflow is present, therefore no remote CI PASS is claimed.
+
+## 20. Single next action
+
+`HUMAN_REVIEW_AIDER_INTEGRATION_STABILIZATION_PR_64`
+
+Do not submit another Dental run.
+
+If PR #64 is explicitly approved and merged:
+
+1. synchronize local ForgeLab to the new canonical main;
+2. run `Start-ForgeLab.ps1`;
+3. require `[PASS] Aider stabilization gate`;
+4. confirm dashboard/API readiness and runtime SHA;
+5. submit the unchanged Dental objective exactly once.
+
+If the launcher gate fails, stop before Dental and use the failing focused regression as the blocker.
+
+## 21. Resume protocol
 
 1. read `AGENTS_MASTER.md`;
 2. read `MANIFEST.md`;

@@ -11,9 +11,9 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `96b1083ecb2e67f79728338fdbaaa3ed6f3f948b` (merge of PR #62).
+Current canonical `main` at this checkpoint: `59aa35b15a86bd527cc1fc75df5863673ed8b811` (merge of PR #63).
 
-Runtime code on this main includes the separated bounded Aider editor timeout contract from PR #60, governed reusable-editor execution failures from PR #61, and physical tool-home/workspace isolation from PR #62.
+Runtime code on this main includes PR #60–#63: separated Aider timeout, governed editor execution failures, physical tool-home/workspace isolation, and explicit Aider chat/input history routing.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -1278,6 +1278,52 @@ Structural remediation candidate:
 - preserve strict rejection of every unauthorized file created inside `workspace`;
 - preserve source isolation, editor timeout policy, repair cap and EUR 0 provider policy.
 
+## 2026-10-07 Aider integration stabilization sweep
+
+Product Owner direction:
+
+Stop the one-real-run / one-micro-fix loop and audit/stabilize the complete Aider component before another Dental run.
+
+Classification:
+
+`A — Product Critical`
+
+Single consolidated candidate:
+
+- PR `#64 — MVP-1: complete Aider integration stabilization gate`;
+- branch `mvp1-aider-integration-stabilization-gate`;
+- formal audit `docs/audits/FORGELAB_AIDER_INTEGRATION_STABILIZATION_AUDIT_2026-10-07.md`.
+
+Scope consolidated into PR #64:
+
+- centralized Aider execution/error boundary across all editor phases;
+- deterministic Aider 0.86.2 CLI contract;
+- local model metadata;
+- minimal safe environment allow-list instead of secret deny-list;
+- loopback-only Ollama validation;
+- best-effort subprocess egress guard;
+- additional filesystem/process failure normalization;
+- explicit editor timeout from dashboard;
+- dependency preflight and SHA-256 fingerprint;
+- launcher-enforced focused stabilization test gate;
+- asynchronous top-level run submission with immediate `202 + run_id`;
+- durable `RunStatus.json`;
+- one-active-run constraint;
+- dashboard polling and refresh recovery;
+- API-restart recovery.
+
+Validation truth:
+
+- regression/preflight coverage is present in the candidate;
+- repository still has no GitHub Actions workflow, therefore no remote CI PASS is claimed;
+- Windows/local PASS is not claimed until the merged launcher executes successfully;
+- Dental must not be used as the next test until launcher reports `[PASS] Aider stabilization gate`.
+
+Residual risks recorded in the audit:
+
+- subprocess proxy egress control is best-effort, not an OS firewall;
+- Aider transitive dependencies are fingerprinted but not fully locked in a committed dependency lock.
+
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
@@ -1288,6 +1334,16 @@ Structural remediation candidate:
 
 ## Single next action
 
-`HUMAN_REVIEW_ROUTE_AIDER_HISTORY_TO_TOOL_HOME_PR_63`
+`HUMAN_REVIEW_AIDER_INTEGRATION_STABILIZATION_PR_64`
 
-PR #62 is already merged and its physical tool-home/workspace isolation worked for HOME-owned metadata. Do not rerun Dental until PR #63 is reviewed. If PR #63 is explicitly approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.
+PR #63 is already merged. Do not run Dental again yet.
+
+Review PR #64 as the single consolidated Aider hardening milestone. If it is explicitly approved and merged:
+
+1. synchronize local ForgeLab once;
+2. run `Start-ForgeLab.ps1`;
+3. require `[PASS] Aider stabilization gate`;
+4. verify dashboard/API readiness;
+5. only then perform exactly one unchanged Dental Quote dashboard run.
+
+If the launcher gate fails, Dental remains blocked and the failing internal regression becomes the evidence source.
