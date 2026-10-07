@@ -265,8 +265,128 @@ class EditorAdapterTests(unittest.TestCase):
             self.assertEqual(environment["PATH"], "keep-me")
             self.assertEqual(environment["AIDER_ANALYTICS"], "0")
             self.assertEqual(
+                environment["HOME"],
+                folder,
+            )
+            self.assertEqual(
+                environment["USERPROFILE"],
+                folder,
+            )
+            self.assertEqual(
                 environment["OLLAMA_API_BASE"],
                 "http://127.0.0.1:11434",
+            )
+
+    def test_aider_tool_metadata_isolated_from_workspace(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+
+            source = repo / "app.py"
+            source.write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+
+            fake = root / "fake_aider.py"
+            fake.write_text(
+                (
+                    "import os\n"
+                    "from pathlib import Path\n"
+                    "import sys\n"
+                    "home = Path(os.environ['HOME'])\n"
+                    "cache = home / '.aider' / 'caches'\n"
+                    "cache.mkdir(parents=True, exist_ok=True)\n"
+                    "(home / '.aider' / 'analytics.json').write_text("
+                    "'{}\\n', encoding='utf-8')\n"
+                    "(cache / 'model_prices_and_context_window.json').write_text("
+                    "'{}\\n', encoding='utf-8')\n"
+                    "(home / '.aider' / 'installs.json').write_text("
+                    "'{}\\n', encoding='utf-8')\n"
+                    "target = Path(sys.argv[-1])\n"
+                    "target.write_text('VALUE = 2\\n', encoding='utf-8')\n"
+                ),
+                encoding="utf-8",
+            )
+
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=(
+                        sys.executable,
+                        str(fake),
+                    )
+                )
+            )
+
+            result = adapter.run(
+                EditorRequest(
+                    repository=repo,
+                    objective="Change VALUE to 2.",
+                    allowed_paths=("app.py",),
+                    timeout_seconds=30,
+                )
+            )
+
+            self.assertEqual(
+                result.changed_paths,
+                ("app.py",),
+            )
+            self.assertEqual(
+                result.files["app.py"],
+                "VALUE = 2\n",
+            )
+            self.assertEqual(
+                source.read_text(
+                    encoding="utf-8",
+                ),
+                "VALUE = 1\n",
+            )
+
+    def test_aider_rejects_hidden_workspace_file_creation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "app.py").write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+
+            fake = root / "fake_aider.py"
+            fake.write_text(
+                (
+                    "from pathlib import Path\n"
+                    "Path('.unexpected').write_text("
+                    "'tool leak\\n', encoding='utf-8')\n"
+                ),
+                encoding="utf-8",
+            )
+
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=(
+                        sys.executable,
+                        str(fake),
+                    )
+                )
+            )
+
+            with self.assertRaisesRegex(
+                EditorAdapterError,
+                "created files",
+            ):
+                adapter.run(
+                    EditorRequest(
+                        repository=repo,
+                        objective="Change VALUE.",
+                        allowed_paths=("app.py",),
+                        timeout_seconds=30,
+                    )
+                )
+
+            self.assertFalse(
+                (repo / ".unexpected").exists()
             )
 
     def test_aider_rejects_new_source_file_creation(self):
