@@ -385,6 +385,11 @@ export default function Home() {
       imported["PrewriteRecoveryFailure.json"],
     );
 
+  const editorFailure =
+    asRecord(
+      imported["EditorFailure.json"],
+    );
+
   const providerFailure =
     asRecord(
       imported["ProviderFailure.json"],
@@ -447,6 +452,9 @@ export default function Home() {
     "ReviewReport.json",
     ...(imported["PrewriteRecoveryFailure.json"]
       ? ["PrewriteRecoveryFailure.json"]
+      : []),
+    ...(imported["EditorFailure.json"]
+      ? ["EditorFailure.json"]
       : []),
     ...(imported["ProviderFailure.json"]
       ? ["ProviderFailure.json"]
@@ -688,7 +696,24 @@ export default function Home() {
 
   const terminalBlock =
     runState === "CLOSED"
-      ? prewriteFailure
+      ? editorFailure
+        ? {
+            phase: String(
+              editorFailure.phase
+              ?? "EDITOR",
+            ),
+            reason: String(
+              editorFailure.reason
+              ?? "EDITOR_EXECUTION_FAILED",
+            ),
+            detail: String(
+              editorFailure.final_error
+              ?? "Reusable editor execution failed.",
+            ),
+            artifact:
+              "EditorFailure.json",
+          }
+        : prewriteFailure
         ? {
             phase: String(
               prewriteFailure.phase

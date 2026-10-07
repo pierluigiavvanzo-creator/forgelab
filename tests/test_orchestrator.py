@@ -8,7 +8,10 @@ from unittest.mock import patch
 from pathlib import Path
 
 from forgelab.domain import Role
-from forgelab.editor_adapter import EditorResult
+from forgelab.editor_adapter import (
+    EditorAdapterError,
+    EditorResult,
+)
 from forgelab.model_router import (
     ProviderResponse,
     ProviderTransientError,
@@ -849,6 +852,90 @@ class MultiAgentTests(unittest.TestCase):
             )
 
 
+    def test_aider_adapter_error_is_governed_without_unbound_local(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+
+            scripted = [
+                ProviderResponse(
+                    ai_plan(),
+                    10,
+                    5,
+                    actual_cost=Decimal("0"),
+                ),
+            ]
+
+            with (
+                patch(
+                    "forgelab.orchestrator.OllamaProvider.invoke",
+                    side_effect=scripted,
+                ),
+                patch(
+                    "forgelab.orchestrator.AiderCliAdapter.run",
+                    side_effect=EditorAdapterError(
+                        "Aider created files outside authorized scope: scratch.txt"
+                    ),
+                ) as aider_run,
+            ):
+                run_dir = run_multi_agent(
+                    request(
+                        repo,
+                        operation="ai_generate",
+                        old_text="",
+                        new_text="",
+                        max_repair_attempts=1,
+                        editor_engine="aider",
+                    ),
+                    root / "runs",
+                )
+
+            summary = json.loads(
+                (run_dir / "RunSummary.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            failure = json.loads(
+                (run_dir / "EditorFailure.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            usage = json.loads(
+                (run_dir / "UsageReport.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(summary["status"], "CLOSED")
+            self.assertEqual(
+                failure["reason"],
+                "EDITOR_EXECUTION_FAILED",
+            )
+            self.assertEqual(
+                failure["phase"],
+                "implementation",
+            )
+            self.assertIn(
+                "outside authorized scope",
+                failure["final_error"],
+            )
+            self.assertEqual(
+                usage["reusable_editor_calls"],
+                1,
+            )
+            self.assertEqual(
+                len(aider_run.call_args_list),
+                1,
+            )
+            self.assertFalse(
+                (run_dir / "PrewriteRecoveryFailure.json").exists()
+            )
+            self.assertEqual(
+                git(repo, "status", "--porcelain"),
+                "",
+            )
+
+
     def test_aider_nonzero_prewrite_correction_preserves_process_output(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -933,7 +1020,7 @@ class MultiAgentTests(unittest.TestCase):
             failure = json.loads(
                 (
                     run_dir /
-                    "PrewriteRecoveryFailure.json"
+                    "EditorFailure.json"
                 ).read_text(
                     encoding="utf-8"
                 )
@@ -945,15 +1032,18 @@ class MultiAgentTests(unittest.TestCase):
             )
             self.assertEqual(
                 failure["reason"],
-                "PREWRITE_RECOVERY_EXHAUSTED",
+                "EDITOR_EXECUTION_FAILED",
             )
             self.assertEqual(
                 failure["phase"],
-                "implementation",
+                "initial_prewrite_correction",
             )
             self.assertIn(
                 "exit=2",
                 failure["final_error"],
+            )
+            self.assertFalse(
+                (run_dir / "PrewriteRecoveryFailure.json").exists()
             )
             self.assertIn(
                 "stderr_tail:",

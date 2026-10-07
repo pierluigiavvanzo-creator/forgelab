@@ -95,6 +95,14 @@ class DashboardRunFormFeedbackTests(unittest.TestCase):
             self.source,
         )
         self.assertIn(
+            "EditorFailure.json",
+            self.source,
+        )
+        self.assertIn(
+            "EDITOR_EXECUTION_FAILED",
+            self.source,
+        )
+        self.assertIn(
             "ProviderFailure.json",
             self.source,
         )

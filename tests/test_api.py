@@ -307,6 +307,14 @@ class ApiTests(unittest.TestCase):
             "final_error":
                 "invalid repair candidate",
         }
+        editor = {
+            "reason":
+                "EDITOR_EXECUTION_FAILED",
+            "phase":
+                "implementation",
+            "final_error":
+                "Aider sandbox contract failed",
+        }
         provider = {
             "reason":
                 "PROVIDER_TRANSIENT_RETRY_EXHAUSTED",
@@ -321,6 +329,13 @@ class ApiTests(unittest.TestCase):
             "PrewriteRecoveryFailure.json"
         ).write_text(
             json.dumps(prewrite),
+            encoding="utf-8",
+        )
+        (
+            self.run /
+            "EditorFailure.json"
+        ).write_text(
+            json.dumps(editor),
             encoding="utf-8",
         )
         (
@@ -341,6 +356,12 @@ class ApiTests(unittest.TestCase):
                 "PrewriteRecoveryFailure.json"
             ]["reason"],
             "PREWRITE_RECOVERY_EXHAUSTED",
+        )
+        self.assertEqual(
+            payload["artifacts"][
+                "EditorFailure.json"
+            ]["reason"],
+            "EDITOR_EXECUTION_FAILED",
         )
         self.assertEqual(
             payload["artifacts"][
