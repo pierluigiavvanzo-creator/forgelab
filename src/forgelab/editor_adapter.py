@@ -207,6 +207,12 @@ including tests only when they are inside the writable set.
             prompt_file = tool_home / ".forgelab-aider-prompt.txt"
             config_file = tool_home / ".forgelab-aider.conf.yml"
             env_file = tool_home / ".forgelab-aider.env"
+            chat_history_file = (
+                tool_home / ".aider.chat.history.md"
+            )
+            input_history_file = (
+                tool_home / ".aider.input.history"
+            )
             prompt_file.write_text(
                 self._prompt(request),
                 encoding="utf-8",
@@ -237,6 +243,10 @@ including tests only when they are inside the writable set.
                 "--config", str(config_file),
                 "--env-file", str(env_file),
                 "--message-file", str(prompt_file),
+                "--chat-history-file",
+                str(chat_history_file),
+                "--input-history-file",
+                str(input_history_file),
             ]
             for path in request.read_only_paths:
                 command.extend(["--read", path])

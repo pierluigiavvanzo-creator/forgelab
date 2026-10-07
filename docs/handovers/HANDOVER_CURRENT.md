@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-07  
-**Checkpoint:** PR #61 merged / real Dental run exposed Aider tool-home/workspace collision / PR #62 open  
-**Status:** PRE-MVP / Golden Path #1 sandbox-boundary remediation / HUMAN MERGE GATE
+**Checkpoint:** PR #62 merged / real Dental run exposed CWD-relative Aider history file / PR #63 open  
+**Status:** PRE-MVP / Golden Path #1 tool-state routing remediation / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -59,13 +59,13 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`b20a4236bee1a12d7a4703cacbd7c8ab50cf8bf2`
+`96b1083ecb2e67f79728338fdbaaa3ed6f3f948b`
 
-This is the merge of PR #61:
+This is the merge of PR #62:
 
-`MVP-1: govern reusable editor execution failures`
+`MVP-1: isolate Aider tool home from editor workspace`
 
-PR #61 is merged. The runtime now distinguishes reusable-editor process/sandbox failures from candidate-validation failures and emits `EditorFailure.json` rather than leaking an API-level exception. PR #60's separated timeout contract remains active. Runtime PRs #37–#48 remain frozen and unmerged.
+PR #62 is merged. The reusable editor now uses separate `workspace/` and `tool-home/` directories; `HOME` / `USERPROFILE` and Aider control files live outside the product workspace. PR #61's governed failure contract and PR #60's separated timeout contract remain active. Runtime PRs #37–#48 remain frozen and unmerged.
 
 ## 5. Current integration state
 
@@ -670,13 +670,59 @@ PR:
 
 `#62 — MVP-1: isolate Aider tool home from editor workspace`
 
-## 18. Single next action
+## 18. Post-PR62 real Dental run — CWD-relative Aider history file
 
-`HUMAN_REVIEW_ISOLATE_AIDER_TOOL_HOME_PR_62`
+Run:
 
-Do not submit another Dental run before PR #62 is explicitly reviewed. After merge, synchronize local ForgeLab once and run the unchanged Dental objective once.
+`run-f564070471df`
 
-## 19. Resume protocol
+Runner:
+
+`96b1083ecb2e...`
+
+Outcome:
+
+- `CLOSED`;
+- gate `Repair`;
+- `EDITOR_EXECUTION_FAILED`;
+- phase `implementation`;
+- repair attempts `0`;
+- provider cost `EUR 0`;
+- one local LLM call;
+- blocker detail: `Aider created files outside authorized scope: .aider.chat.history.md`.
+
+Interpretation:
+
+PR #62 correctly isolated HOME-owned tool metadata from the code workspace. This remaining file is different: Aider's documented default chat-history path is relative to the current working directory unless explicitly configured.
+
+PR #63 remediation:
+
+- explicitly pass `--chat-history-file <tool-home>/.aider.chat.history.md`;
+- proactively pass `--input-history-file <tool-home>/.aider.input.history`;
+- keep `cwd=workspace`;
+- keep `HOME` and `USERPROFILE` on `tool-home`;
+- keep the workspace scanner strict with no history-file exception or hidden-file bypass;
+- preserve source-repository isolation and all existing zero-spend / bounded-repair rules.
+
+Candidate branch:
+
+`mvp1-route-aider-history-to-tool-home`
+
+Code candidate:
+
+`a1c379c1c799338ac223384f573bdb8216b4bc84`
+
+PR:
+
+`#63 — MVP-1: route Aider history files to tool home`
+
+## 19. Single next action
+
+`HUMAN_REVIEW_ROUTE_AIDER_HISTORY_TO_TOOL_HOME_PR_63`
+
+Do not submit another Dental run before PR #63 is explicitly reviewed. After merge, synchronize local ForgeLab once and run the unchanged Dental objective once.
+
+## 20. Resume protocol
 
 1. read `AGENTS_MASTER.md`;
 2. read `MANIFEST.md`;

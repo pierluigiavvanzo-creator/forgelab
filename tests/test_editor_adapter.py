@@ -115,6 +115,14 @@ class EditorAdapterTests(unittest.TestCase):
                 command,
             )
             self.assertIn(
+                "--chat-history-file",
+                command,
+            )
+            self.assertIn(
+                "--input-history-file",
+                command,
+            )
+            self.assertIn(
                 "ollama_chat/qwen2.5-coder:7b",
                 command,
             )
@@ -276,6 +284,96 @@ class EditorAdapterTests(unittest.TestCase):
                 environment["OLLAMA_API_BASE"],
                 "http://127.0.0.1:11434",
             )
+
+    def test_aider_history_files_are_routed_to_tool_home(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+
+            source = repo / "app.py"
+            source.write_text(
+                "VALUE = 1\n",
+                encoding="utf-8",
+            )
+
+            fake = root / "fake_aider.py"
+            fake.write_text(
+                (
+                    "from pathlib import Path\n"
+                    "import sys\n"
+                    "args = sys.argv[1:]\n"
+                    "chat = Path(args[args.index('--chat-history-file') + 1])\n"
+                    "inp = Path(args[args.index('--input-history-file') + 1])\n"
+                    "chat.write_text('chat\\n', encoding='utf-8')\n"
+                    "inp.write_text('input\\n', encoding='utf-8')\n"
+                    "target = Path(args[-1])\n"
+                    "target.write_text('VALUE = 2\\n', encoding='utf-8')\n"
+                    "cwd = Path.cwd().resolve()\n"
+                    "if chat.resolve().parent == cwd or inp.resolve().parent == cwd:\n"
+                    "    print('history leaked into workspace', file=sys.stderr)\n"
+                    "    raise SystemExit(9)\n"
+                ),
+                encoding="utf-8",
+            )
+
+            adapter = AiderCliAdapter(
+                AiderCliConfig(
+                    executable=(
+                        sys.executable,
+                        str(fake),
+                    )
+                )
+            )
+
+            result = adapter.run(
+                EditorRequest(
+                    repository=repo,
+                    objective="Change VALUE to 2.",
+                    allowed_paths=("app.py",),
+                    timeout_seconds=30,
+                )
+            )
+
+            self.assertEqual(result.exit_status, 0)
+            self.assertEqual(
+                result.changed_paths,
+                ("app.py",),
+            )
+            self.assertEqual(
+                result.files["app.py"],
+                "VALUE = 2\n",
+            )
+
+            command = list(result.command)
+            chat_index = command.index(
+                "--chat-history-file"
+            )
+            input_index = command.index(
+                "--input-history-file"
+            )
+            chat_path = Path(
+                command[chat_index + 1]
+            )
+            input_path = Path(
+                command[input_index + 1]
+            )
+
+            self.assertEqual(
+                chat_path.parent.name,
+                "tool-home",
+            )
+            self.assertEqual(
+                input_path.parent.name,
+                "tool-home",
+            )
+            self.assertEqual(
+                source.read_text(
+                    encoding="utf-8",
+                ),
+                "VALUE = 1\n",
+            )
+
 
     def test_aider_tool_metadata_isolated_from_workspace(self):
         with tempfile.TemporaryDirectory() as folder:
