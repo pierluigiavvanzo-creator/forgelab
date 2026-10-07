@@ -1,8 +1,8 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-10-06  
-**Checkpoint:** PR #58 MERGED / next real Dental dashboard run pending  
-**Status:** PRE-MVP / Golden Path #1 real-product validation
+**Checkpoint date:** 2026-10-07  
+**Checkpoint:** real Dental run exposed cross-phase Aider timeout coupling / PR #60 open  
+**Status:** PRE-MVP / Golden Path #1 runtime remediation / HUMAN MERGE GATE
 
 ## 1. Binding product priority
 
@@ -59,13 +59,13 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`566ffa0cdc7b4f3212709bbb6efc290f553728e6`
+`795e0c0942dfbb2f80a628ee60d3e49a4825334f`
 
-This is the merge of PR #58:
+This is the merge of PR #59:
 
-`MVP-1: write valid empty YAML mapping for Aider config`
+`Docs: sync ForgeLab handover after PR #58`
 
-PR #58 is merged. Runtime PRs #37–#48 remain frozen and unmerged.
+PR #59 is documentation-only. Runtime code remains the PR #58 baseline until PR #60 is explicitly approved and merged. Runtime PRs #37–#48 remain frozen and unmerged.
 
 ## 5. Current integration state
 
@@ -82,7 +82,7 @@ Latest merged sequence:
 - PR #57 — Aider stderr/stdout preserved in terminal failure evidence;
 - PR #58 — valid empty YAML mapping written for isolated Aider config.
 
-There is no newer merged ForgeLab change after PR #58 at this checkpoint.
+PR #59 is a documentation-only merge after PR #58. No newer runtime change is merged at this checkpoint.
 
 ## 6. REUSE-FIRST implementation
 
@@ -519,24 +519,66 @@ Current evidence classification:
 
 No later verified Dental run after PR #58 was found at this checkpoint.
 
-## 15. Single next action
+## 15. Eighth real Dental dashboard run — Aider timeout root cause
 
-`RERUN_DENTAL_QUOTE_DASHBOARD_ON_MAIN_566FFA0`
+Run:
 
-Required execution:
+`run-a949ce0afbb9`
 
-1. synchronize local ForgeLab to `566ffa0cdc7b4f3212709bbb6efc290f553728e6`;
-2. start ForgeLab services once;
-3. submit the unchanged Dental Quote objective from the dashboard once;
-4. do not manually repair Dental target code;
-5. do not begin a Product Owner PowerShell diagnostic loop;
-6. inspect the dashboard decision/blocker evidence;
-7. if `READY_FOR_DECISION`, continue to Product Owner approval and visible app validation;
-8. if `CLOSED`, treat the newly surfaced terminal blocker as the next single product gap.
+Active local runner shown by dashboard:
 
-No new infrastructure milestone is authorized before this run.
+`566ffa0cdc7b...`
 
-## 16. Resume protocol
+Visible outcome:
+
+- status `CLOSED`;
+- gate `Repair`;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- blocker `PREWRITE_RECOVERY_EXHAUSTED`;
+- phase `implementation`;
+- final error `Aider initial pre-write correction did not complete successfully: exit=124, timed_out=True`.
+
+Interpretation:
+
+The PR #58 config-file bug is no longer the blocker. Aider starts and produces an initial candidate. ForgeLab then requests its one bounded pre-write correction, but the subprocess is terminated by the same 60-second timeout used for tests and ordinary routed model calls.
+
+Root cause in current runtime:
+
+`Dashboard timeout_seconds=60 -> MultiAgentRequest.timeout_seconds=60 -> every Aider EditorRequest.timeout_seconds=60`
+
+This is a cross-phase resource-contract bug. It is not a Dental-specific failure and should not be handled by manually raising a timeout in the dashboard.
+
+PR #60 remediation:
+
+- generic/test/provider timeout remains 60 seconds;
+- separate bounded `editor_timeout_seconds` defaults to 300 seconds;
+- API validates 60..600 seconds;
+- every Aider phase uses the editor timeout;
+- `ExecutionPlan.json` records both timeout classes;
+- human repair child-runs preserve the editor timeout;
+- top-level repair budget remains unchanged;
+- no additional retry, provider, dependency or Dental-specific logic is added.
+
+Candidate branch:
+
+`mvp1-aider-phase-timeout-policy`
+
+Candidate code commit:
+
+`10088be7142b67c3df61bac70e3a0421323563e5`
+
+PR:
+
+`#60 — MVP-1: separate bounded timeout for local Aider editor`
+
+## 16. Single next action
+
+`HUMAN_REVIEW_AIDER_PHASE_TIMEOUT_POLICY_PR_60`
+
+Do not perform another Dental rerun on the old runtime. Review PR #60 as one bounded Product Critical fix. After explicit merge approval and merge, synchronize local ForgeLab once and run the unchanged Dental objective from the dashboard.
+
+## 17. Resume protocol
 
 1. read `AGENTS_MASTER.md`;
 2. read `MANIFEST.md`;

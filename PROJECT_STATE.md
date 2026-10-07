@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-10-06
-**Current phase:** PRE-MVP / MVP Recovery Architecture Reset
+**Last updated:** 2026-10-07
+**Current phase:** PRE-MVP / Golden Path #1 runtime validation
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
@@ -11,9 +11,9 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `566ffa0cdc7b4f3212709bbb6efc290f553728e6` (merge of PR #58).
+Current canonical `main` at this checkpoint: `795e0c0942dfbb2f80a628ee60d3e49a4825334f` (merge of PR #59, documentation sync after PR #58).
 
-Current canonical `main`: `1fac126023444052623da0c8027cc7209522bbbb` (merge of PR #50 editor bakeoff harness).
+Runtime code on this main remains the PR #58 code baseline plus documentation-only PR #59.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
@@ -1131,6 +1131,42 @@ Evidence state:
 
 **PR #34 was merged on 2026-10-04; PR #49 subsequently merged the architecture reset on 2026-10-05. Post-PR34 runtime PRs #37–#48 remain frozen and unmerged.**
 
+## 2026-10-07 real Dental run — cross-phase timeout coupling
+
+Run:
+
+`run-a949ce0afbb9`
+
+Observed dashboard evidence:
+
+- status `CLOSED`;
+- gate `Repair`;
+- deterministic test result reported `FAIL` because no governed candidate reached testing;
+- repair attempts applied `0`;
+- provider cost `EUR 0`;
+- blocker `PREWRITE_RECOVERY_EXHAUSTED`;
+- phase `implementation`;
+- final error `Aider initial pre-write correction did not complete successfully: exit=124, timed_out=True`.
+
+Root cause:
+
+ForgeLab used the same generic `timeout_seconds=60` for deterministic tests, routed model calls, and every Aider subprocess. The Aider pre-write correction receives a larger correction context but was still terminated by the 60-second generic budget.
+
+Structural remediation candidate:
+
+- branch `mvp1-aider-phase-timeout-policy`;
+- PR #60;
+- code candidate `10088be7142b67c3df61bac70e3a0421323563e5`;
+- keep generic/test/provider timeout at 60 seconds;
+- introduce explicit bounded `editor_timeout_seconds=300`;
+- validate editor timeout in the 60..600 range;
+- apply it consistently to initial Aider implementation, initial pre-write correction, failed-test repair and semantic-review repair;
+- record both timeout classes in `ExecutionPlan.json`;
+- preserve editor timeout across human repair child-runs;
+- no extra retry, no paid provider, no Dental-specific logic.
+
+This change closes the identified timeout-coupling class rather than increasing the timeout of one Dental run manually.
+
 ## MVP gates
 
 - G1 Usability: materially demonstrated.
@@ -1141,6 +1177,6 @@ Evidence state:
 
 ## Single next action
 
-`RERUN_DENTAL_QUOTE_DASHBOARD_ON_MAIN_566FFA0`
+`HUMAN_REVIEW_AIDER_PHASE_TIMEOUT_POLICY_PR_60`
 
-Synchronize local ForgeLab to `566ffa0cdc7b4f3212709bbb6efc290f553728e6`, start services once, and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop. Use the dashboard's decision/blocker evidence as the next source of truth.
+Review PR #60 as one Product Critical runtime fix. Do not rerun Dental on the old runtime again. If PR #60 is approved and merged, synchronize local ForgeLab once and rerun the unchanged Dental Quote objective from the dashboard. Do not manually repair target code or start a diagnostic PowerShell loop.
