@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last updated:** 2026-10-08
-**Current phase:** PRE-MVP / post-PR64 lifecycle stabilization review
+**Current phase:** PRE-MVP / Windows Aider UTF-8 correction review
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
@@ -11,25 +11,27 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d` (merge of PR #64).
+Current canonical `main` at this checkpoint: `2227c2487b8858738db7bcf38cdcebeff4699c4f` (merge of PR #65).
 
 Runtime code on this main includes PR #60–#64: consolidated Aider boundary/preflight and asynchronous top-level run lifecycle, in addition to timeout, failure and tool-state isolation fixes.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
-## Verified checkpoint — 2026-10-08
+## Verified checkpoint — Windows Aider UTF-8, 2026-10-08
 
-- Canonical remote/local `main`: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; PR #64 is **MERGED** (2026-10-07).
-- Working branch: `fix/post-pr64-run-lifecycle-stabilization` from that clean baseline; its corrections require human review/merge.
-- Original focused suite on Windows/Python 3.11.9: **90/90 PASS**. Additional executable regressions demonstrated lifecycle defects on the baseline; existing test coverage alone was insufficient.
-- Candidate verification and command/exit evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
-- Correction [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65) is open, not merged. Code commit `62e284773bf252a59dfb66f4198411d57c404740`: 169 Python + 4 dashboard callback tests PASS; final Windows launcher/readiness/stability PASS with matching runtime SHA.
-- Aider 0.86.2 real CLI/version/flags, `pip check`, dependency fingerprint and launcher focused gate executed on Windows. API/dashboard readiness and six stability checks passed on isolated ports 8875/5273; the browser-opening step was deliberately omitted.
-- `main` stabilization verdict: **FAIL — reproduced lifecycle defects**. Candidate test success is not an integration/merge claim.
-- Dental Quote: **NOT PASS**, unchanged and not executed in this audit. Commercial evidence remains **C0**.
-- No remote CI PASS: `.github/workflows` is absent and the queried commit workflow list is empty.
+- Canonical fetched `main`: `2227c2487b8858738db7bcf38cdcebeff4699c4f`, containing merged PR #65. Fix branch: `fix/aider-windows-utf8-noninteractive`; code commit `08d1a7dccaa48d29f4d22d30422db1408d030be2`.
+- Observed `run-7e1ae59bf235/EditorFailure.json` records implementation failure, cp1252/U+FEFF, GitHub-report prompt and timeout 124. The old service on 8765 reports SHA `96b1083ecb2e67f79728338fdbaaa3ed6f3f948b`, not canonical main; its health SHA is not treated as proof of the historical run SHA.
+- Independently reproduced on canonical main with a disposable BOM fixture and the installed Aider 0.86.2 renderer/crash handler, without model calls: UnicodeEncodeError -> interactive report prompt -> exit 124 after the test's 10-second timeout. Three new focused adapter regressions failed before the fix.
+- Boundary-only correction: isolated child environment `PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8`; subprocess `stdin=DEVNULL`. No global environment change, BOM/source normalization, new dependency, paid provider, retry or timeout increase.
+- After correction: three adapter regressions PASS; real Aider BOM rendering exit 0 in 516 ms; controlled real Aider crash exit 1 in 563 ms, EOF, captured stdout/stderr, no browser-report attempt or timeout. Source bytes unchanged in both checks.
+- Adapter suite: 19 PASS. Orchestrator: 47 PASS, including real subprocess EOF -> governed EditorFailure.json -> CLOSED, one editor call, unchanged source. Python 3.11 compileall: exit 0.
+- Windows launcher gate: **PASS**, exit 0 on code commit `08d1a7d`: 102 Python tests (19 + 47 + 25 + 11), four dashboard callbacks, Aider 0.86.2 CLI preflight, pip check, production build, API/dashboard readiness and 6/6 stability checks; authenticated dashboard opened without a target run. Evidence: `.forgelab/runtime/aider-utf8-launcher.log`; BOM/crash evidence: `aider-bom-proof-baseline.json`, `aider-bom-proof.json`, `aider-crash-proof.json` in the same generated runtime directory.
+- One initial launcher invocation failed the existing API test `test_create_run_accepts_ai_generate_without_old_new` (FAILED instead of READY_FOR_DECISION). The isolated case and diagnostic 25-test API suite then passed; cause remains unproven and no speculative API fix was made. Logs: `aider-utf8-launcher-initial.log`, `utf8-api-diagnostic.log`, `utf8-api-suite-diagnostic.log`.
+- Final health SHA matched `08d1a7dccaa48d29f4d22d30422db1408d030be2`. All eight owned runtime processes were stopped after verification; 8875/5273 are free, and the old 8765/5173 processes were preserved. Subsequent commits only update documentation; executed runtime evidence refers to this immutable code commit.
+- Standard ports remain occupied by the old checkout; use the already-supported 8875/5273 parameters for this verification, preserve the old processes, and verify runtime SHA before any separately authorized target run. Dental unchanged and not run. PRE-MVP / C0 remains.
+- Separate launcher ownership/cleanup work is preserved locally on `fix/post-pr65-final-stabilization` at `ea00719`; it is not included in this narrow UTF-8 PR and has not been merged or published as a PR. Original best-effort egress and dependency-fingerprint limitations remain.
 
-The dated entries below are historical evidence. Their earlier candidate/next-action wording is superseded by this checkpoint and the single next action at the end.
+Earlier dated entries are historical; this checkpoint and the single next action supersede stale PR #65 review instructions.
 
 ## 2026-10-05 MVP recovery architecture reset
 
@@ -1348,6 +1350,6 @@ Residual risks recorded in the audit:
 
 ## Single next action
 
-`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
 
-Review the single correction PR from `fix/post-pr64-run-lifecycle-stabilization`. Do not run Dental on the defective canonical baseline. After explicit merge, verify the merged runtime and stabilization gate before deciding on a new unchanged Dental run.
+Review the single Windows Aider boundary PR. No automatic merge and no Dental run; target execution requires separate Product Owner authorization.

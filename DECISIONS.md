@@ -654,7 +654,7 @@ These residuals must not be silently upgraded to stronger guarantees in product 
 ## D-025 — Correct demonstrated asynchronous lifecycle gaps after PR #64
 
 **Date:** 2026-10-08
-**Status:** Proposed implementation — single correction branch `fix/post-pr64-run-lifecycle-stabilization`, human merge pending
+**Status:** Accepted and merged via PR #65 at `2227c2487b8858738db7bcf38cdcebeff4699c4f`
 **Class:** A — Product Critical
 
 The 90 existing focused tests pass on Windows/Python 3.11.9. New executable regressions demonstrate queue-reservation leakage after a failed status write, inconsistent summary/status observations, corrupt-status worker failure, repair concurrency bypass, lost browser-refresh connection, and missing terminal failure evidence in the dashboard.
@@ -662,3 +662,16 @@ The 90 existing focused tests pass on Windows/Python 3.11.9. New executable regr
 Use the existing local run slot for repair/decision exclusion; keep run status/list/artifacts coherent without treating a partially written summary as worker completion; retain connection credentials only in tab-scoped session storage; load evidence for all terminal states. Move dashboard form/artifact state updates to their originating events to resolve the executed lint failures. Add the behavioral dashboard regression gate to the launcher.
 
 Do not alter Aider, Dental target code, providers, repair budgets, ToolGateway or the human promotion gate. One branch and one PR; no auto-merge. Full evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). Original D-024 residual risks remain unchanged. PRE-MVP / C0 remains the product/commercial state.
+
+---
+
+## Windows Aider process encoding and non-interactive failure — 2026-10-08
+
+**Status:** Candidate correction; human merge pending
+**Class:** A — Product Critical
+
+Canonical main independently reproduces the observed U+FEFF/cp1252 failure with Aider 0.86.2. Its crash handler calls built-in input outside the normal yes-always CLI policy, so inherited interactive stdin can turn a crash into timeout 124.
+
+Force PYTHONUTF8=1 and PYTHONIOENCODING=utf-8 in the existing isolated subprocess environment; use subprocess.DEVNULL for stdin. Preserve source BOM bytes and stdout/stderr evidence. A crash then exits nonzero at EOF and follows the existing AIEditorExecutionError -> EditorFailure.json -> CLOSED path. No retries, provider/model change, timeout increase, dependency change or Dental edit.
+
+Executable evidence and the single review action are in PROJECT_STATE.md. The separate launcher-hardening checkpoint on fix/post-pr65-final-stabilization is preserved, not silently included or merged.

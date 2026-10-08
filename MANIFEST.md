@@ -336,6 +336,6 @@ One preferred next action with owner.
 
 ## 21. Immediate next action
 
-`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
 
-As of 2026-10-08, PR #64 is merged, but post-merge verification reproduced lifecycle defects. Review the single correction branch before another Dental run. Executed evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). The broader MVP objective above remains unchanged.
+PR #65 is merged at `2227c2487b8858738db7bcf38cdcebeff4699c4f`. Review the single `fix/aider-windows-utf8-noninteractive` correction: canonical main reproduced a Windows cp1252/BOM crash followed by an interactive Aider report prompt. Executed evidence and current gate: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run.

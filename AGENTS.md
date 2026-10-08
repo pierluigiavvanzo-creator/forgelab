@@ -60,6 +60,6 @@ Never erase historical architectural decisions; supersede them explicitly.
 
 ## Current single next action
 
-`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
 
-PR #64 is merged. Post-merge verification found demonstrated lifecycle defects; review the single correction branch `fix/post-pr64-run-lifecycle-stabilization`. Evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). Dental remains blocked on current `main`; do not start another infrastructure milestone or a target-product run before integrated stabilization PASS.
+PR #65 is merged at `2227c2487b8858738db7bcf38cdcebeff4699c4f`. Review the single `fix/aider-windows-utf8-noninteractive` correction: canonical main reproduced a Windows cp1252/BOM crash followed by an interactive Aider report prompt. Executed evidence and current gate: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run.
