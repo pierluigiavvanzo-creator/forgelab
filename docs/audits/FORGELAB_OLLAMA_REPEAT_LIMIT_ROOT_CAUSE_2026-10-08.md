@@ -56,7 +56,7 @@ Logs: `.forgelab/runtime/ollama-repeat-launcher.log`, `.forgelab/runtime/ollama-
 
 ## PR
 
-One branch and one PR targeting `main`; human review and merge required. No remote CI PASS is claimed. The verification API/dashboard processes were stopped only after proving their PID ownership and absence of non-terminal runs. Existing 8875/5273 listener PIDs remained unchanged. The temporary worktree registration and remaining files were removed; Windows long-path cleanup was required. Diagnostic evidence and this report are preserved in the primary repository.
+Published branch: `fix/ollama-repeat-limit-recovery`. Single [PR #67](https://github.com/pierluigiavvanzo-creator/forgelab/pull/67), OPEN and unmerged, targeting `main`. Human review and merge required. No remote CI PASS is claimed. The verification API/dashboard processes were stopped only after proving their PID ownership and absence of non-terminal runs. Existing 8875/5273 listener PIDs remained unchanged. The temporary worktree registration and remaining files were removed; Windows long-path cleanup was required. Diagnostic evidence and this report are preserved in the primary repository.
 
 ## RESIDUAL RISK
 
@@ -65,3 +65,5 @@ Passing JSON/Python syntax validation proves provider recovery, not satisfaction
 ## SINGLE NEXT ACTION
 
 `HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`
+
+Do not launch a new Dental run now: PR #67 is unmerged and the preserved running services still use the earlier source. After human merge and service restart from updated canonical main with its stabilization gate PASS, recommend exactly one unchanged Dental Golden Path run. No additional repair feedback, target edits or automatic promotion are authorized by this report.
