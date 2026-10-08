@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last updated:** 2026-10-08
-**Current phase:** PRE-MVP / UTF-8 fix technically PASS / Dental run INTERRUPTED / PR #66 human review
+**Current phase:** PRE-MVP / PR #66 merged / Ollama repeat-limit correction at human review gate
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
@@ -11,13 +11,21 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `2227c2487b8858738db7bcf38cdcebeff4699c4f` (merge of PR #65).
+Current canonical `main`: `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2` (merge of PR #66).
 
-Runtime code on this main includes PR #60–#65: consolidated Aider boundary/preflight, corrected asynchronous top-level run lifecycle, timeout, failure and tool-state isolation fixes.
+Runtime code on this main includes PR #60–#66: Aider boundary/preflight, asynchronous run lifecycle and Windows UTF-8/non-interactive editor fixes.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
-## Verified checkpoint — Windows Aider UTF-8 and interrupted Dental run, 2026-10-08
+## Current checkpoint — Ollama repeat-limit recovery, 2026-10-08
+
+The later repair `run-a9a839fc1963` closed with `PROVIDER_TRANSIENT_RETRY_EXHAUSTED` in `review-repair-1-semantic-correction`, after tests PASS and one repair, at EUR 0. Canonical-main replay reproduces repeat limit -> unload -> repeat limit. Context enlargement alone and prompt compaction alone fail.
+
+The bounded candidate `fix/ollama-repeat-limit-recovery` removes the duplicate diff from this prompt and explicitly states the existing JSON output contract. Live replay proves original repeat limit -> one unload -> corrected retry SUCCESS, accepted by the existing full-file and Python syntax validators. No generated output was applied to Dental. Provider/model/options, retry/repair budgets, timeouts, Reviewer/Security and promotion gates are unchanged.
+
+Evidence and limits: [root-cause report](docs/audits/FORGELAB_OLLAMA_REPEAT_LIMIT_ROOT_CAUSE_2026-10-08.md). PRE-MVP / C0 and Golden Path NOT PASS remain. Launcher hardening at `ea00719` is still unmerged. This checkpoint supersedes the historical UTF-8 merge instructions below.
+
+## Historical checkpoint — Windows Aider UTF-8 and interrupted Dental run, 2026-10-08
 
 - Canonical fetched `main`: `2227c2487b8858738db7bcf38cdcebeff4699c4f`, containing merged PR #65. PR #66 branch: `fix/aider-windows-utf8-noninteractive`; reviewed code commit `08d1a7dccaa48d29f4d22d30422db1408d030be2`; documentation-only head before this update: `d75cb21cdd1374ad4bc546d7cec67e8101fafc9d`.
 - Observed `run-7e1ae59bf235/EditorFailure.json` records implementation failure, cp1252/U+FEFF, GitHub-report prompt and timeout 124. The old service on 8765 reports SHA `96b1083ecb2e67f79728338fdbaaa3ed6f3f948b`, not canonical main; its health SHA is not treated as proof of the historical run SHA.
@@ -1351,6 +1359,6 @@ Residual risks recorded in the audit:
 
 ## Single next action
 
-`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
+`HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`
 
-Review the single Windows Aider boundary PR. No automatic merge and no Dental run; target execution requires separate Product Owner authorization.
+Review the single `fix/ollama-repeat-limit-recovery` PR. No automatic merge or Dental run; target execution requires separate Product Owner authorization.

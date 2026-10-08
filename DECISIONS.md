@@ -667,7 +667,7 @@ Do not alter Aider, Dental target code, providers, repair budgets, ToolGateway o
 
 ## Windows Aider process encoding and non-interactive failure — 2026-10-08
 
-**Status:** Candidate correction; human merge pending
+**Status:** Merged via PR #66 at `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`
 **Class:** A — Product Critical
 
 Canonical main independently reproduces the observed U+FEFF/cp1252 failure with Aider 0.86.2. Its crash handler calls built-in input outside the normal yes-always CLI policy, so inherited interactive stdin can turn a crash into timeout 124.
@@ -675,3 +675,14 @@ Canonical main independently reproduces the observed U+FEFF/cp1252 failure with 
 Force PYTHONUTF8=1 and PYTHONIOENCODING=utf-8 in the existing isolated subprocess environment; use subprocess.DEVNULL for stdin. Preserve source BOM bytes and stdout/stderr evidence. A crash then exits nonzero at EOF and follows the existing AIEditorExecutionError -> EditorFailure.json -> CLOSED path. No retries, provider/model change, timeout increase, dependency change or Dental edit.
 
 Executable evidence and the single review action are in PROJECT_STATE.md. The separate launcher-hardening checkpoint on fix/post-pr65-final-stabilization is preserved, not silently included or merged.
+
+---
+
+## Ollama semantic-correction output contract — 2026-10-08
+
+**Status:** Candidate correction; human merge pending
+**Class:** A — Product Critical
+
+The actual semantic-correction request reproduces repeat limit after the existing unload/retry. Context enlargement alone and prompt compaction alone fail. An explicit output contract with the duplicate diff removed recovers valid JSON/Python on the existing model. The demonstrated defect is in request construction; no claim is made about Ollama's internal token-loop mechanism.
+
+Reuse `_ai_developer_full_file_response_schema` inside the semantic-correction prompt and retain complete authorized files once. Keep objective/feedback, acceptance contract, review obligations, tests, validation, provider/model/options, bounded retry/repair budgets and human promotion unchanged. No target-product generation is applied during diagnosis. Evidence: [root-cause report](docs/audits/FORGELAB_OLLAMA_REPEAT_LIMIT_ROOT_CAUSE_2026-10-08.md).
