@@ -10,7 +10,7 @@ Its target workflow is:
 
 **PRE-MVP / MVP validation active**
 
-The technical foundation has passed M8.9 acceptance, including:
+Historical M8.9 acceptance passed the following checks (not the current test count):
 
 - 88 regression tests PASS;
 - API health PASS;
@@ -26,7 +26,9 @@ ForgeLab has **not yet passed a real product MVP test** on an external applicati
 
 ## Current priority
 
-`FORGELAB_MVP_1_REAL_APPLICATION_TEST`
+`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+
+PR #64 is merged at `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`. Post-merge verification found lifecycle defects despite the original focused tests passing. See [executed evidence](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md); Dental remains pending integrated stabilization PASS.
 
 The Product Owner should ideally be able to:
 

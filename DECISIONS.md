@@ -610,7 +610,7 @@ ForgeLab must prove that it can transform a Product Owner objective into a usabl
 ## D-024 — Stabilize Aider as a complete reusable component before another Dental run
 
 **Date:** 2026-10-07
-**Status:** Proposed — PR #64 human merge gate
+**Status:** Accepted — PR #64 merged at `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; local execution gate remains evidence-dependent
 **Class:** A — Product Critical
 
 Evidence:
@@ -648,3 +648,17 @@ Residual risk accepted for this gate:
 - transitive Aider dependencies are observable through a frozen snapshot/fingerprint but are not yet fully locked.
 
 These residuals must not be silently upgraded to stronger guarantees in product evidence.
+
+---
+
+## D-025 — Correct demonstrated asynchronous lifecycle gaps after PR #64
+
+**Date:** 2026-10-08
+**Status:** Proposed implementation — single correction branch `fix/post-pr64-run-lifecycle-stabilization`, human merge pending
+**Class:** A — Product Critical
+
+The 90 existing focused tests pass on Windows/Python 3.11.9. New executable regressions demonstrate queue-reservation leakage after a failed status write, inconsistent summary/status observations, corrupt-status worker failure, repair concurrency bypass, lost browser-refresh connection, and missing terminal failure evidence in the dashboard.
+
+Use the existing local run slot for repair/decision exclusion; keep run status/list/artifacts coherent without treating a partially written summary as worker completion; retain connection credentials only in tab-scoped session storage; load evidence for all terminal states. Move dashboard form/artifact state updates to their originating events to resolve the executed lint failures. Add the behavioral dashboard regression gate to the launcher.
+
+Do not alter Aider, Dental target code, providers, repair budgets, ToolGateway or the human promotion gate. One branch and one PR; no auto-merge. Full evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). Original D-024 residual risks remain unchanged. PRE-MVP / C0 remains the product/commercial state.

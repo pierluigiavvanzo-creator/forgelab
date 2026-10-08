@@ -60,6 +60,6 @@ Never erase historical architectural decisions; supersede them explicitly.
 
 ## Current single next action
 
-`FORGELAB_MVP_1_REAL_APPLICATION_TEST`
+`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
 
-Do not start a new infrastructure milestone unless that MVP test exposes a concrete blocker.
+PR #64 is merged. Post-merge verification found demonstrated lifecycle defects; review the single correction branch `fix/post-pr64-run-lifecycle-stabilization`. Evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). Dental remains blocked on current `main`; do not start another infrastructure milestone or a target-product run before integrated stabilization PASS.

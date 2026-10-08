@@ -5,6 +5,7 @@ import os
 import json
 import re
 import sys
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from threading import Lock, Thread
 from uuid import uuid4
@@ -281,10 +282,14 @@ class ForgeLabApi:
             directory /
             "RunStatus.json"
         )
-        if status_path.is_file():
-            return _read_json(
-                status_path
-            )
+        status = _read_json(status_path) if status_path.is_file() else {}
+        # A summary can appear before the worker has finished writing the
+        # remaining gate artifacts. Its presence alone must not end polling.
+        if status and (
+            status.get("terminal") is False
+            or status.get("status") in {"FAILED", "INTERRUPTED"}
+        ):
+            return status
 
         summary_path = (
             directory /
@@ -295,6 +300,7 @@ class ForgeLabApi:
                 summary_path
             )
             return {
+                **status,
                 "run_id": run_id,
                 "status": summary.get(
                     "status",
@@ -310,6 +316,9 @@ class ForgeLabApi:
                         "decision"
                     ),
             }
+
+        if status:
+            return status
 
         raise ApiError(
             "run has no status"
@@ -346,34 +355,8 @@ class ForgeLabApi:
                 directory /
                 "RunStatus.json"
             )
-            if summary_path.is_file():
-                summary = _read_json(
-                    summary_path
-                )
-                runs.append({
-                    "run_id":
-                        directory.name,
-                    "status":
-                        summary.get(
-                            "status",
-                            "UNKNOWN",
-                        ),
-                    "created_at":
-                        summary.get(
-                            "created_at"
-                        ),
-                    "decision":
-                        summary.get(
-                            "decision"
-                        ),
-                    "terminal": True,
-                })
-                continue
-
-            if status_path.is_file():
-                status = _read_json(
-                    status_path
-                )
+            if summary_path.is_file() or status_path.is_file():
+                status = self.run_status(directory.name)
                 runs.append({
                     "run_id":
                         directory.name,
@@ -417,6 +400,8 @@ class ForgeLabApi:
             for name in ARTIFACTS
             if (directory / name).is_file()
         }
+        if "RunStatus.json" in artifacts:
+            artifacts["RunStatus.json"] = self.run_status(run_id)
 
         for name in TEXT_ARTIFACTS:
             path = directory / name
@@ -757,7 +742,6 @@ class ForgeLabApi:
             run_id = (
                 f"run-{uuid4().hex[:12]}"
             )
-            self._active_run_id = run_id
 
             queued_status = {
                 "run_id": run_id,
@@ -775,10 +759,10 @@ class ForgeLabApi:
                 "allowed_paths":
                     target_paths,
             }
-            self._write_run_status(
-                run_id,
-                queued_status,
-            )
+            try:
+                self._write_run_status(run_id, queued_status)
+            except OSError as error:
+                raise ApiError(f"run could not be queued: {error}") from error
 
             worker = Thread(
                 target=self._execute_run,
@@ -794,6 +778,7 @@ class ForgeLabApi:
             )
 
             try:
+                self._active_run_id = run_id
                 worker.start()
             except RuntimeError as error:
                 self._active_run_id = None
@@ -892,7 +877,7 @@ class ForgeLabApi:
                 current = self.run_status(
                     run_id
                 )
-            except ApiError:
+            except (ApiError, json.JSONDecodeError, OSError):
                 current = {
                     "run_id": run_id,
                     "created_at":
@@ -922,7 +907,31 @@ class ForgeLabApi:
                 ):
                     self._active_run_id = None
 
+    @contextmanager
+    def _exclusive_operation(self, run_id: str):
+        # Decisions and synchronous human repairs share the same local slot
+        # as asynchronous submissions. Never hold the mutex while executing.
+        with self._run_lock:
+            if self._active_run_id is not None:
+                raise ApiConflict(
+                    "another ForgeLab run is already active: " + self._active_run_id
+                )
+            self._active_run_id = run_id
+        try:
+            yield
+        finally:
+            with self._run_lock:
+                self._active_run_id = None
+
     def request_repair(
+        self,
+        run_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        with self._exclusive_operation(run_id):
+            return self._request_repair(run_id, payload)
+
+    def _request_repair(
         self,
         run_id: str,
         payload: dict[str, Any],
@@ -1265,6 +1274,14 @@ class ForgeLabApi:
         }
 
     def stage_decision(
+        self,
+        run_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        with self._exclusive_operation(run_id):
+            return self._stage_decision(run_id, payload)
+
+    def _stage_decision(
         self,
         run_id: str,
         payload: dict[str, Any],

@@ -34,13 +34,13 @@ For Golden Path work:
 
 Current canonical `main`:
 
-`59aa35b15a86bd527cc1fc75df5863673ed8b811`
+`6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`
 
 ## NOW — A Product Critical
 
 ### Aider Integration Stabilization Gate — PR #64
 
-**Status:** HUMAN REVIEW / MERGE GATE
+**Status:** PR #64 MERGED / post-merge lifecycle defects reproduced / correction at human review gate
 
 The sequence PR #60–#63 proved that Aider integration must be validated as a complete reusable component rather than by repeated Dental target runs.
 
@@ -48,7 +48,7 @@ Binding gate before another Dental run:
 
 `FORGELAB_AIDER_INTEGRATION_STABILIZATION_GATE`
 
-Deliverables in one PR:
+Delivered by merged PR #64:
 
 1. stabilized reusable-editor process/filesystem/environment boundary;
 2. one centralized Aider execution contract across implementation and repair phases;
@@ -58,18 +58,11 @@ Deliverables in one PR:
 6. long-run API/dashboard lifecycle with immediate run id and observable status;
 7. formal audit and residual-risk register.
 
-Exit condition:
+Post-merge verification (2026-10-08): original 90 focused tests PASS on Windows/Python 3.11.9, but new executable regressions proved lifecycle defects. Corrections are isolated on `fix/post-pr64-run-lifecycle-stabilization`. Full executed evidence and the 16-PR hygiene proposal are in [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
 
-```text
-PR #64 MERGED
-  -> local sync once
-  -> Start-ForgeLab.ps1
-  -> [PASS] Aider stabilization gate
-  -> API/dashboard readiness PASS
-  -> exactly one unchanged Dental run
-```
+Single next action: `HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`. Review the one correction PR; no automatic merge. Dental stays blocked on current `main` until the corrections are integrated and the merged runtime gate is verified.
 
-Do not create another symptom-specific Aider PR before this gate is evaluated.
+The sections below retain the recovery rationale and future product sequence; they do not supersede this gate.
 
 ### MVP Recovery — Editor Boundary Reset
 
@@ -129,7 +122,7 @@ Harness gate completed:
 - compile-invalid candidates stop before tests;
 - deterministic scope/security/test evidence is produced;
 - focused verification: 10 / 10 PASS;
-- no Aider runtime dependency has been added.
+- historical harness checkpoint: no Aider runtime dependency had yet been added; the later merged launcher now provisions isolated Aider 0.86.2.
 
 PR #50 editor harness is MERGED.
 
@@ -148,7 +141,7 @@ Exit gate:
 7. after approval, launch and manually verify the Dental Quote application;
 8. only then mark Golden Path #1 PASS.
 
-### Golden Path 1 — Dental Quote resumes after bakeoff
+### Golden Path 1 — Dental Quote after integrated stabilization PASS
 
 Required Product Owner journey:
 
