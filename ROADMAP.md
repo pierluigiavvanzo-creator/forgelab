@@ -60,7 +60,7 @@ Delivered by merged PR #64:
 
 Post-merge verification (2026-10-08): original 90 focused tests PASS on Windows/Python 3.11.9, but new executable regressions proved lifecycle defects. Corrections are isolated on `fix/post-pr64-run-lifecycle-stabilization`. Full executed evidence and the 16-PR hygiene proposal are in [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
 
-Single next action: `HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`. Review the one correction PR; no automatic merge. Dental stays blocked on current `main` until the corrections are integrated and the merged runtime gate is verified.
+Single next action: `HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`. Review [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65); no automatic merge. Dental stays blocked on current `main` until the corrections are integrated and the merged runtime gate is verified.
 
 The sections below retain the recovery rationale and future product sequence; they do not supersede this gate.
 

@@ -12,6 +12,7 @@
 - Local HEAD and live `git ls-remote origin refs/heads/main`: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`.
 - GitHub PR #64: merged 2026-10-07 12:56:43 UTC, merge SHA matches HEAD.
 - One correction branch: `fix/post-pr64-run-lifecycle-stabilization`.
+- Single correction PR: [#65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65), open and unmerged. Verified code commit: `62e284773bf252a59dfb66f4198411d57c404740`.
 - Windows; PowerShell 7.6.5; supported launcher interpreter Python 3.11.9; default shell Python 3.14.5; Node 26.2.0; pnpm 11.25.0; actual installed Aider 0.86.2.
 - No `.github/workflows`. GitHub connector's commit workflow query returned an empty list (the connector filters PR-triggered workflows). No remote CI PASS is asserted.
 
@@ -67,6 +68,7 @@ $runtimeText = $runtimeText.Replace('$PSScriptRoot', "'C:\Users\NITRO\Documents\
 - Generated initial smoke run is an internal ForgeLab fixture, not Dental.
 - Local raw logs: `.forgelab/runtime/post-pr64-launcher.log`, `post-pr64-launcher-isolated.log`, `post-pr64-full-tests.log`; dependency snapshot `aider-freeze.txt`. These are generated local evidence, not committed credentials or target-product code.
 - Startup performed before commit reported the baseline HEAD even though candidate files were modified. It is candidate working-tree evidence, not proof that canonical main contains these fixes.
+- Final launcher verification was repeated on clean code commit `62e284773bf252a59dfb66f4198411d57c404740`: exit 0, 98 focused tests + 4 dashboard callback tests, production build, readiness and 6/6 stability checks PASS. A separate health request returned that exact runtime SHA; dashboard returned HTTP 200. Log: `.forgelab/runtime/post-pr64-launcher-final.log`. Subsequent changes only add this publication/evidence checkpoint to documentation.
 
 The dashboard behavioral tests execute the page's actual callbacks with browser/fetch doubles. They verify reconnect after fragment removal and polling termination/evidence loading; they are not a claim of a complete visual browser acceptance test.
 
@@ -163,4 +165,4 @@ Read-only GitHub inventory on 2026-10-08: **16 pre-existing open PRs**. Recommen
 
 ## Single next action
 
-**Review the single PR from `fix/post-pr64-run-lifecycle-stabilization`.** Do not run Dental on current canonical main. No recommendation for a new Dental run is issued in this report; that requires integrated stabilization PASS first.
+**Review [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65).** Do not run Dental on current canonical main. No recommendation for a new Dental run is issued in this report; that requires integrated stabilization PASS first.

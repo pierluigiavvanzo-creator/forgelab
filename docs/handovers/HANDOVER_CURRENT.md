@@ -10,6 +10,7 @@
 - Working branch: `fix/post-pr64-run-lifecycle-stabilization` from that clean baseline; its corrections require human review/merge.
 - Original focused suite on Windows/Python 3.11.9: **90/90 PASS**. Additional executable regressions demonstrated lifecycle defects on the baseline; existing test coverage alone was insufficient.
 - Candidate verification and command/exit evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
+- Correction [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65) is open, not merged. Code commit `62e284773bf252a59dfb66f4198411d57c404740`: 169 Python + 4 dashboard callback tests PASS; final Windows launcher/readiness/stability PASS with matching runtime SHA.
 - Aider 0.86.2 real CLI/version/flags, `pip check`, dependency fingerprint and launcher focused gate executed on Windows. API/dashboard readiness and six stability checks passed on isolated ports 8875/5273; the browser-opening step was deliberately omitted.
 - `main` stabilization verdict: **FAIL — reproduced lifecycle defects**. Candidate test success is not an integration/merge claim.
 - Dental Quote: **NOT PASS**, unchanged and not executed in this audit. Commercial evidence remains **C0**.
