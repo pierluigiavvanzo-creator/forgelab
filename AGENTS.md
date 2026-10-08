@@ -60,6 +60,6 @@ Never erase historical architectural decisions; supersede them explicitly.
 
 ## Current single next action
 
-`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
+`HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`
 
-PR #65 is merged at `2227c2487b8858738db7bcf38cdcebeff4699c4f`. Review the single `fix/aider-windows-utf8-noninteractive` correction: canonical main reproduced a Windows cp1252/BOM crash followed by an interactive Aider report prompt. Executed evidence and current gate: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run.
+PR #66 is merged at `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`. Review `fix/ollama-repeat-limit-recovery`. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run.

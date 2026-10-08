@@ -38,13 +38,13 @@ Current canonical `main`:
 
 ## NOW — A Product Critical
 
-### Windows Aider UTF-8 / non-interactive boundary
+### Ollama repeat-limit semantic-correction contract
 
-PR #65 is merged. A BOM/cp1252 crash followed by an interactive GitHub-report prompt was independently reproduced on canonical main using installed Aider 0.86.2, without a target-product run or model call.
+PR #66 is merged at `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`. The later repair's repeat limit was reproduced on main, including exhaustion after unload/retry.
 
-The single correction branch `fix/aider-windows-utf8-noninteractive` forces UTF-8 only in the isolated editor environment and closes editor stdin. Source BOM bytes, provider, scope, governance, retry budget and timeout policy remain unchanged. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md).
+The single correction branch `fix/ollama-repeat-limit-recovery` supplies the existing JSON output contract explicitly and removes the duplicate diff. Live recovery passes existing schema/syntax validation at EUR 0. Evidence: [root-cause report](docs/audits/FORGELAB_OLLAMA_REPEAT_LIMIT_ROOT_CAUSE_2026-10-08.md).
 
-Single next action: `HUMAN_REVIEW_AND_MERGE_UTF8_FIX`. No automatic merge or Dental run. Separate launcher hardening remains preserved on its local branch, outside this fix.
+Single next action: `HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`. No automatic merge or Dental run. Separate launcher hardening remains preserved on its local branch, outside this fix.
 
 The sections below retain recovery rationale and future product sequence; they do not supersede this gate.
 

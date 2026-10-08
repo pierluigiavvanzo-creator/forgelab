@@ -4327,9 +4327,6 @@ stderr:
 Current complete authorized files:
 {semantic_review_correction_files}
 
-Current full candidate diff:
-{diff[-8000:]}
-
 Rules:
 - resolve every latest MISSING, PARTIAL, or UNVERIFIED objective
   obligation that is actually supported by the objective and current
@@ -4356,6 +4353,9 @@ Rules:
 - do not claim tests have run.
 
 Return ONLY the required JSON object.
+Output contract: {json.dumps(_ai_developer_full_file_response_schema(target_paths))}
+Return schema_version "2.1", summary, and files with path, new_text,
+summary. new_text must contain complete replacement source, not a diff.
 """
 
                     task_defs.append(

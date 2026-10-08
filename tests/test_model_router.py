@@ -271,6 +271,16 @@ class ModelRouterTests(unittest.TestCase):
             "LOCAL PROVIDER RECOVERY",
             provider.prompts[1],
         )
+        self.assertEqual(
+            provider.prompts[1].count("original structured prompt"),
+            1,
+        )
+        self.assertEqual(provider.calls, 2)
+        self.assertEqual(ledger.spent, Decimal("0"))
+        self.assertEqual(
+            [record.attempt for record in ledger.records],
+            [1, 2],
+        )
         self.assertIn(
             "exactly one object matching the schema",
             provider.prompts[1],

@@ -1,8 +1,16 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-08
-**Checkpoint:** PR #65 merged / PR #66 UTF-8 gate PASS / Dental run interrupted
-**Status:** PRE-MVP / UTF-8 fix technically PASS / Dental run INTERRUPTED / HUMAN REVIEW GATE
+**Checkpoint:** PR #66 merged / Ollama repeat-limit recovery reproduced and corrected
+**Status:** PRE-MVP / Ollama correction at HUMAN REVIEW GATE / Golden Path NOT PASS
+
+## Current checkpoint — Ollama semantic correction
+
+Fetched local/remote main is `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`. The later real repair `run-a9a839fc1963` exhausted its provider retry in semantic correction. The single candidate branch `fix/ollama-repeat-limit-recovery` adds the missing explicit JSON contract and removes the duplicate diff in that prompt. Live reproduction: original repeat limit -> one unload -> corrected retry SUCCESS, with existing schema/syntax validation and EUR 0. No Dental output was applied and no Dental run was started.
+
+Full evidence and limits: [root-cause report](../audits/FORGELAB_OLLAMA_REPEAT_LIMIT_ROOT_CAUSE_2026-10-08.md). Model/options, retry/repair budgets, timeouts and human gates remain unchanged. Separate launcher hardening at `ea00719` is unmerged. The following UTF-8 checkpoint is historical.
+
+## Historical checkpoint — UTF-8 fix and interrupted run
 
 ## Verified checkpoint — Windows Aider UTF-8 and interrupted Dental run, 2026-10-08
 
@@ -771,15 +779,15 @@ This candidate has regression coverage but has not yet produced Windows/local PA
 
 ## 20. Single next action
 
-`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
+`HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`
 
-Review the single correction PR from `fix/aider-windows-utf8-noninteractive`. No merge or Dental submission is automated.
+Review the single correction PR from `fix/ollama-repeat-limit-recovery`. No merge or Dental submission is automated.
 
 ## 21. Resume protocol
 
 1. Read `AGENTS_MASTER.md`, `AGENTS.md`, `MANIFEST.md`, current project state, roadmap and decisions.
-2. Read [the executed post-PR64 audit](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
-3. Verify Git again: baseline `main = 2227c2487b8858738db7bcf38cdcebeff4699c4f`; PR #65 is merged, but do not assume the UTF-8 correction has merged.
+2. Read [the Ollama root-cause report](../audits/FORGELAB_OLLAMA_REPEAT_LIMIT_ROOT_CAUSE_2026-10-08.md).
+3. Verify Git again: baseline `main = d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`; PR #66 is merged. Do not assume the Ollama correction has merged.
 4. Preserve `DENTAL_QUOTE_AUTONOMY_GATE.md`, source protection, zero paid-provider cost and human promotion.
 5. Resolve the single current review/integration gate before recommending another unchanged Dental run.
 
