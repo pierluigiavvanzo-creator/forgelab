@@ -4111,6 +4111,23 @@ class MultiAgentTests(unittest.TestCase):
                 "negative-input validation is still",
                 correction_prompt,
             )
+            output_contract = json.loads(
+                correction_prompt.split("Output contract: ", 1)[1]
+                .splitlines()[0]
+            )
+            self.assertEqual(
+                output_contract,
+                invoke.call_args_list[5].args[3],
+            )
+            self.assertNotIn("Current full candidate diff:", correction_prompt)
+            self.assertEqual(
+                correction_prompt.count("--- BEGIN FILE calculator.py ---"),
+                1,
+            )
+            self.assertEqual(
+                correction_prompt.count("--- BEGIN FILE test_calculator.py ---"),
+                1,
+            )
             self.assertEqual(
                 invoke.call_args_list[5].args[3]
                 ["properties"]["schema_version"]["enum"],
