@@ -45,7 +45,7 @@ function Stop-ForgeLabDashboardPort {
         return
     }
 
-    $dashboardNodeModules = Join-Path $DashboardRoot "node_modules"
+    $dashboardNodeModules = (Join-Path $DashboardRoot "node_modules") + [IO.Path]::DirectorySeparatorChar
 
     # Cloudflare workerd spawned by this ForgeLab dashboard
     if (
@@ -65,14 +65,12 @@ function Stop-ForgeLabDashboardPort {
             $parent.CommandLine -match "wrangler" -and
             $parent.CommandLine -match "dist[/\\]server[/\\]wrangler\.json"
         ) {
-            & taskkill.exe /PID $parent.ProcessId /T /F | Out-Null
-
-            if ($LASTEXITCODE -ne 0) {
-                throw "Impossibile arrestare Wrangler ForgeLab."
-            }
+            $owner = Get-RecordedForgeLabProcess -Role "dashboard_launcher"
+            if ($owner) { Stop-ForgeLabProcessTree -ProcessId $owner.ProcessId }
+            else { Stop-ForgeLabProcessTree -ProcessId $parent.ProcessId }
         }
         else {
-            Stop-Process -Id $proc.ProcessId -Force
+            Stop-ForgeLabProcessTree -ProcessId $proc.ProcessId
         }
 
         Start-Sleep -Seconds 1
@@ -82,13 +80,9 @@ function Stop-ForgeLabDashboardPort {
     # Previous vinext/vite ForgeLab development runtime
     if (
         $proc.Name -match "^node(\.exe)?$" -and
-        (
-            $proc.CommandLine -match "run-framework\.mjs" -or
-            $proc.CommandLine -match "vinext" -or
-            $proc.CommandLine -match "vite"
-        )
+        (Get-RecordedForgeLabProcess -Role "dashboard_launcher" -ExpectedId $proc.ProcessId)
     ) {
-        Stop-Process -Id $proc.ProcessId -Force
+        Stop-ForgeLabProcessTree -ProcessId $proc.ProcessId
         Start-Sleep -Seconds 1
         return
     }
@@ -106,6 +100,10 @@ function Stop-ForgeLabApi {
         return
     }
 
+    if (-not (Get-RecordedForgeLabProcess -Role "api" -ExpectedId $proc.ProcessId)) {
+        throw "Porta API $Port occupata da processo non verificato come ForgeLab."
+    }
+
     try {
         $health = Invoke-RestMethod `
             -Uri "http://127.0.0.1:$Port/health" `
@@ -115,7 +113,7 @@ function Stop-ForgeLabApi {
             $health.status -eq "ok" -and
             $health.version -eq "0.9.1"
         ) {
-            Stop-Process -Id $proc.ProcessId -Force
+            Stop-ForgeLabProcessTree -ProcessId $proc.ProcessId
             Start-Sleep -Seconds 1
             return
         }
@@ -123,6 +121,32 @@ function Stop-ForgeLabApi {
     catch {}
 
     throw "Porta API $Port occupata da processo non verificato come ForgeLab."
+}
+
+
+function Get-RecordedForgeLabProcess {
+    param([string]$Role, [int]$ExpectedId = 0)
+
+    # PID alone is insufficient: Windows can reuse it after the old runtime exits.
+    try {
+        $record = Get-Content (Join-Path $RuntimeRoot "runtime.json") -Raw | ConvertFrom-Json
+        $recordedId = $record."${Role}_pid"
+        $recordedStart = $record."${Role}_start_time"
+        if (-not $recordedId -or -not $recordedStart) { return $null }
+        if ($ExpectedId -and $recordedId -ne $ExpectedId) { return $null }
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId=$recordedId" -ErrorAction Stop
+        if ($process -and $process.CreationDate.ToUniversalTime() -eq ([datetime]$recordedStart).ToUniversalTime()) {
+            return $process
+        }
+    } catch {}
+    return $null
+}
+
+
+function Stop-ForgeLabProcessTree {
+    param([int]$ProcessId)
+    & taskkill.exe /PID $ProcessId /T /F | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Impossibile arrestare il process tree ForgeLab PID $ProcessId." }
 }
 
 
@@ -291,6 +315,8 @@ foreach ($pattern in $AiderGatePatterns) {
 }
 
 Write-Host "[PASS] Aider stabilization gate"
+& (Get-Process -Id $PID).Path -NoProfile -File (Join-Path $ProjectRoot "tests\test_launcher_lifecycle.ps1")
+if ($LASTEXITCODE -ne 0) { throw "Launcher lifecycle gate fallito." }
 $env:FORGELAB_AIDER_EXECUTABLE = $AiderExe
 $env:FORGELAB_OLLAMA_URL = "http://127.0.0.1:11434"
 
@@ -428,6 +454,10 @@ Remove-Item `
 # START API
 # ---------------------------------------------------------
 
+# BEGIN OWNED RUNTIME
+$ApiProcess = $null
+$DashboardProcess = $null
+try {
 $ApiArgs = @(
     "-m",
     "forgelab",
@@ -522,9 +552,6 @@ if (-not $ApiReady) {
         Get-Content $ApiStdErr -Tail 100
     }
 
-    Stop-Process -Id $ApiProcess.Id -Force -ErrorAction SilentlyContinue
-    Stop-Process -Id $DashboardProcess.Id -Force -ErrorAction SilentlyContinue
-
     throw "ForgeLab API non ha superato readiness."
 }
 
@@ -568,9 +595,6 @@ if (-not $DashboardReady) {
     if (Test-Path $DashboardStdErr) {
         Get-Content $DashboardStdErr -Tail 100
     }
-
-    Stop-Process -Id $ApiProcess.Id -Force -ErrorAction SilentlyContinue
-    Stop-Process -Id $DashboardProcess.Id -Force -ErrorAction SilentlyContinue
 
     throw "ForgeLab production dashboard non ha superato readiness."
 }
@@ -650,8 +674,11 @@ $Metadata = [ordered]@{
     api = $ApiBase
     dashboard = $DashboardOrigin
     api_pid = $Listener8765.OwningProcess
+    api_start_time = (Get-CimInstance Win32_Process -Filter "ProcessId=$($ApiProcess.Id)").CreationDate.ToUniversalTime().ToString("o")
     dashboard_listener_pid = $Listener5173.OwningProcess
     dashboard_launcher_pid = $DashboardProcess.Id
+    dashboard_launcher_start_time = (Get-CimInstance Win32_Process -Filter "ProcessId=$($DashboardProcess.Id)").CreationDate.ToUniversalTime().ToString("o")
+    runtime_sha = $RuntimeSha
     mode = "production-local"
     aider_version = $AiderVersion
     aider_dependency_fingerprint = $AiderFreezeSha256
@@ -663,6 +690,22 @@ $Metadata |
     Set-Content `
         (Join-Path $RuntimeRoot "runtime.json") `
         -Encoding UTF8
+
+} catch {
+    # All startup failures, including stability/metadata failures, own the same cleanup.
+    $startupFailure = $_
+    foreach ($ownedProcess in @($DashboardProcess, $ApiProcess)) {
+        if ($ownedProcess) {
+            try { Stop-ForgeLabProcessTree -ProcessId $ownedProcess.Id }
+            catch { Write-Warning $_.Exception.Message }
+        }
+    }
+    throw $startupFailure
+} finally {
+    $env:FORGELAB_API_TOKEN = $null
+    $env:FORGELAB_AIDER_EXECUTABLE = $null
+    $env:FORGELAB_RUNTIME_SHA = $null
+}
 
 
 # ---------------------------------------------------------
