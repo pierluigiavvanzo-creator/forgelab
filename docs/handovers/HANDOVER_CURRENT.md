@@ -1,22 +1,23 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-08
-**Checkpoint:** PR #64 merged / post-merge review found lifecycle defects / one correction branch
-**Status:** PRE-MVP / canonical baseline stabilization FAIL / correction HUMAN REVIEW GATE
+**Checkpoint:** PR #65 merged / final launcher correction at human review
+**Status:** PRE-MVP / candidate stabilization PASS / correction HUMAN REVIEW GATE
 
-## Verified checkpoint — 2026-10-08
+## Verified checkpoint — post-PR65, 2026-10-08
 
-- Canonical remote/local `main`: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; PR #64 is **MERGED** (2026-10-07).
-- Working branch: `fix/post-pr64-run-lifecycle-stabilization` from that clean baseline; its corrections require human review/merge.
-- Original focused suite on Windows/Python 3.11.9: **90/90 PASS**. Additional executable regressions demonstrated lifecycle defects on the baseline; existing test coverage alone was insufficient.
-- Candidate verification and command/exit evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
-- Correction [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65) is open, not merged. Code commit `62e284773bf252a59dfb66f4198411d57c404740`: 169 Python + 4 dashboard callback tests PASS; final Windows launcher/readiness/stability PASS with matching runtime SHA.
-- Aider 0.86.2 real CLI/version/flags, `pip check`, dependency fingerprint and launcher focused gate executed on Windows. API/dashboard readiness and six stability checks passed on isolated ports 8875/5273; the browser-opening step was deliberately omitted.
-- `main` stabilization verdict: **FAIL — reproduced lifecycle defects**. Candidate test success is not an integration/merge claim.
-- Dental Quote: **NOT PASS**, unchanged and not executed in this audit. Commercial evidence remains **C0**.
-- No remote CI PASS: `.github/workflows` is absent and the queried commit workflow list is empty.
+- Fetched canonical `main`: `2227c2487b8858738db7bcf38cdcebeff4699c4f`, clean and containing merged PR #65. The merged tree equals PR #65 head `a3d906e`.
+- One correction branch: `fix/post-pr65-final-stabilization`; runtime code commit `d5bbf66a23baabf06da6203227dd98e4a5603e06`. Human review/merge remains required.
+- **B — material launcher defects reproduced:** foreign Vite/API processes could be stopped without proven ownership; the workerd directory-prefix check accepted a sibling directory; stability failure leaked owned process trees. Four executable regressions failed before the correction.
+- Correction: exact directory boundary, recorded PID + creation-time ownership for API/development runtime, tree cleanup on partial startup/readiness/stability failure. Seven launcher regressions now PASS on PowerShell 7 and Windows PowerShell 5.1. No Aider/API/dashboard application code changed.
+- Python 3.11.9 focused suite: **98 PASS** (16 adapter + 46 orchestrator + 25 API + 11 dashboard source checks). Dashboard executable callbacks: **4 PASS**. `compileall`, TypeScript, build and lint: exit 0; two existing hook warnings deferred.
+- Real `Start-ForgeLab.ps1 -ApiPort 8875 -DashboardPort 5273`: exit 0; Aider 0.86.2 version/CLI preflight, `pip check`, launcher regressions, focused tests, dashboard callbacks, build, readiness and **6/6 stability checks PASS**. Authenticated dashboard opening executed; no target run submitted.
+- Standard 5173 belongs to a still-running workerd from the old `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1` checkout; its API on 8765 reports SHA `96b1083ecb2e67f79728338fdbaaa3ed6f3f948b`. Standard-port startup correctly refused it without termination. Existing port parameters were used for verification; no permanent workaround introduced.
+- Evidence log: `.forgelab/runtime/post-pr65-launcher-final.log`. Health SHA matched code commit `d5bbf66`; real cleanup removed all eight owned processes and freed 8875/5273 while preserving old listeners. Work was preserved before switching to the subsequently requested UTF-8 task; no PR was opened for this branch.
+- Candidate stabilization: **PASS**, not an integrated-main or Dental product PASS. Dental target unchanged and not run; no paid provider, dependency addition, automatic merge or frozen-PR cleanup. PRE-MVP / C0 remains.
+- Residuals: original Aider best-effort proxy isolation and unlocked transitive fingerprint remain; two lint warnings are debt; legacy runtimes without creation-time metadata are refused rather than guessed to be owned. The old checkout must not be mistaken for the candidate runtime.
 
-The dated entries below are historical evidence. Their earlier candidate/next-action wording is superseded by this checkpoint and the single next action at the end.
+The dated entries below are historical evidence. This checkpoint and the single next action supersede earlier candidate/next-action wording.
 
 ## 1. Binding product priority
 
@@ -768,15 +769,15 @@ This candidate has regression coverage but has not yet produced Windows/local PA
 
 ## 20. Single next action
 
-`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+`HUMAN_REVIEW_POST_PR65_FINAL_STABILIZATION`
 
-Review the single correction PR from `fix/post-pr64-run-lifecycle-stabilization`. No merge or Dental submission is automated.
+Review the single correction PR from `fix/post-pr65-final-stabilization`. No merge or Dental submission is automated.
 
 ## 21. Resume protocol
 
 1. Read `AGENTS_MASTER.md`, `AGENTS.md`, `MANIFEST.md`, current project state, roadmap and decisions.
 2. Read [the executed post-PR64 audit](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
-3. Verify Git again: baseline `main = 6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; do not assume the correction branch has merged.
+3. Verify Git again: baseline `main = 2227c2487b8858738db7bcf38cdcebeff4699c4f`; PR #65 is merged, but do not assume the final launcher correction has merged.
 4. Preserve `DENTAL_QUOTE_AUTONOMY_GATE.md`, source protection, zero paid-provider cost and human promotion.
 5. Resolve the single current review/integration gate before recommending another unchanged Dental run.
 

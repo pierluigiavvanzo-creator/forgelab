@@ -336,6 +336,6 @@ One preferred next action with owner.
 
 ## 21. Immediate next action
 
-`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+`HUMAN_REVIEW_POST_PR65_FINAL_STABILIZATION`
 
-As of 2026-10-08, PR #64 is merged, but post-merge verification reproduced lifecycle defects. Review the single correction branch before another Dental run. Executed evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). The broader MVP objective above remains unchanged.
+PR #65 is merged at `2227c2487b8858738db7bcf38cdcebeff4699c4f`. Post-merge verification found launcher process-ownership/cleanup defects; review the single correction branch `fix/post-pr65-final-stabilization`. Candidate stabilization PASS and executed evidence are recorded in [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run; Dental requires verified integration and separate Product Owner authorization.

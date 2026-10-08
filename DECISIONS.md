@@ -654,7 +654,7 @@ These residuals must not be silently upgraded to stronger guarantees in product 
 ## D-025 — Correct demonstrated asynchronous lifecycle gaps after PR #64
 
 **Date:** 2026-10-08
-**Status:** Proposed implementation — single correction branch `fix/post-pr64-run-lifecycle-stabilization`, human merge pending
+**Status:** Accepted and merged via PR #65 at `2227c2487b8858738db7bcf38cdcebeff4699c4f`
 **Class:** A — Product Critical
 
 The 90 existing focused tests pass on Windows/Python 3.11.9. New executable regressions demonstrate queue-reservation leakage after a failed status write, inconsistent summary/status observations, corrupt-status worker failure, repair concurrency bypass, lost browser-refresh connection, and missing terminal failure evidence in the dashboard.
@@ -662,3 +662,17 @@ The 90 existing focused tests pass on Windows/Python 3.11.9. New executable regr
 Use the existing local run slot for repair/decision exclusion; keep run status/list/artifacts coherent without treating a partially written summary as worker completion; retain connection credentials only in tab-scoped session storage; load evidence for all terminal states. Move dashboard form/artifact state updates to their originating events to resolve the executed lint failures. Add the behavioral dashboard regression gate to the launcher.
 
 Do not alter Aider, Dental target code, providers, repair budgets, ToolGateway or the human promotion gate. One branch and one PR; no auto-merge. Full evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). Original D-024 residual risks remain unchanged. PRE-MVP / C0 remains the product/commercial state.
+
+---
+
+## D-026 — Verify launcher ownership and clean failed startup process trees
+
+**Date:** 2026-10-08
+**Status:** Candidate verified; human review/merge pending
+**Class:** A — Product Critical
+
+Post-PR65 regression execution proved that generic Vite command matching, health-only API matching and an unbounded workerd directory prefix could terminate unverified processes. A simulated stability failure also left both owned process trees running.
+
+Restrict workerd paths to the actual node_modules directory; use checkout-local PID plus creation-time metadata for API/development process ownership; clean every owned startup tree on failure, including partial startup. Refuse legacy/unproven ownership. Seven executable regressions cover foreign processes, sibling prefixes, valid/reused PIDs and partial/stability failure cleanup, and run in the launcher gate.
+
+Actual Windows full startup gate passed on existing configurable ports 8875/5273; original 5173/8765 processes belong to the old checkout and were preserved. This does not authorize a Dental submission or merge. Aider, application lifecycle, ToolGateway, review/security, repair budget and zero-paid-provider policy are unchanged. Evidence and next action: PROJECT_STATE.md.

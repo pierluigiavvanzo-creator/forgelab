@@ -26,9 +26,9 @@ ForgeLab has **not yet passed a real product MVP test** on an external applicati
 
 ## Current priority
 
-`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+`HUMAN_REVIEW_POST_PR65_FINAL_STABILIZATION`
 
-PR #64 is merged at `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`. Post-merge verification found lifecycle defects despite the original focused tests passing. See [executed evidence](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md); Dental remains pending integrated stabilization PASS.
+PR #65 is merged at `2227c2487b8858738db7bcf38cdcebeff4699c4f`. Post-merge verification found launcher process-ownership/cleanup defects; review the single correction branch `fix/post-pr65-final-stabilization`. Candidate stabilization PASS and executed evidence are recorded in [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run; Dental requires verified integration and separate Product Owner authorization.
 
 The Product Owner should ideally be able to:
 
