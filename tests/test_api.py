@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from forgelab.api import ApiError, make_server
+from forgelab.api import ApiConflict, ApiError, ForgeLabApi, make_server
 from forgelab.editor_adapter import EditorResult
 from forgelab.model_router import ProviderResponse
 from forgelab.runner import RunRequest, run_isolated
@@ -1580,6 +1580,111 @@ class ApiTests(unittest.TestCase):
                 host="0.0.0.0",
                 port=0,
             )
+
+
+class RunLifecycleTests(unittest.TestCase):
+    make_demo_repo = ApiTests.make_demo_repo
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = Path(self.folder.name)
+        self.api = ForgeLabApi(self.root / "runs", TOKEN, "http://localhost:5173")
+        self.repo = self.make_demo_repo()
+        self.payload = {
+            "repository": str(self.repo),
+            "objective": "Fix calculator addition",
+            "change": {"operation": "replace_text", "path": "calculator.py",
+                       "old": "return a - b", "new": "return a + b"},
+            "test_command": [sys.executable, "-m", "unittest"],
+        }
+
+    def test_failed_queue_write_releases_reservation(self):
+        with patch.object(self.api, "_write_run_status", side_effect=OSError("disk full")):
+            with self.assertRaises((ApiError, OSError)):
+                self.api.create_run(self.payload)
+        self.assertIsNone(self.api._active_run_id)
+
+    def test_status_reflects_human_decision_in_summary(self):
+        self.api._write_run_status("run-decided", {
+            "run_id": "run-decided", "status": "READY_FOR_DECISION", "terminal": True,
+        })
+        (self.api.run_dir("run-decided") / "RunSummary.json").write_text(
+            json.dumps({"status": "DONE", "decision": "APPROVE"}), encoding="utf-8",
+        )
+        status = self.api.run_status("run-decided")
+        self.assertEqual(status["status"], "DONE")
+        self.assertEqual(status["decision"], "APPROVE")
+
+    def test_corrupt_status_during_worker_failure_becomes_terminal(self):
+        self.api._write_run_status("run-corrupt", {"status": "QUEUED"})
+        (self.api.run_dir("run-corrupt") / "RunStatus.json").write_text("{", encoding="utf-8")
+        self.api._active_run_id = "run-corrupt"
+        self.api._execute_run("run-corrupt", None)
+        self.assertTrue(self.api.run_status("run-corrupt")["terminal"])
+        self.assertEqual(self.api.run_status("run-corrupt")["status"], "FAILED")
+        self.assertIsNone(self.api._active_run_id)
+
+    def test_repair_cannot_bypass_active_run(self):
+        directory = self.api.runs_root / "run-parent"
+        directory.mkdir()
+        (directory / "ExecutionPlan.json").write_text(json.dumps({
+            "repository": str(self.repo), "objective": "Fix calculator addition",
+            "change_operation": "ai_generate", "allowed_paths": ["calculator.py"],
+            "test_command": [sys.executable, "-m", "unittest"],
+        }), encoding="utf-8")
+        (directory / "GateDecision.json").write_text(
+            json.dumps({"decision": "PENDING"}), encoding="utf-8",
+        )
+        self.api._active_run_id = "run-other"
+        with patch("forgelab.api.run_multi_agent", side_effect=AssertionError("concurrent execution")) as run:
+            with self.assertRaises(ApiConflict):
+                self.api.request_repair("run-parent", {
+                    "actor": "Product Owner", "feedback": "Complete the original objective",
+                })
+            run.assert_not_called()
+
+    def test_new_run_and_decision_cannot_bypass_repair_slot(self):
+        with self.api._exclusive_operation("run-parent"):
+            with self.assertRaises(ApiConflict):
+                self.api.create_run(self.payload)
+            with self.assertRaises(ApiConflict):
+                self.api.stage_decision("run-parent", {"actor": "Owner", "decision": "approve"})
+        self.assertIsNone(self.api._active_run_id)
+
+    def test_worker_start_failure_is_durable_and_releases_slot(self):
+        with patch("forgelab.api.Thread.start", side_effect=RuntimeError("thread unavailable")):
+            with self.assertRaises(ApiError):
+                self.api.create_run(self.payload)
+        self.assertIsNone(self.api._active_run_id)
+        status = self.api.list_runs()[0]
+        self.assertEqual(status["status"], "FAILED")
+        self.assertTrue(status["terminal"])
+
+    def test_restart_prefers_completed_summary_to_transient_status(self):
+        self.api._write_run_status("run-completed", {"status": "RUNNING", "terminal": False})
+        (self.api.run_dir("run-completed") / "RunSummary.json").write_text(
+            json.dumps({"status": "READY_FOR_DECISION", "decision": "Human gate pending"}),
+            encoding="utf-8",
+        )
+        recovered = ForgeLabApi(self.api.runs_root, TOKEN, "http://localhost:5173")
+        status = recovered.run_status("run-completed")
+        self.assertEqual(status["status"], "READY_FOR_DECISION")
+        self.assertTrue(status["terminal"])
+
+    def test_partial_summary_does_not_finish_live_worker_or_hide_failure(self):
+        self.api._write_run_status("run-partial", {"status": "RUNNING", "terminal": False})
+        (self.api.run_dir("run-partial") / "RunSummary.json").write_text(
+            json.dumps({"status": "READY_FOR_DECISION"}), encoding="utf-8",
+        )
+        self.assertFalse(self.api.run_status("run-partial")["terminal"])
+        self.assertFalse(self.api.list_runs()[0]["terminal"])
+        self.api._write_run_status("run-partial", {
+            "status": "FAILED", "terminal": True, "error": "final artifact write failed",
+        })
+        self.assertEqual(self.api.run_status("run-partial")["status"], "FAILED")
+        self.assertEqual(self.api.list_runs()[0]["status"], "FAILED")
+        self.assertEqual(self.api.artifacts("run-partial")["RunStatus.json"]["status"], "FAILED")
 
 
 if __name__ == "__main__":

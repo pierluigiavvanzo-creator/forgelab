@@ -1,8 +1,22 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-10-07  
-**Checkpoint:** PR #63 merged / complete Aider stabilization sweep built / PR #64 open  
-**Status:** PRE-MVP / Golden Path #1 Aider stabilization / HUMAN MERGE GATE
+**Checkpoint date:** 2026-10-08
+**Checkpoint:** PR #64 merged / post-merge review found lifecycle defects / one correction branch
+**Status:** PRE-MVP / canonical baseline stabilization FAIL / correction HUMAN REVIEW GATE
+
+## Verified checkpoint — 2026-10-08
+
+- Canonical remote/local `main`: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; PR #64 is **MERGED** (2026-10-07).
+- Working branch: `fix/post-pr64-run-lifecycle-stabilization` from that clean baseline; its corrections require human review/merge.
+- Original focused suite on Windows/Python 3.11.9: **90/90 PASS**. Additional executable regressions demonstrated lifecycle defects on the baseline; existing test coverage alone was insufficient.
+- Candidate verification and command/exit evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
+- Correction [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65) is open, not merged. Code commit `62e284773bf252a59dfb66f4198411d57c404740`: 169 Python + 4 dashboard callback tests PASS; final Windows launcher/readiness/stability PASS with matching runtime SHA.
+- Aider 0.86.2 real CLI/version/flags, `pip check`, dependency fingerprint and launcher focused gate executed on Windows. API/dashboard readiness and six stability checks passed on isolated ports 8875/5273; the browser-opening step was deliberately omitted.
+- `main` stabilization verdict: **FAIL — reproduced lifecycle defects**. Candidate test success is not an integration/merge claim.
+- Dental Quote: **NOT PASS**, unchanged and not executed in this audit. Commercial evidence remains **C0**.
+- No remote CI PASS: `.github/workflows` is absent and the queried commit workflow list is empty.
+
+The dated entries below are historical evidence. Their earlier candidate/next-action wording is superseded by this checkpoint and the single next action at the end.
 
 ## 1. Binding product priority
 
@@ -59,15 +73,15 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`59aa35b15a86bd527cc1fc75df5863673ed8b811`
+`6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`
 
-This is the merge of PR #63:
+This is the merge of PR #64:
 
-`MVP-1: route Aider history files to tool home`
+`MVP-1: complete Aider integration stabilization gate`
 
-PR #60–#63 are merged. Runtime PRs #37–#48 remain frozen and unmerged. PR #64 is the only active Aider stabilization candidate and must be evaluated as one consolidated milestone.
+PR #60–#64 are merged. Runtime PRs #37–#48 remain frozen/unmerged. The only current correction branch is `fix/post-pr64-run-lifecycle-stabilization`; see the checkpoint evidence above.
 
-## 5. Current integration state
+## 5. Historical integration sequence (superseded by current checkpoint)
 
 The active Aider/Dental integration chain through PR #58 is merged to `main`.
 
@@ -82,7 +96,7 @@ Latest merged sequence:
 - PR #57 — Aider stderr/stdout preserved in terminal failure evidence;
 - PR #58 — valid empty YAML mapping written for isolated Aider config.
 
-PR #59 is a documentation-only merge after PR #58. No newer runtime change is merged at this checkpoint.
+PR #59 was a documentation-only merge after PR #58. PR #60–#64 subsequently merged timeout/failure/isolation and consolidated lifecycle stabilization.
 
 ## 6. REUSE-FIRST implementation
 
@@ -108,13 +122,7 @@ Dashboard
   -> dashboard human gate
 ```
 
-Aider is only the initial Developer editing engine in this candidate.
-
-Existing ForgeLab repair governance remains available. If Aider fails pre-write and ForgeLab uses its existing one bounded custom repair, the artifact records:
-
-`fallback = custom_prewrite_repair`
-
-This preserves truthful attribution.
+All four Aider phases now use `_run_aider_editor`: implementation, initial pre-write correction, failed-test repair and semantic-review repair. No custom-editor fallback is claimed for those Aider phases.
 
 No additional recovery catalogue from frozen PRs #37–#48 is imported.
 
@@ -760,32 +768,16 @@ This candidate has regression coverage but has not yet produced Windows/local PA
 
 ## 20. Single next action
 
-`HUMAN_REVIEW_AIDER_INTEGRATION_STABILIZATION_PR_64`
+`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
 
-Do not submit another Dental run.
-
-If PR #64 is explicitly approved and merged:
-
-1. synchronize local ForgeLab to the new canonical main;
-2. run `Start-ForgeLab.ps1`;
-3. require `[PASS] Aider stabilization gate`;
-4. confirm dashboard/API readiness and runtime SHA;
-5. submit the unchanged Dental objective exactly once.
-
-If the launcher gate fails, stop before Dental and use the failing focused regression as the blocker.
+Review the single correction PR from `fix/post-pr64-run-lifecycle-stabilization`. No merge or Dental submission is automated.
 
 ## 21. Resume protocol
 
-1. read `AGENTS_MASTER.md`;
-2. read `MANIFEST.md`;
-3. read `PROJECT_STATE.md`;
-4. read `ROADMAP.md`;
-5. read `DECISIONS.md`;
-6. read this handover;
-7. read `DENTAL_QUOTE_AUTONOMY_GATE.md`;
-8. verify canonical `main = 566ffa0cdc7b4f3212709bbb6efc290f553728e6` or a later explicitly verified canonical main;
-9. ignore stale gates that refer to review/merge of PR #58 because PR #58 is already merged;
-10. perform the Dental product proof through the dashboard only;
-11. preserve the human promotion gate.
+1. Read `AGENTS_MASTER.md`, `AGENTS.md`, `MANIFEST.md`, current project state, roadmap and decisions.
+2. Read [the executed post-PR64 audit](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
+3. Verify Git again: baseline `main = 6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; do not assume the correction branch has merged.
+4. Preserve `DENTAL_QUOTE_AUTONOMY_GATE.md`, source protection, zero paid-provider cost and human promotion.
+5. Resolve the single current review/integration gate before recommending another unchanged Dental run.
 
-Do not resume frozen PR #37–#48 work unless a new real product-run blocker specifically justifies a general behavior from them.
+The earlier dated run/candidate sections are retained as history, not current instructions. Do not resume or close frozen PRs #37–#48 without Product Owner direction.

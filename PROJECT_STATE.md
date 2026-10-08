@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-10-07
-**Current phase:** PRE-MVP / Golden Path #1 runtime validation
+**Last updated:** 2026-10-08
+**Current phase:** PRE-MVP / post-PR64 lifecycle stabilization review
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
@@ -11,11 +11,25 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main` at this checkpoint: `59aa35b15a86bd527cc1fc75df5863673ed8b811` (merge of PR #63).
+Current canonical `main` at this checkpoint: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d` (merge of PR #64).
 
-Runtime code on this main includes PR #60–#63: separated Aider timeout, governed editor execution failures, physical tool-home/workspace isolation, and explicit Aider chat/input history routing.
+Runtime code on this main includes PR #60–#64: consolidated Aider boundary/preflight and asynchronous top-level run lifecycle, in addition to timeout, failure and tool-state isolation fixes.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
+
+## Verified checkpoint — 2026-10-08
+
+- Canonical remote/local `main`: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; PR #64 is **MERGED** (2026-10-07).
+- Working branch: `fix/post-pr64-run-lifecycle-stabilization` from that clean baseline; its corrections require human review/merge.
+- Original focused suite on Windows/Python 3.11.9: **90/90 PASS**. Additional executable regressions demonstrated lifecycle defects on the baseline; existing test coverage alone was insufficient.
+- Candidate verification and command/exit evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
+- Correction [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65) is open, not merged. Code commit `62e284773bf252a59dfb66f4198411d57c404740`: 169 Python + 4 dashboard callback tests PASS; final Windows launcher/readiness/stability PASS with matching runtime SHA.
+- Aider 0.86.2 real CLI/version/flags, `pip check`, dependency fingerprint and launcher focused gate executed on Windows. API/dashboard readiness and six stability checks passed on isolated ports 8875/5273; the browser-opening step was deliberately omitted.
+- `main` stabilization verdict: **FAIL — reproduced lifecycle defects**. Candidate test success is not an integration/merge claim.
+- Dental Quote: **NOT PASS**, unchanged and not executed in this audit. Commercial evidence remains **C0**.
+- No remote CI PASS: `.github/workflows` is absent and the queried commit workflow list is empty.
+
+The dated entries below are historical evidence. Their earlier candidate/next-action wording is superseded by this checkpoint and the single next action at the end.
 
 ## 2026-10-05 MVP recovery architecture reset
 
@@ -1334,16 +1348,6 @@ Residual risks recorded in the audit:
 
 ## Single next action
 
-`HUMAN_REVIEW_AIDER_INTEGRATION_STABILIZATION_PR_64`
+`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
 
-PR #63 is already merged. Do not run Dental again yet.
-
-Review PR #64 as the single consolidated Aider hardening milestone. If it is explicitly approved and merged:
-
-1. synchronize local ForgeLab once;
-2. run `Start-ForgeLab.ps1`;
-3. require `[PASS] Aider stabilization gate`;
-4. verify dashboard/API readiness;
-5. only then perform exactly one unchanged Dental Quote dashboard run.
-
-If the launcher gate fails, Dental remains blocked and the failing internal regression becomes the evidence source.
+Review the single correction PR from `fix/post-pr64-run-lifecycle-stabilization`. Do not run Dental on the defective canonical baseline. After explicit merge, verify the merged runtime and stabilization gate before deciding on a new unchanged Dental run.

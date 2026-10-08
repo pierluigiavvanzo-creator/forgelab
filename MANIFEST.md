@@ -336,6 +336,6 @@ One preferred next action with owner.
 
 ## 21. Immediate next action
 
-`FORGELAB_MVP_1_REAL_APPLICATION_TEST`
+`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
 
-No further infrastructure work unless the MVP test supplies concrete evidence that it is required.
+As of 2026-10-08, PR #64 is merged, but post-merge verification reproduced lifecycle defects. Review the single correction branch before another Dental run. Executed evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). The broader MVP objective above remains unchanged.

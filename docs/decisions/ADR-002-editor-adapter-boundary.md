@@ -1,8 +1,12 @@
 # ADR-002 — Separate ForgeLab governance from the code-editing engine
 
 **Date:** 2026-10-05  
-**Status:** Proposed  
+**Status:** Implemented on main; original comparative acceptance criterion not yet evidenced
 **Class:** A — Product Critical
+
+## Status clarification — 2026-10-08
+
+Merged PRs #50–#64 and D-023 establish actual use of the Aider boundary, including all four editor phases. The executed adapter/orchestrator tests support integration, but do not prove the comparative failure-reduction criterion below. That historical acceptance condition is retained; Golden Path #1 is still NOT PASS. See [post-merge evidence](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
 
 ## Context
 

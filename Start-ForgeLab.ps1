@@ -338,6 +338,13 @@ try {
     }
 
     Write-Host ""
+    Write-Host "Verifica lifecycle dashboard..."
+    & $NodeExe scripts/test-run-lifecycle.mjs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Dashboard lifecycle gate fallito."
+    }
+
+    Write-Host ""
     Write-Host "Build dashboard production..."
 
     & $CorepackExe pnpm run build
@@ -434,6 +441,7 @@ $ApiArgs = @(
 )
 
 $ApiProcess = Start-Process `
+    -WindowStyle Hidden `
     -FilePath $PythonExe `
     -ArgumentList $ApiArgs `
     -WorkingDirectory $ProjectRoot `
@@ -469,6 +477,7 @@ $DashboardArgs = @(
 )
 
 $DashboardProcess = Start-Process `
+    -WindowStyle Hidden `
     -FilePath $NodeExe `
     -ArgumentList $DashboardArgs `
     -WorkingDirectory $DashboardRoot `

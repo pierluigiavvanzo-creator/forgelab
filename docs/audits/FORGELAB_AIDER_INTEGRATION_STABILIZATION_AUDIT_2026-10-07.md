@@ -8,6 +8,10 @@
 **Golden Path:** Dental Quote #1  
 **Commercial evidence level:** C0 — product capability validation, not market validation
 
+## Follow-up — 2026-10-08
+
+PR #64 is merged. This document preserves the pre-merge audit, not current validation status. Actual Windows execution and demonstrated post-merge lifecycle defects are recorded in [the follow-up audit](FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md). Its current decision supersedes the historical next-action text below.
+
 ## 1. Decision
 
 The sequence PR #60–#63 showed that ForgeLab was using the real Dental Golden Path to discover integration-edge failures that should have been covered inside the reusable-editor component.

@@ -592,9 +592,10 @@ export default function Home() {
         activeRun?.run_id ??
           summary?.run_id ??
           summary?.runId ??
+          asRecord(imported["RunStatus.json"])?.run_id ??
           "run-m8-2-local",
       ),
-    [activeRun, summary],
+    [activeRun, summary, imported],
   );
 
   const runTitle = String(
@@ -611,6 +612,7 @@ export default function Home() {
 
   const runState = String(
     activeRun?.status ??
+      asRecord(imported["RunStatus.json"])?.status ??
       summary?.status ??
       "READY",
   );
@@ -628,11 +630,6 @@ export default function Home() {
     Number(
       summary?.repair_attempts ?? 0,
     );
-
-  const estimatedCost =
-    usage?.estimated_cost !== undefined
-      ? String(usage?.estimated_cost)
-      : "n/d";
 
   const planTasks =
     Array.isArray(executionPlan?.tasks)
@@ -718,7 +715,14 @@ export default function Home() {
           );
 
   const terminalBlock =
-    runState === "CLOSED"
+    runState === "FAILED" || runState === "INTERRUPTED"
+      ? {
+          phase: "RUN",
+          reason: runState,
+          detail: String(asRecord(imported["RunStatus.json"])?.error ?? runState),
+          artifact: "RunStatus.json",
+        }
+      : runState === "CLOSED"
       ? editorFailure
         ? {
             phase: String(
@@ -818,6 +822,24 @@ export default function Home() {
     Authorization: `Bearer ${token}`,
   });
 
+  const applyArtifacts = (artifacts: Record<string, Imported>) => {
+    setImported(artifacts);
+    const loadedSummary = asRecord(artifacts["RunSummary.json"]);
+    const loadedPlan = asRecord(artifacts["ExecutionPlan.json"]);
+    if (typeof loadedSummary?.repository === "string") {
+      const loadedRepository = loadedSummary.repository;
+      setRepository(current => current || loadedRepository);
+    }
+    if (Array.isArray(loadedSummary?.changes) && loadedSummary.changes.length) {
+      const loadedPath = String(loadedSummary.changes[0]);
+      setTargetPath(current => current || loadedPath);
+    }
+    if (Array.isArray(loadedPlan?.test_command)) {
+      setTestCommand(JSON.stringify(loadedPlan.test_command));
+    }
+    setRunFormError("");
+  };
+
 
   const loadRunFromApi = async (
     requestedRunId: string,
@@ -855,7 +877,7 @@ export default function Home() {
     const artifacts =
       payload.artifacts ?? {};
 
-    setImported(artifacts);
+    applyArtifacts(artifacts);
     setActiveRun(null);
 
     const gateArtifact = asRecord(
@@ -934,6 +956,11 @@ export default function Home() {
       );
 
       if (payload.terminal) {
+        await loadRunFromApi(
+          requestedRunId,
+          normalized,
+          token,
+        );
         if (
           status === "FAILED"
           || status === "INTERRUPTED"
@@ -943,12 +970,6 @@ export default function Home() {
               `Run terminata: ${status}`,
           );
         }
-
-        await loadRunFromApi(
-          requestedRunId,
-          normalized,
-          token,
-        );
 
         return payload;
       }
@@ -1041,6 +1062,12 @@ export default function Home() {
       setApiToken(token);
       setApiConnected(true);
       setApiSetup(false);
+      setRunFormError("");
+      try {
+        window.sessionStorage.setItem("forgelab.connection", JSON.stringify({ base: normalized, token }));
+      } catch {
+        // Storage can be disabled; the current connection still works.
+      }
 
       if (latest.terminal === false) {
         const statusResponse =
@@ -1650,7 +1677,7 @@ export default function Home() {
         }
       }
 
-      setImported(next);
+      applyArtifacts(next);
       setGate("pending");
 
       setNotice(
@@ -1673,13 +1700,18 @@ export default function Home() {
         window.location.hash.slice(1),
       );
 
-    const base =
+    let base =
       params.get("api_base");
 
-    const token =
+    let token =
       params.get("api_token");
 
     if (base && token) {
+      try {
+        window.sessionStorage.setItem("forgelab.connection", JSON.stringify({ base, token }));
+      } catch {
+        // Keep credentials out of the URL even when storage is disabled.
+      }
       window.history.replaceState(
         null,
         "",
@@ -1687,66 +1719,26 @@ export default function Home() {
           window.location.search,
       );
 
-      void loadFromApi(
-        base,
-        token,
-      );
+    } else {
+      try {
+        const saved = JSON.parse(window.sessionStorage.getItem("forgelab.connection") ?? "null");
+        if (typeof saved?.base === "string" && typeof saved?.token === "string") {
+          base = saved.base;
+          token = saved.token;
+        }
+      } catch {
+        // A missing/invalid tab session falls back to manual connection.
+      }
+    }
+    if (base && token) {
+      const connectionBase = base;
+      const connectionToken = token;
+      const timer = window.setTimeout(() => {
+        void loadFromApi(connectionBase, connectionToken);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, []);
-
-
-  useEffect(() => {
-    setRunFormError("");
-  }, [
-    repository,
-    objective,
-    targetPath,
-    oldText,
-    testCommand,
-    aiDeveloperMode,
-    apiConnected,
-  ]);
-
-
-  useEffect(() => {
-    if (
-      typeof summary?.repository ===
-        "string" &&
-      !repository
-    ) {
-      setRepository(
-        summary.repository,
-      );
-    }
-
-    if (
-      Array.isArray(
-        summary?.changes,
-      ) &&
-      summary.changes.length > 0 &&
-      !targetPath
-    ) {
-      setTargetPath(
-        String(
-          summary.changes[0],
-        ),
-      );
-    }
-
-    if (
-      Array.isArray(
-        executionPlan?.test_command,
-      )
-    ) {
-      setTestCommand(
-        JSON.stringify(
-          executionPlan.test_command,
-        ),
-      );
-    }
-  }, [
-    imported,
-  ]);
 
 
   useEffect(() => {
@@ -3004,7 +2996,7 @@ export default function Home() {
             </p>
 
 
-            <div className="run-form-grid">
+            <div className="run-form-grid" onChange={() => setRunFormError("")}>
 
               <div className="full">
                 <label htmlFor="repository">
