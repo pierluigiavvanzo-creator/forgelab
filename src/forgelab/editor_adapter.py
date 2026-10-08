@@ -165,6 +165,8 @@ def _sandbox_environment(tool_home: Path) -> dict[str, str]:
     environment.update({
         "HOME": str(tool_home),
         "USERPROFILE": str(tool_home),
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
         "AIDER_ANALYTICS": "0",
         "OLLAMA_API_BASE": ollama_url,
         "HTTP_PROXY": _BLOCKED_PROXY,
@@ -359,6 +361,7 @@ including tests only when they are inside the writable set.
                 completed = subprocess.run(
                     command,
                     cwd=workspace,
+                    stdin=subprocess.DEVNULL,
                     capture_output=True,
                     text=True,
                     encoding="utf-8",

@@ -34,35 +34,19 @@ For Golden Path work:
 
 Current canonical `main`:
 
-`6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`
+`2227c2487b8858738db7bcf38cdcebeff4699c4f`
 
 ## NOW — A Product Critical
 
-### Aider Integration Stabilization Gate — PR #64
+### Windows Aider UTF-8 / non-interactive boundary
 
-**Status:** PR #64 MERGED / post-merge lifecycle defects reproduced / correction at human review gate
+PR #65 is merged. A BOM/cp1252 crash followed by an interactive GitHub-report prompt was independently reproduced on canonical main using installed Aider 0.86.2, without a target-product run or model call.
 
-The sequence PR #60–#63 proved that Aider integration must be validated as a complete reusable component rather than by repeated Dental target runs.
+The single correction branch `fix/aider-windows-utf8-noninteractive` forces UTF-8 only in the isolated editor environment and closes editor stdin. Source BOM bytes, provider, scope, governance, retry budget and timeout policy remain unchanged. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md).
 
-Binding gate before another Dental run:
+Single next action: `HUMAN_REVIEW_AND_MERGE_UTF8_FIX`. No automatic merge or Dental run. Separate launcher hardening remains preserved on its local branch, outside this fix.
 
-`FORGELAB_AIDER_INTEGRATION_STABILIZATION_GATE`
-
-Delivered by merged PR #64:
-
-1. stabilized reusable-editor process/filesystem/environment boundary;
-2. one centralized Aider execution contract across implementation and repair phases;
-3. focused internal regression matrix;
-4. launcher-enforced preflight against the actual pinned Aider 0.86.2 runtime;
-5. dependency fingerprint evidence;
-6. long-run API/dashboard lifecycle with immediate run id and observable status;
-7. formal audit and residual-risk register.
-
-Post-merge verification (2026-10-08): original 90 focused tests PASS on Windows/Python 3.11.9, but new executable regressions proved lifecycle defects. Corrections are isolated on `fix/post-pr64-run-lifecycle-stabilization`. Full executed evidence and the 16-PR hygiene proposal are in [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
-
-Single next action: `HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`. Review [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65); no automatic merge. Dental stays blocked on current `main` until the corrections are integrated and the merged runtime gate is verified.
-
-The sections below retain the recovery rationale and future product sequence; they do not supersede this gate.
+The sections below retain recovery rationale and future product sequence; they do not supersede this gate.
 
 ### MVP Recovery — Editor Boundary Reset
 

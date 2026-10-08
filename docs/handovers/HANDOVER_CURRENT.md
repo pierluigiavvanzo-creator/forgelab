@@ -1,22 +1,25 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-08
-**Checkpoint:** PR #64 merged / post-merge review found lifecycle defects / one correction branch
-**Status:** PRE-MVP / canonical baseline stabilization FAIL / correction HUMAN REVIEW GATE
+**Checkpoint:** PR #65 merged / PR #66 UTF-8 gate PASS / Dental run interrupted
+**Status:** PRE-MVP / UTF-8 fix technically PASS / Dental run INTERRUPTED / HUMAN REVIEW GATE
 
-## Verified checkpoint — 2026-10-08
+## Verified checkpoint — Windows Aider UTF-8 and interrupted Dental run, 2026-10-08
 
-- Canonical remote/local `main`: `6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; PR #64 is **MERGED** (2026-10-07).
-- Working branch: `fix/post-pr64-run-lifecycle-stabilization` from that clean baseline; its corrections require human review/merge.
-- Original focused suite on Windows/Python 3.11.9: **90/90 PASS**. Additional executable regressions demonstrated lifecycle defects on the baseline; existing test coverage alone was insufficient.
-- Candidate verification and command/exit evidence: [docs/audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
-- Correction [PR #65](https://github.com/pierluigiavvanzo-creator/forgelab/pull/65) is open, not merged. Code commit `62e284773bf252a59dfb66f4198411d57c404740`: 169 Python + 4 dashboard callback tests PASS; final Windows launcher/readiness/stability PASS with matching runtime SHA.
-- Aider 0.86.2 real CLI/version/flags, `pip check`, dependency fingerprint and launcher focused gate executed on Windows. API/dashboard readiness and six stability checks passed on isolated ports 8875/5273; the browser-opening step was deliberately omitted.
-- `main` stabilization verdict: **FAIL — reproduced lifecycle defects**. Candidate test success is not an integration/merge claim.
-- Dental Quote: **NOT PASS**, unchanged and not executed in this audit. Commercial evidence remains **C0**.
-- No remote CI PASS: `.github/workflows` is absent and the queried commit workflow list is empty.
+- Canonical fetched `main`: `2227c2487b8858738db7bcf38cdcebeff4699c4f`, containing merged PR #65. PR #66 branch: `fix/aider-windows-utf8-noninteractive`; reviewed code commit `08d1a7dccaa48d29f4d22d30422db1408d030be2`; documentation-only head before this update: `d75cb21cdd1374ad4bc546d7cec67e8101fafc9d`.
+- Observed `run-7e1ae59bf235/EditorFailure.json` records implementation failure, cp1252/U+FEFF, GitHub-report prompt and timeout 124. The old service on 8765 reports SHA `96b1083ecb2e67f79728338fdbaaa3ed6f3f948b`, not canonical main; its health SHA is not treated as proof of the historical run SHA.
+- Independently reproduced on canonical main with a disposable BOM fixture and installed Aider 0.86.2, without model calls: UnicodeEncodeError -> interactive report prompt -> timeout/exit 124. The boundary-only correction is exactly `PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8` in the isolated child environment plus `stdin=subprocess.DEVNULL`. No BOM/source normalization, global environment change, dependency/provider/model change, retry or timeout increase.
+- After correction: BOM path exit 0; controlled crash path exit 1 with immediate EOF and preserved stdout/stderr. Focused evidence: 102 Python tests and 4 dashboard callbacks PASS; compileall, Aider preflight, `pip check`, production build, Windows launcher readiness and 6/6 stability checks PASS.
+- One initial launcher invocation failed existing API test `test_create_run_accepts_ai_generate_without_old_new` (FAILED instead of READY_FOR_DECISION). The isolated test, diagnostic API suite and final launcher later passed. **Cause remains undiagnosed; do not claim this intermittent failure is resolved.**
+- The Product Owner then started Dental run `run-1d9f29b59db7` from the dashboard at **2026-10-08 18:07:50 Europe/Rome**. The dashboard showed runner `08d1a7dccaa4`, therefore the run used the candidate containing the UTF-8 process-boundary fix.
+- During later cleanup of the verification environment, Codex stopped the services without first proving that no run was active. This interrupted the runtime and caused the dashboard `Failed to fetch`. Existing run artifacts were preserved; `RunSummary.json` is absent. `AIReview.json` reports `FAIL`, but it is intermediate evidence only and is **not** a complete run conclusion.
+- After explicit Product Owner authorization, Codex restarted the services **without rerunning Dental**. The API reconciled the existing run automatically to `INTERRUPTED`, `terminal=true`, with message `ForgeLab API restarted before run completion`. `completed_at` at **2026-10-08 18:49:15 Europe/Rome** records reconciliation at restart, not the exact interruption time.
+- Pre-existing run artifacts and the Dental target Git state were unchanged during service restoration. Codex performed no promotion and no manual Dental code modification.
+- Last observed restored runtime: API `http://127.0.0.1:8875`; dashboard `http://127.0.0.1:5273`; runtime SHA `d75cb21cdd1374ad4bc546d7cec67e8101fafc9d`; readiness and stability PASS; services were left running for consultation. This is the **last observed state, not a guarantee of current runtime state**. Standard ports `8765/5173` still belonged to the preserved old checkout.
+- Evidence classification: **UTF-8/non-interactive technical gate PASS; Dental run INTERRUPTED; Golden Path #1 NOT PASS.**
+- Separate launcher ownership/cleanup work remains local on `fix/post-pr65-final-stabilization` at `ea00719`; it is outside PR #66 and must not be described as integrated or merged. Original best-effort egress and dependency-fingerprint limitations remain.
 
-The dated entries below are historical evidence. Their earlier candidate/next-action wording is superseded by this checkpoint and the single next action at the end.
+Earlier dated entries are historical; this checkpoint and the single next action supersede stale PR #65 review instructions.
 
 ## 1. Binding product priority
 
@@ -73,13 +76,13 @@ Repository:
 
 Canonical `main` at this checkpoint:
 
-`6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`
+`2227c2487b8858738db7bcf38cdcebeff4699c4f`
 
-This is the merge of PR #64:
+This is the merge of PR #65:
 
-`MVP-1: complete Aider integration stabilization gate`
+`Fix post-PR64 run lifecycle gaps and synchronize verified project state`
 
-PR #60–#64 are merged. Runtime PRs #37–#48 remain frozen/unmerged. The only current correction branch is `fix/post-pr64-run-lifecycle-stabilization`; see the checkpoint evidence above.
+PR #60–#65 are merged. Runtime PRs #37–#48 remain frozen/unmerged. Current review branch is `fix/aider-windows-utf8-noninteractive` (PR #66). Separate launcher work at `fix/post-pr65-final-stabilization` / `ea00719` remains local and is not integrated.
 
 ## 5. Historical integration sequence (superseded by current checkpoint)
 
@@ -96,7 +99,7 @@ Latest merged sequence:
 - PR #57 — Aider stderr/stdout preserved in terminal failure evidence;
 - PR #58 — valid empty YAML mapping written for isolated Aider config.
 
-PR #59 was a documentation-only merge after PR #58. PR #60–#64 subsequently merged timeout/failure/isolation and consolidated lifecycle stabilization.
+PR #59 was a documentation-only merge after PR #58. PR #60–#65 subsequently merged timeout/failure/isolation, consolidated Aider stabilization and corrected post-PR64 lifecycle gaps.
 
 ## 6. REUSE-FIRST implementation
 
@@ -768,15 +771,15 @@ This candidate has regression coverage but has not yet produced Windows/local PA
 
 ## 20. Single next action
 
-`HUMAN_REVIEW_POST_PR64_LIFECYCLE_STABILIZATION`
+`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
 
-Review the single correction PR from `fix/post-pr64-run-lifecycle-stabilization`. No merge or Dental submission is automated.
+Review the single correction PR from `fix/aider-windows-utf8-noninteractive`. No merge or Dental submission is automated.
 
 ## 21. Resume protocol
 
 1. Read `AGENTS_MASTER.md`, `AGENTS.md`, `MANIFEST.md`, current project state, roadmap and decisions.
 2. Read [the executed post-PR64 audit](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
-3. Verify Git again: baseline `main = 6d55b5587bf44a7efbcc0a81090ba5b6a7bdc98d`; do not assume the correction branch has merged.
+3. Verify Git again: baseline `main = 2227c2487b8858738db7bcf38cdcebeff4699c4f`; PR #65 is merged, but do not assume the UTF-8 correction has merged.
 4. Preserve `DENTAL_QUOTE_AUTONOMY_GATE.md`, source protection, zero paid-provider cost and human promotion.
 5. Resolve the single current review/integration gate before recommending another unchanged Dental run.
 
