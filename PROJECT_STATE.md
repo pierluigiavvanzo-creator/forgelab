@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last updated:** 2026-10-08
-**Current phase:** PRE-MVP / Windows Aider UTF-8 correction review
+**Current phase:** PRE-MVP / UTF-8 fix technically PASS / Dental run INTERRUPTED / PR #66 human review
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
@@ -13,23 +13,24 @@ Canonical shared truth: `main`
 
 Current canonical `main` at this checkpoint: `2227c2487b8858738db7bcf38cdcebeff4699c4f` (merge of PR #65).
 
-Runtime code on this main includes PR #60–#64: consolidated Aider boundary/preflight and asynchronous top-level run lifecycle, in addition to timeout, failure and tool-state isolation fixes.
+Runtime code on this main includes PR #60–#65: consolidated Aider boundary/preflight, corrected asynchronous top-level run lifecycle, timeout, failure and tool-state isolation fixes.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
-## Verified checkpoint — Windows Aider UTF-8, 2026-10-08
+## Verified checkpoint — Windows Aider UTF-8 and interrupted Dental run, 2026-10-08
 
-- Canonical fetched `main`: `2227c2487b8858738db7bcf38cdcebeff4699c4f`, containing merged PR #65. Fix branch: `fix/aider-windows-utf8-noninteractive`; code commit `08d1a7dccaa48d29f4d22d30422db1408d030be2`.
+- Canonical fetched `main`: `2227c2487b8858738db7bcf38cdcebeff4699c4f`, containing merged PR #65. PR #66 branch: `fix/aider-windows-utf8-noninteractive`; reviewed code commit `08d1a7dccaa48d29f4d22d30422db1408d030be2`; documentation-only head before this update: `d75cb21cdd1374ad4bc546d7cec67e8101fafc9d`.
 - Observed `run-7e1ae59bf235/EditorFailure.json` records implementation failure, cp1252/U+FEFF, GitHub-report prompt and timeout 124. The old service on 8765 reports SHA `96b1083ecb2e67f79728338fdbaaa3ed6f3f948b`, not canonical main; its health SHA is not treated as proof of the historical run SHA.
-- Independently reproduced on canonical main with a disposable BOM fixture and the installed Aider 0.86.2 renderer/crash handler, without model calls: UnicodeEncodeError -> interactive report prompt -> exit 124 after the test's 10-second timeout. Three new focused adapter regressions failed before the fix.
-- Boundary-only correction: isolated child environment `PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8`; subprocess `stdin=DEVNULL`. No global environment change, BOM/source normalization, new dependency, paid provider, retry or timeout increase.
-- After correction: three adapter regressions PASS; real Aider BOM rendering exit 0 in 516 ms; controlled real Aider crash exit 1 in 563 ms, EOF, captured stdout/stderr, no browser-report attempt or timeout. Source bytes unchanged in both checks.
-- Adapter suite: 19 PASS. Orchestrator: 47 PASS, including real subprocess EOF -> governed EditorFailure.json -> CLOSED, one editor call, unchanged source. Python 3.11 compileall: exit 0.
-- Windows launcher gate: **PASS**, exit 0 on code commit `08d1a7d`: 102 Python tests (19 + 47 + 25 + 11), four dashboard callbacks, Aider 0.86.2 CLI preflight, pip check, production build, API/dashboard readiness and 6/6 stability checks; authenticated dashboard opened without a target run. Evidence: `.forgelab/runtime/aider-utf8-launcher.log`; BOM/crash evidence: `aider-bom-proof-baseline.json`, `aider-bom-proof.json`, `aider-crash-proof.json` in the same generated runtime directory.
-- One initial launcher invocation failed the existing API test `test_create_run_accepts_ai_generate_without_old_new` (FAILED instead of READY_FOR_DECISION). The isolated case and diagnostic 25-test API suite then passed; cause remains unproven and no speculative API fix was made. Logs: `aider-utf8-launcher-initial.log`, `utf8-api-diagnostic.log`, `utf8-api-suite-diagnostic.log`.
-- Final health SHA matched `08d1a7dccaa48d29f4d22d30422db1408d030be2`. All eight owned runtime processes were stopped after verification; 8875/5273 are free, and the old 8765/5173 processes were preserved. Subsequent commits only update documentation; executed runtime evidence refers to this immutable code commit.
-- Standard ports remain occupied by the old checkout; use the already-supported 8875/5273 parameters for this verification, preserve the old processes, and verify runtime SHA before any separately authorized target run. Dental unchanged and not run. PRE-MVP / C0 remains.
-- Separate launcher ownership/cleanup work is preserved locally on `fix/post-pr65-final-stabilization` at `ea00719`; it is not included in this narrow UTF-8 PR and has not been merged or published as a PR. Original best-effort egress and dependency-fingerprint limitations remain.
+- Independently reproduced on canonical main with a disposable BOM fixture and installed Aider 0.86.2, without model calls: UnicodeEncodeError -> interactive report prompt -> timeout/exit 124. The boundary-only correction is exactly `PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8` in the isolated child environment plus `stdin=subprocess.DEVNULL`. No BOM/source normalization, global environment change, dependency/provider/model change, retry or timeout increase.
+- After correction: BOM path exit 0; controlled crash path exit 1 with immediate EOF and preserved stdout/stderr. Focused evidence: 102 Python tests and 4 dashboard callbacks PASS; compileall, Aider preflight, `pip check`, production build, Windows launcher readiness and 6/6 stability checks PASS.
+- One initial launcher invocation failed existing API test `test_create_run_accepts_ai_generate_without_old_new` (FAILED instead of READY_FOR_DECISION). The isolated test, diagnostic API suite and final launcher later passed. **Cause remains undiagnosed; do not claim this intermittent failure is resolved.**
+- The Product Owner then started Dental run `run-1d9f29b59db7` from the dashboard at **2026-10-08 18:07:50 Europe/Rome**. The dashboard showed runner `08d1a7dccaa4`, therefore the run used the candidate containing the UTF-8 process-boundary fix.
+- During later cleanup of the verification environment, Codex stopped the services without first proving that no run was active. This interrupted the runtime and caused the dashboard `Failed to fetch`. Existing run artifacts were preserved; `RunSummary.json` is absent. `AIReview.json` reports `FAIL`, but it is intermediate evidence only and is **not** a complete run conclusion.
+- After explicit Product Owner authorization, Codex restarted the services **without rerunning Dental**. The API reconciled the existing run automatically to `INTERRUPTED`, `terminal=true`, with message `ForgeLab API restarted before run completion`. `completed_at` at **2026-10-08 18:49:15 Europe/Rome** records reconciliation at restart, not the exact interruption time.
+- Pre-existing run artifacts and the Dental target Git state were unchanged during service restoration. Codex performed no promotion and no manual Dental code modification.
+- Last observed restored runtime: API `http://127.0.0.1:8875`; dashboard `http://127.0.0.1:5273`; runtime SHA `d75cb21cdd1374ad4bc546d7cec67e8101fafc9d`; readiness and stability PASS; services were left running for consultation. This is the **last observed state, not a guarantee of current runtime state**. Standard ports `8765/5173` still belonged to the preserved old checkout.
+- Evidence classification: **UTF-8/non-interactive technical gate PASS; Dental run INTERRUPTED; Golden Path #1 NOT PASS.**
+- Separate launcher ownership/cleanup work remains local on `fix/post-pr65-final-stabilization` at `ea00719`; it is outside PR #66 and must not be described as integrated or merged. Original best-effort egress and dependency-fingerprint limitations remain.
 
 Earlier dated entries are historical; this checkpoint and the single next action supersede stale PR #65 review instructions.
 
