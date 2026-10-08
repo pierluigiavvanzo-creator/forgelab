@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -17,6 +19,79 @@ from forgelab.editor_adapter import (
 
 
 class EditorAdapterTests(unittest.TestCase):
+    def test_sandbox_forces_utf8_without_changing_parent_environment(self):
+        with patch.dict(os.environ, {"PYTHONUTF8": "0", "PYTHONIOENCODING": "cp1252"}):
+            environment = _sandbox_environment(Path("tool-home"))
+            self.assertEqual(environment.get("PYTHONUTF8"), "1")
+            self.assertEqual(environment.get("PYTHONIOENCODING"), "utf-8")
+            self.assertEqual(os.environ["PYTHONUTF8"], "0")
+            self.assertEqual(os.environ["PYTHONIOENCODING"], "cp1252")
+
+    def test_bom_output_is_utf8_safe_and_source_bytes_are_preserved(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            original = b"\xef\xbb\xbfVALUE = 1\n"
+            (repo / "app.py").write_bytes(original)
+            editor = AiderCliAdapter(AiderCliConfig(executable=(sys.executable, "-c", (
+                "from pathlib import Path; import sys; "
+                "text = Path('app.py').read_text(encoding='utf-8'); "
+                "print(text, end=''); print(text, end='', file=sys.stderr); "
+                "Path('app.py').write_text(text.replace('1', '2'), encoding='utf-8')"
+            ))))
+            result = editor.run(EditorRequest(repo, "Change VALUE", ("app.py",), timeout_seconds=10))
+            self.assertEqual(result.exit_status, 0, result.stderr)
+            self.assertFalse(result.timed_out)
+            self.assertIn("\ufeffVALUE = 1", result.stdout)
+            self.assertIn("\ufeffVALUE = 1", result.stderr)
+            self.assertEqual(result.files["app.py"], "\ufeffVALUE = 2\n")
+            self.assertEqual((repo / "app.py").read_bytes(), original)
+
+    def test_editor_crash_cannot_wait_on_inherited_interactive_stdin(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = Path(folder)
+            original = b"\xef\xbb\xbfVALUE = 1\n"
+            (repo / "app.py").write_bytes(original)
+            crash = (
+                "import sys\n"
+                "print('crash stdout', flush=True)\n"
+                "print('crash stderr', file=sys.stderr, flush=True)\n"
+                "try:\n"
+                "    input('Open a GitHub Issue? (Y/n) ')\n"
+                "except EOFError:\n"
+                "    print('stdin EOF', file=sys.stderr)\n"
+                "    sys.exit(7)\n"
+                "raise RuntimeError('interactive input must not be available')\n"
+            )
+            worker = (
+                "import dataclasses, json, sys\n"
+                "from pathlib import Path\n"
+                "from forgelab.editor_adapter import AiderCliAdapter, AiderCliConfig, EditorRequest\n"
+                f"editor = AiderCliAdapter(AiderCliConfig(executable=(sys.executable, '-c', {crash!r})))\n"
+                f"result = editor.run(EditorRequest(Path({str(repo)!r}), 'Crash', ('app.py',), timeout_seconds=3))\n"
+                "print(json.dumps(dataclasses.asdict(result)))\n"
+            )
+            environment = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"))
+            # Keep the writer open while waiting: inherited stdin would block until timeout.
+            with subprocess.Popen(
+                [sys.executable, "-c", worker], stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment,
+            ) as process:
+                try:
+                    process.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                    self.fail("adapter worker did not finish")
+                output = process.stdout.read().decode("utf-8")
+                self.assertEqual(process.returncode, 0, process.stderr.read().decode("utf-8"))
+            result = json.loads(output)
+            self.assertFalse(result["timed_out"], result)
+            self.assertEqual(result["exit_status"], 7)
+            self.assertIn("crash stdout", result["stdout"])
+            self.assertIn("crash stderr", result["stderr"])
+            self.assertIn("stdin EOF", result["stderr"])
+            self.assertEqual((repo / "app.py").read_bytes(), original)
+
     def test_aider_runs_in_sandbox_and_leaves_source_unchanged(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

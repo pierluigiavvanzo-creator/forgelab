@@ -9,6 +9,8 @@ from pathlib import Path
 
 from forgelab.domain import Role
 from forgelab.editor_adapter import (
+    AiderCliAdapter,
+    AiderCliConfig,
     EditorAdapterError,
     EditorResult,
 )
@@ -1018,6 +1020,34 @@ class MultiAgentTests(unittest.TestCase):
                 "",
             )
 
+
+    def test_aider_stdin_eof_closes_run_with_process_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = make_demo(root)
+            adapter = AiderCliAdapter(AiderCliConfig(executable=(sys.executable, "-c", (
+                "import sys; print('BOM: \\ufeff', flush=True); "
+                "print('crash evidence', file=sys.stderr, flush=True); "
+                "input('Open a GitHub Issue? (Y/n) ')"
+            ))))
+            with (
+                patch("forgelab.orchestrator.OllamaProvider.invoke", return_value=
+                      ProviderResponse(ai_plan(), 10, 5, actual_cost=Decimal("0"))),
+                patch("forgelab.orchestrator.AiderCliAdapter", return_value=adapter) as factory,
+            ):
+                run_dir = run_multi_agent(request(
+                    repo, operation="ai_generate", old_text="", new_text="",
+                    max_repair_attempts=1, editor_engine="aider",
+                ), root / "runs")
+            summary = json.loads((run_dir / "RunSummary.json").read_text(encoding="utf-8"))
+            failure = json.loads((run_dir / "EditorFailure.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["status"], "CLOSED")
+            self.assertEqual(failure["reason"], "EDITOR_EXECUTION_FAILED")
+            self.assertEqual(failure["phase"], "implementation")
+            for evidence in ("exit=1", "timed_out=False", "BOM: \ufeff", "crash evidence", "EOFError"):
+                self.assertIn(evidence, failure["final_error"])
+            self.assertEqual(factory.call_count, 1)
+            self.assertEqual(git(repo, "status", "--porcelain"), "")
 
     def test_aider_nonzero_prewrite_correction_preserves_process_output(self):
         with tempfile.TemporaryDirectory() as folder:
