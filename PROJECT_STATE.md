@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
 **Last updated:** 2026-10-09
-**Current phase:** PRE-MVP / PR #67 merged / native semantic-repair correction at human review gate
+**Current phase:** PRE-MVP / PR #68 merged / semantic no-op correction at human review gate
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
@@ -11,13 +11,27 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main`: `ad6f460e8b3cc43f041badd4686d8b09676b27c1` (merge of PR #67).
+Current canonical `main`: `741ba4f65a10a7d3628dec74982477d0108492f1` (merge of PR #68).
 
-Runtime code on this main includes PR #60–#67: Aider boundary/preflight, asynchronous run lifecycle, Windows UTF-8/non-interactive editor fixes and Ollama semantic-correction output contract.
+Runtime code on this main includes PR #60–#68: Aider boundary/preflight, asynchronous run lifecycle, Windows UTF-8/non-interactive fixes, Ollama semantic-correction output contract and native parent-candidate continuity/grounded review.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
-## Current checkpoint — repeated semantic repair, 2026-10-09
+## Current checkpoint — semantic repair no-op, 2026-10-09
+
+Delivery: [PR #69](https://github.com/pierluigiavvanzo-creator/forgelab/pull/69), OPEN/unmerged; code `555d6ee` and evidence/state `bf0b0bc` pushed. Later delivery-link update is documentation only.
+
+Fresh run `run-1772ceaf77f0` on the PR #68 baseline is CLOSED / REPAIR, six helper tests PASS, EUR 0. Candidate still has one treatment UI and no visible subtotals/multi-treatment quote or UI tests. Reviewer is partially correct: it correctly blocks missing behavior but falsely denies supported Extraction/Implant names. Parent continuity is not involved in this fresh run.
+
+Proven ForgeLab defect: zero-change semantic Aider result raises a format error, gets fabricated PREWRITE_RECOVERY_EXHAUSTED evidence, and is not counted as a repair. Branch `fix/semantic-repair-noop-root-cause` records a dedicated semantic no-op artifact/objective/output/content hashes, counts the attempt, reuses unchanged test evidence, and performs one independent reconsideration. Remaining blockers close as SEMANTIC_REPAIR_NOOP; acceptance still requires normal Reviewer/Security and human gates. PR #68 continuity/baseline/scope protections remain intact.
+
+Original successful semantic editor stdout/stderr was discarded. Its precise model/CLI reason cannot be reconstructed; **full historical root-cause diagnosis is not PASS**. Do not invent a prompt/parser failure or claim a product fix. Code and available evidence: [no-op report](docs/audits/FORGELAB_SEMANTIC_REPAIR_NOOP_ROOT_CAUSE_2026-10-09.md). Single next action: `HUMAN_REVIEW_AND_MERGE_SEMANTIC_REPAIR_NOOP_FIX`. No new Dental run/edit/promotion. PRE-MVP / C0 / Golden Path NOT PASS remain.
+
+Technical stabilization on code `555d6ee` PASS: 108 Python tests, four dashboard callbacks, Aider preflight/pip consistency, production build, actual Windows readiness and 6/6 stability. Isolated API served that exact code SHA on 8876; user runtime on 8875 still reports main `741ba4f`. No remote CI or Dental PASS claim.
+
+Only owned verification services/worktree were cleaned after no-active-run checks. Original 8875/5273 and 8765/5173 listeners/PIDs remain unchanged; Dental Git is clean at its original HEAD. Original bad run artifacts remain immutable evidence.
+
+## Historical checkpoint — repeated semantic repair, 2026-10-09
 
 Delivery: [PR #68](https://github.com/pierluigiavvanzo-creator/forgelab/pull/68), OPEN/unmerged; one branch, code `59537cf` and evidence/state `dd6db94` pushed. Later delivery-link updates are documentation only.
 
@@ -1371,6 +1385,6 @@ Residual risks recorded in the audit:
 
 ## Single next action
 
-`HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`
+`HUMAN_REVIEW_AND_MERGE_SEMANTIC_REPAIR_NOOP_FIX`
 
-Review the single `fix/repeated-semantic-repair-root-cause` PR against main `ad6f460e8b3cc43f041badd4686d8b09676b27c1`. See the current checkpoint and 2026-10-09 audit for validation. No automatic merge or Dental run; target execution requires separate Product Owner authorization.
+Review the single `fix/semantic-repair-noop-root-cause` PR against main `741ba4f65a10a7d3628dec74982477d0108492f1`. See the current checkpoint/no-op report for executed evidence and original-response limitations. No automatic merge or Dental run.

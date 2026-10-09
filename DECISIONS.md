@@ -691,9 +691,20 @@ Reuse `_ai_developer_full_file_response_schema` inside the semantic-correction p
 
 ## Native repair must preserve the current candidate — 2026-10-09
 
-**Status:** Candidate correction; human review/merge pending
+**Status:** Merged via PR #68 at `741ba4f65a10a7d3628dec74982477d0108492f1`
 **Class:** A — Product Critical
 
 Actual child artifacts prove native repair starts from protected baseline rather than the final unpromoted parent. Actual Reviewer input is also truncated after complete files are duplicated in the diff; final extracted requirements drift into evaluator instructions. The latest Dental candidate is genuinely incomplete, so semantic review must continue to block.
 
 Carry forward the final cumulative parent patch only when exact baseline, existing authorized text targets, patch applicability and candidate syntax validate in isolation before any model call. Reuse existing full-file validators and governed edits; record parent lineage/hashes. Supply planner/editor/current Reviewer with coherent candidate evidence. Retain complete review files once and ground requirements in objective/acceptance contract. Reject stale or missing evidence; do not silently rebase or loosen gates. No target-product fixes, provider change or increased retry/repair budgets. Evidence and tests: [2026-10-09 audit](docs/audits/FORGELAB_REPEATED_SEMANTIC_REPAIR_ROOT_CAUSE_2026-10-09.md).
+
+---
+
+## Semantic repair no-op is not prewrite exhaustion — 2026-10-09
+
+**Status:** Candidate correction; human review/merge pending
+**Class:** A — Product Critical
+
+The fresh real run proves a completed zero-change semantic editor call is thrown as AIDeveloperFormatError and mapped to fabricated prewrite exhaustion, while repair accounting remains zero. Candidate is incomplete and Reviewer partially inaccurate. The original editor response was discarded; its model/CLI motive is unverified and must not be invented.
+
+Record no-op objective/output/hashes, consume one semantic attempt and use one independent review of the same candidate with unchanged passing deterministic evidence. Only normal Reviewer/Security PASS permits READY_FOR_DECISION, with promotion still human-gated. Persistent blockers close with SEMANTIC_REPAIR_NOOP; real prewrite exhaustion stays unchanged. Reject inconsistent returned-file evidence before test reuse. Preserve PR #68, models/providers/budgets and Dental boundary. Evidence: [no-op report](docs/audits/FORGELAB_SEMANTIC_REPAIR_NOOP_ROOT_CAUSE_2026-10-09.md).

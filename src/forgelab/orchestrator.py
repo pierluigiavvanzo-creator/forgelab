@@ -2371,6 +2371,7 @@ Return ONLY the required structured JSON object.
     prewrite_repair_attempts = 0
     prewrite_recovery_context: dict[str, str] | None = None
     semantic_review_history: list[dict[str, Any]] = []
+    semantic_noop: dict[str, Any] | None = None
     source_unchanged = False
     final_test_passed = False
     repair_regression_baseline: dict[str, str] | None = None
@@ -4070,6 +4071,8 @@ Objective:
 Binding Product Owner acceptance contract:
 {plan_contract_text}
 
+{('The editor returned an unchanged candidate. Independently reconsider every obligation against the current files; a no-op is not approval.' if semantic_noop is not None else '')}
+
 Allowed targets:
 {chr(10).join(f"- {path}" for path in target_paths)}
 
@@ -4239,6 +4242,28 @@ Return ONLY the required JSON object.
                     "review_round":
                         review_round,
                 }
+
+                if semantic_noop is not None:
+                    semantic_noop.update({
+                        "status": review_status,
+                        "reconsideration_status": review_status,
+                        "reconsideration_review_round": review_round,
+                        "reconsideration_requirements": review_report["semantic_requirements"],
+                        "final_error": ("" if review_status == "PASS" else
+                                        "Aider returned no authorized changes and independent review remains blocking"),
+                    })
+                    store.write_optional_json("SemanticRepairNoop.json", semantic_noop)
+                    if review_status != "PASS":
+                        results.append(_result(
+                            store, "review", ResultStatus.FAIL,
+                            "SEMANTIC_REPAIR_NOOP: unchanged candidate remains blocked by independent review",
+                            ["ev-semantic-repair-noop", diff_evidence_id], "Human repair required", combined_findings,
+                        ))
+                        _result(store, semantic_noop["developer_task_id"], ResultStatus.FAIL,
+                                "Semantic repair made no changes; candidate remains blocked",
+                                ["ev-semantic-repair-noop"], "Human repair required")
+                        machine.transition(RunStatus.CLOSED)
+                        break
 
                 if review_status == "PASS":
                     results.append(
@@ -4865,9 +4890,57 @@ Return ONLY the required structured JSON object.
                     )
 
                     if not semantic_editor_result.changed_paths:
-                        raise AIDeveloperFormatError(
-                            "Aider semantic repair returned no authorized changes"
-                        )
+                        if semantic_editor_result.files != semantic_repair_source_texts:
+                            raise AIEditorExecutionError("semantic_review_repair",
+                                                         "Editor reported no changes but candidate file evidence differs")
+                        repair_attempts += 1
+                        semantic_noop = {
+                            "run_id": run_id, "status": "PENDING", "reason": "SEMANTIC_REPAIR_NOOP",
+                            "phase": "semantic_review_repair", "attempt": repair_attempts,
+                            "review_round": review_round, "developer_task_id": semantic_repair_id,
+                            "objective": semantic_aider_objective,
+                            "blocking_review": semantic_review, "changed_paths": [],
+                            "before_sha256": {path: hashlib.sha256(text.encode("utf-8")).hexdigest()
+                                              for path, text in semantic_repair_source_texts.items()},
+                            "after_sha256": {path: hashlib.sha256(text.encode("utf-8")).hexdigest()
+                                             for path, text in semantic_editor_result.files.items()},
+                            "stdout": semantic_editor_result.stdout, "stderr": semantic_editor_result.stderr,
+                            "exit_status": semantic_editor_result.exit_status,
+                            "timed_out": semantic_editor_result.timed_out,
+                            "duration_ms": semantic_editor_result.duration_ms,
+                            "prewrite_repair_attempts": 0, "candidate_write_performed": False,
+                            "final_error": "Aider returned no authorized changes; independent reconsideration required",
+                        }
+                        store.write_optional_json("SemanticRepairNoop.json", semantic_noop)
+                        if ai_developer_artifact is None:
+                            raise RuntimeError("AI Developer artifact missing before semantic no-op")
+                        ai_developer_artifact["repair_attempts"].append({
+                            "attempt": repair_attempts, "cause": "semantic_review", "outcome": "NO_OP",
+                            "review_round": review_round, "developer_task_id": semantic_repair_id,
+                            "editor_engine": "aider-cli", "provider": "aider-cli",
+                            "model": semantic_repair_route.model, "changed_paths": [],
+                            "prewrite_repair_attempts": 0, "applied_by": "none",
+                            "patch": {"schema_version": "2.1", "summary": "No patch applied", "files": []},
+                            "evidence_ref": "SemanticRepairNoop.json",
+                        })
+                        store.write_optional_json("AIDeveloperPatch.json", ai_developer_artifact)
+                        evidence.append({
+                            "evidence_id": "ev-semantic-repair-noop", "check_type": "semantic_repair",
+                            "command_or_tool": "aider", "exit_status": 0, "repair_attempt": repair_attempts,
+                            "summary": "No candidate writes; reuse unchanged passing tests and reconsider review once",
+                            "artifact_ref": "SemanticRepairNoop.json",
+                        })
+                        task_defs.append(_task(run_id, semantic_repair_id, Role.DEVELOPER,
+                                               "Reconsider unchanged candidate after semantic repair no-op",
+                                               target_paths, ["repo_edit"], ["review"]))
+                        validate_task_graph(task_defs)
+                        _result(store, semantic_repair_id, ResultStatus.PASS,
+                                "Editor returned no changes; objective acceptance still requires independent review",
+                                ["ev-semantic-repair-noop"], "Re-run semantic review")
+                        # Content is identical: the existing deterministic test evidence remains valid.
+                        machine.transition(RunStatus.TESTING)
+                        review_round += 1
+                        continue
 
                     semantic_repair_patch = {
                         "schema_version": "2.1",

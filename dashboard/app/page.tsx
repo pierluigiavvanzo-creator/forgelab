@@ -396,6 +396,8 @@ export default function Home() {
       imported["PrewriteRecoveryFailure.json"],
     );
 
+  const semanticNoop = asRecord(imported["SemanticRepairNoop.json"]);
+
   const editorFailure =
     asRecord(
       imported["EditorFailure.json"],
@@ -465,6 +467,7 @@ export default function Home() {
     "SecurityReport.json",
     "UsageReport.json",
     "ReviewReport.json",
+    ...(imported["SemanticRepairNoop.json"] ? ["SemanticRepairNoop.json"] : []),
     ...(imported["PrewriteRecoveryFailure.json"]
       ? ["PrewriteRecoveryFailure.json"]
       : []),
@@ -739,6 +742,13 @@ export default function Home() {
             ),
             artifact:
               "EditorFailure.json",
+          }
+        : semanticNoop?.status === "FAIL"
+        ? {
+            phase: String(semanticNoop.phase ?? "semantic_review_repair"),
+            reason: String(semanticNoop.reason ?? "SEMANTIC_REPAIR_NOOP"),
+            detail: String(semanticNoop.final_error ?? "La repair non ha modificato il candidato; review ancora bloccante."),
+            artifact: "SemanticRepairNoop.json",
           }
         : prewriteFailure
         ? {
