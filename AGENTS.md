@@ -1,65 +1,57 @@
-> **Shared governance v2 — 2026-10-01**
->
-> Read `AGENTS_MASTER.md` before this file. The master governs shared product, economic, marketability and engineering execution. This `AGENTS.md` remains authoritative for ForgeLab-specific multi-agent control-plane constraints, baseline integrity, isolation, review/security and promotion gates. Project-specific rules may tighten the master and must not silently weaken it.
+> Shared governance: read AGENTS_MASTER.md first.
 
----
-
-# AGENTS.md
+# AGENTS.md — ForgeLab project rules
 
 ## Mission
 
-Build and operate ForgeLab as a governed multi-agent software-development control plane that produces usable software outcomes with minimal Product Owner effort.
+Build and operate ForgeLab as a governed software-development control plane that produces usable software outcomes with minimal Product Owner effort.
 
-## Operating principles
+## Operating rules
 
-1. Product before infrastructure.
-2. Never invent implementation state, test results, source synchronization, approvals or economic outcomes.
-3. GitHub and repository-backed project memory are the canonical shared record for project state.
-4. The currently validated local source baseline is documented but must not be claimed as fully published to GitHub until actually synchronized and verified.
-5. The Product Owner is approver and final tester, not routine QA, debugger or log transporter.
-6. Use the minimum necessary agents and tools.
-7. Diagnose failures using bounded, hypothesis-driven loops.
-8. Preserve isolation, deterministic verification, independent review/security and explicit human promotion gates.
-9. Do not write directly to protected production/main flows unless the Product Owner explicitly authorizes the specific action and project governance allows it.
-10. Do not auto-push, auto-merge or force-update refs.
-11. Every material milestone must state its expected product/economic contribution.
-12. Every substantial custom capability should follow repository-first assessment when reuse could materially reduce time, cost or risk.
+1. Product value outranks infrastructure volume.
+2. GitHub main and repository-backed canonical files are the shared source of truth.
+3. Never invent implementation state, test results, synchronization, approvals, CI or economic outcomes.
+4. The Product Owner is approver and final usability tester, not routine debugger, QA operator or log transporter.
+5. Use the minimum agents, tools, model calls and files needed for the result.
+6. Preserve isolated execution, authorized write paths, deterministic verification, independent review/security and explicit human promotion.
+7. No direct protected-main writes by execution agents; no auto-merge, force update or unapproved promotion.
+8. Diagnose repeated failures by evidence and root cause. Stop when additional attempts no longer add information.
+9. Reuse-first and zero-cost-provider-first remain binding.
+10. Every material change must preserve a rollback/review path.
 
-## Work classification
+## Persistent memory protocol
 
-- A — Product Critical
-- B — Material Upgrade
-- C — Optimization
-- D — Diagnostic / Technical
+At the start of material work read, in order:
 
-Manual Product Owner effort on D work should be exceptional and justified by A-level risk.
+1. AGENTS_MASTER.md
+2. MANIFEST.md
+3. AGENTS.md
+4. PROJECT_STATE.md
+5. ROADMAP.md
+6. DECISIONS.md
+7. docs/handovers/HANDOVER_CURRENT.md
+8. only the audit/ADR directly relevant to the task
 
-## Persistent Memory Protocol
+Do not load historical acceptance reports or every audit by default.
 
-At the beginning of a ForgeLab task, read:
-
-1. `MANIFEST.md`
-2. `AGENTS.md`
-3. `PROJECT_STATE.md`
-4. `ROADMAP.md`
-5. `DECISIONS.md`
-6. `docs/handovers/HANDOVER_CURRENT.md`
-7. relevant ADRs/audits
-
-At the end of a successful material task, update the relevant canonical files with:
-
+At completion update only the canonical files materially affected and record:
 - what changed;
 - what was tested;
-- what passed;
-- what failed;
-- what remains;
-- important assumptions;
-- next single action.
+- what passed/failed;
+- unresolved risk;
+- single next action.
 
-Never erase historical architectural decisions; supersede them explicitly.
+Historical detail belongs in Git history, DECISIONS.md, ADRs and focused audit reports rather than being duplicated into every canonical file.
 
-## Current single next action
+## Current gate
 
-`HUMAN_REVIEW_AND_MERGE_SEMANTIC_REPAIR_NOOP_FIX`
+Canonical main before the repository-cleanup proposal:
+1d7024f46d03709587913b3e4905d0b324ae7f40
 
-PR #68 is merged at `741ba4f65a10a7d3628dec74982477d0108492f1`. Review `fix/semantic-repair-noop-root-cause`. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run; latest captured candidate is incomplete and original no-op response was not preserved.
+Dental Golden Path: NOT PASS.
+
+The repository-cleanup branch is diagnostic/optimization work and must not change ForgeLab execution semantics. It requires validation and explicit Product Owner approval before merge.
+
+Current single next action:
+
+HUMAN_REVIEW_AND_VALIDATE_REPOSITORY_CLEANUP

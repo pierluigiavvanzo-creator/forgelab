@@ -1,75 +1,91 @@
 # ForgeLab
 
-ForgeLab is a governed multi-agent software-development control plane.
+ForgeLab is a governed software-development control plane.
 
-Its target workflow is:
+Core workflow:
 
-`Objective -> project/repository context -> plan -> minimum necessary agents -> isolated implementation -> deterministic tests -> bounded repair -> independent review -> security -> READY_FOR_DECISION -> Product Owner approval -> exact reviewed promotion`
+Objective → repository context → plan → isolated implementation → deterministic tests → bounded repair → independent review → security → READY_FOR_DECISION → Product Owner approval → exact reviewed promotion.
 
-## Current status
+## Status
 
-**PRE-MVP / MVP validation active**
+PRE-MVP / Golden Path validation active.
 
-Historical M8.9 acceptance passed the following checks (not the current test count):
+ForgeLab has a substantial technical control plane, but the first real external-product Golden Path (Dental Quote) is still NOT PASS. Technical test success must not be reported as product or market validation.
 
-- 88 regression tests PASS;
-- API health PASS;
-- dashboard PASS;
-- bounded multi-file AI development;
-- bounded repair;
-- repository-context selection;
-- independent review/security;
-- explicit human promotion gate;
-- canonical Git source baseline.
+Canonical project state:
+- PROJECT_STATE.md
+- ROADMAP.md
+- DECISIONS.md
+- docs/handovers/HANDOVER_CURRENT.md
 
-ForgeLab has **not yet passed a real product MVP test** on an external application with minimal Product Owner intervention.
+## Local stack
 
-## Current priority
+- Windows 11
+- Python 3.11+
+- Node >= 22.13
+- pnpm 11.25.0
+- Aider 0.86.2 in an isolated local tool environment
+- Ollama on loopback
+- dashboard + authenticated local API
 
-`HUMAN_REVIEW_AND_MERGE_UTF8_FIX`
+Start:
 
-PR #65 is merged at `2227c2487b8858738db7bcf38cdcebeff4699c4f`. Review the single `fix/aider-windows-utf8-noninteractive` correction: canonical main reproduced a Windows cp1252/BOM crash followed by an interactive Aider report prompt. Executed evidence and current gate: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run.
+    .\Start-ForgeLab.ps1
 
-The Product Owner should ideally be able to:
+Default endpoints:
+- API: http://127.0.0.1:8765
+- dashboard: http://127.0.0.1:5173
 
-`Dashboard -> choose/register target project -> objective -> Run -> inspect result -> APPROVE / REJECT / REPAIR`
+The launcher generates an authenticated dashboard URL and performs the focused stabilization/readiness checks before reporting ready.
 
-If normal use requires repeated PowerShell scripts, log transport or manual debugging, the MVP test is considered failed.
+## Validation
 
-## Canonical source and M8.9 baseline
+Full Python regression:
 
-Historical validated M8.9 baseline:
+    py -3.11 -m unittest discover -s tests -p "test*.py" -v
 
-- root: `C:\Users\NITRO\source\FORGELAB_M8_1_v0.9.1`
-- baseline commit: `58d22eeca66c27871738c04c6d850c59efabf115`
-- baseline tree: `63b6c91427edb19cd038cf557904451dfc08a947`
-- tracked canonical files: 168
-- canonical manifest SHA-256: `62bade56363d082d2f183e5f33706d96e360bacdec890a6b8102d96b9bee0f3`
+Repository validation helper:
 
-Synchronization status:
+    .\Validate-ForgeLab.ps1
 
-- exact M8.9 baseline published to `baseline/m8.9-local`;
-- code + governance integrated on `integration/m8.9-code-plus-governance`;
-- PR #2 merged with merge commit `9560729bfc9f27422d92d20d8fb43db5886a1cba`;
-- local `main` fast-forwarded to that GitHub `main` commit and verified clean.
+Dashboard lifecycle:
 
-GitHub `pierluigiavvanzo-creator/forgelab` is now the canonical shared source of truth for ForgeLab code and project governance. The local checkout tracks the same canonical history.
+    node dashboard\scripts\test-run-lifecycle.mjs
 
-## Start here
+Dashboard production build:
 
-Read in this order:
+    cd dashboard
+    corepack pnpm install --frozen-lockfile
+    corepack pnpm run build
 
-1. `MANIFEST.md`
-2. `AGENTS.md`
-3. `PROJECT_STATE.md`
-4. `ROADMAP.md`
-5. `DECISIONS.md`
-6. `docs/handovers/HANDOVER_CURRENT.md`
-7. `docs/audits/FORGELAB_PRODUCT_OUTCOME_AUDIT_2026-09-22.md`
-8. `docs/governance/REGOLE_OPERATIVE_COMUNI_PROGETTI.md`
+The launcher intentionally executes a focused Python subset; its 108 Python checks are not the full suite.
 
-## Product rule
+## Governance
 
-Green tests and sound architecture are necessary, but they do not prove product value.
+Read AGENTS_MASTER.md and AGENTS.md before material repository changes.
 
-Progress is measured by usable outcomes, reduced Product Owner effort and credible economic value.
+Key rules:
+- GitHub main is canonical shared source;
+- reuse first;
+- zero-cost API/token first;
+- execution agents do not write directly to protected source;
+- writes remain scope-bounded;
+- deterministic verification precedes acceptance;
+- Reviewer and Security remain independent gates;
+- promotion requires explicit Product Owner approval;
+- no automatic merge or unapproved paid fallback.
+
+## Repository hygiene
+
+Generated/runtime state is ignored:
+- .forgelab/runs
+- .forgelab/runtime
+- .forgelab/tools
+- dashboard/node_modules
+- dashboard/dist
+- dashboard/.wrangler
+- dashboard/.sites-runtime
+
+These local directories can outweigh the tracked repository by orders of magnitude and must be measured separately when auditing local disk usage.
+
+Historical implementation detail belongs in Git history, DECISIONS.md, ADRs and focused audit reports rather than being copied indefinitely into every canonical file.
