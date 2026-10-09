@@ -229,6 +229,76 @@ def add_m88_context(repo: Path, marker: str = "M88_SHARED_CONTEXT_MARKER") -> No
 
 
 class MultiAgentTests(unittest.TestCase):
+    def test_aider_semantic_noop_is_rereviewed_and_truthfully_accounted(self):
+        for reconsidered, security_blocked in ((False, False), (True, False), (True, True)):
+            with self.subTest(reconsidered=reconsidered, security_blocked=security_blocked), tempfile.TemporaryDirectory() as folder:
+                repo = make_demo(Path(folder))
+                source = (repo / "calculator.py").read_text(encoding="utf-8")
+                candidate = source.replace("a - b", "a + b")
+                if reconsidered:
+                    candidate += '\nADD_OPERATION = "addition"\n'
+                if security_blocked:
+                    candidate += '\nAPI_KEY = "synthetic-test-secret-abcdefghijklmnopqrstuvwxyz"\n'
+                blocking = semantic_review_fail("Expose ADD_OPERATION marker", "The ADD_OPERATION marker is missing.")
+                scripted = [ProviderResponse(text, 1, 1, actual_cost=Decimal("0")) for text in
+                            (ai_plan(), blocking, semantic_review_pass() if reconsidered else blocking)]
+                initial = EditorResult("aider-cli", {"calculator.py": candidate}, ("calculator.py",), "implemented", "", 0, False, 1, ("aider",))
+                noop = EditorResult("aider-cli", {"calculator.py": candidate}, (), "No edits returned by model", "model diagnostic", 0, False, 1, ("aider",))
+                with patch("forgelab.orchestrator.OllamaProvider.invoke", side_effect=scripted) as invoke, patch("forgelab.orchestrator.AiderCliAdapter.run", side_effect=(initial, noop)) as editor:
+                    run_dir = run_multi_agent(request(repo, objective="Fix addition and expose ADD_OPERATION marker", operation="ai_generate",
+                                                     old_text="", new_text="", editor_engine="aider", max_repair_attempts=1), Path(folder) / "runs")
+                summary = json.loads((run_dir / "RunSummary.json").read_text())
+                if security_blocked:
+                    self.assertNotEqual(summary["status"], "READY_FOR_DECISION")
+                    self.assertEqual(json.loads((run_dir / "SecurityReport.json").read_text())["status"], "FAIL")
+                else:
+                    self.assertEqual(summary["status"], "READY_FOR_DECISION" if reconsidered else "CLOSED")
+                self.assertEqual(summary["repair_attempts"], 1)
+                self.assertEqual(summary["tests"], "PASS")
+                self.assertFalse((run_dir / "PrewriteRecoveryFailure.json").exists())
+                audit = json.loads((run_dir / "SemanticRepairNoop.json").read_text())
+                self.assertEqual(audit["status"], "PASS" if reconsidered else "FAIL")
+                self.assertEqual(audit["reason"], "SEMANTIC_REPAIR_NOOP")
+                self.assertEqual(audit["before_sha256"], audit["after_sha256"])
+                self.assertIn("No edits returned", audit["stdout"])
+                self.assertIn("model diagnostic", audit["stderr"])
+                self.assertIn("Binding Project Manager", audit["objective"])
+                self.assertEqual(audit["prewrite_repair_attempts"], 0)
+                self.assertEqual(audit["reconsideration_status"], "PASS" if reconsidered else "FAIL")
+                self.assertEqual(editor.call_count, 2)
+                self.assertEqual(invoke.call_count, 3)
+                self.assertIn(candidate, invoke.call_args_list[-1].args[1])
+                self.assertNotIn("\nPatch:\n", invoke.call_args_list[-1].args[1])
+                gate = json.loads((run_dir / "GateDecision.json").read_text())
+                self.assertEqual(gate["decision"], "PENDING" if reconsidered and not security_blocked else "REPAIR")
+                tool_audit = json.loads((run_dir / "ToolAudit.json").read_text())
+                self.assertEqual(sum(e["tool"] == "test_runner" for e in tool_audit["events"]), 1)
+                self.assertEqual(sum(e["tool"] == "repo_edit" for e in tool_audit["events"]), 1)
+                developer = json.loads((run_dir / "AIDeveloperPatch.json").read_text())
+                self.assertEqual(developer["repair_attempts"][0]["outcome"], "NO_OP")
+                self.assertEqual((repo / "calculator.py").read_text(encoding="utf-8"), source)
+                self.assertEqual(git(repo, "status", "--porcelain"), "")
+
+    def test_semantic_noop_rejects_inconsistent_file_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = make_demo(Path(folder))
+            source = (repo / "calculator.py").read_text(encoding="utf-8")
+            candidate = source.replace("a - b", "a + b")
+            initial = EditorResult("aider-cli", {"calculator.py": candidate}, ("calculator.py",), "", "", 0, False, 1, ("aider",))
+            inconsistent = EditorResult("aider-cli", {"calculator.py": candidate + "CHANGED = True\n"}, (), "", "", 0, False, 1, ("aider",))
+            scripted = [ProviderResponse(text, 1, 1, actual_cost=Decimal("0")) for text in
+                        (ai_plan(), semantic_review_fail("Expose marker", "Marker missing"))]
+            with patch("forgelab.orchestrator.OllamaProvider.invoke", side_effect=scripted) as invoke, patch("forgelab.orchestrator.AiderCliAdapter.run", side_effect=(initial, inconsistent)):
+                run_dir = run_multi_agent(request(repo, objective="Fix addition and expose marker", operation="ai_generate",
+                                                 old_text="", new_text="", editor_engine="aider", max_repair_attempts=1), Path(folder) / "runs")
+            self.assertEqual(json.loads((run_dir / "RunSummary.json").read_text())["status"], "CLOSED")
+            self.assertIn("file evidence differs", json.loads((run_dir / "EditorFailure.json").read_text())["final_error"])
+            self.assertFalse((run_dir / "SemanticRepairNoop.json").exists())
+            self.assertFalse((run_dir / "PrewriteRecoveryFailure.json").exists())
+            self.assertEqual(invoke.call_count, 2)
+            self.assertEqual((repo / "calculator.py").read_text(encoding="utf-8"), source)
+            self.assertEqual(git(repo, "status", "--porcelain"), "")
+
     def test_native_repair_rejects_stale_baseline_and_invalid_candidate_before_model(self):
         with tempfile.TemporaryDirectory() as folder:
             repo = make_demo(Path(folder))

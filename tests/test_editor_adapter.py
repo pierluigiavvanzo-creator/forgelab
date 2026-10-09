@@ -92,6 +92,23 @@ class EditorAdapterTests(unittest.TestCase):
             self.assertIn("stdin EOF", result["stderr"])
             self.assertEqual((repo / "app.py").read_bytes(), original)
 
+    def test_aider_noop_detects_identical_files_and_preserves_output(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            repo = root / "repo"
+            repo.mkdir()
+            source = repo / "app.py"
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            fake = root / "fake_aider.py"
+            fake.write_text("import sys\nprint('No edits necessary')\nprint('diagnostic stderr', file=sys.stderr)\n", encoding="utf-8")
+            result = AiderCliAdapter(AiderCliConfig(executable=(sys.executable, str(fake)))).run(
+                EditorRequest(repository=repo, objective="Keep VALUE", allowed_paths=("app.py",), timeout_seconds=30))
+            self.assertEqual(result.changed_paths, ())
+            self.assertEqual(result.files, {"app.py": "VALUE = 1\n"})
+            self.assertIn("No edits necessary", result.stdout)
+            self.assertIn("diagnostic stderr", result.stderr)
+            self.assertEqual(source.read_text(encoding="utf-8"), "VALUE = 1\n")
+
     def test_aider_runs_in_sandbox_and_leaves_source_unchanged(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

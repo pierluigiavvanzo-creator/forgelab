@@ -22,6 +22,7 @@ from .promote import PromotionError, decide
 RUN_ID = re.compile(r"^run-[A-Za-z0-9_-]+$")
 ARTIFACTS = (
     "ParentCandidate.json",
+    "SemanticRepairNoop.json",
     "ExecutionPlan.json",
     "AgentResult.json",
     "TestEvidence.json",

@@ -324,6 +324,9 @@ class ApiTests(unittest.TestCase):
         )
 
     def test_terminal_failure_artifacts_are_exposed(self):
+        semantic_noop = {"reason": "SEMANTIC_REPAIR_NOOP", "status": "FAIL", "phase": "semantic_review_repair",
+                         "stdout": "No edits", "before_sha256": {"app.py": "same"}, "after_sha256": {"app.py": "same"}}
+        (self.run / "SemanticRepairNoop.json").write_text(json.dumps(semantic_noop), encoding="utf-8")
         prewrite = {
             "reason":
                 "PREWRITE_RECOVERY_EXHAUSTED",
@@ -376,6 +379,7 @@ class ApiTests(unittest.TestCase):
         ) as response:
             payload = json.load(response)
 
+        self.assertEqual(payload["artifacts"]["SemanticRepairNoop.json"], semantic_noop)
         self.assertEqual(
             payload["artifacts"][
                 "PrewriteRecoveryFailure.json"
