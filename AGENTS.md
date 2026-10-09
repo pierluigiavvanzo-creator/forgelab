@@ -60,6 +60,6 @@ Never erase historical architectural decisions; supersede them explicitly.
 
 ## Current single next action
 
-`HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`
+`HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`
 
-PR #66 is merged at `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`. Review `fix/ollama-repeat-limit-recovery`. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run.
+PR #67 is merged at `ad6f460e8b3cc43f041badd4686d8b09676b27c1`. Review `fix/repeated-semantic-repair-root-cause`. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run; latest captured Dental candidate remains incomplete.

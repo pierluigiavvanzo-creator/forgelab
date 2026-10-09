@@ -1,7 +1,7 @@
 # PROJECT_STATE.md
 
-**Last updated:** 2026-10-08
-**Current phase:** PRE-MVP / PR #66 merged / Ollama repeat-limit correction at human review gate
+**Last updated:** 2026-10-09
+**Current phase:** PRE-MVP / PR #67 merged / native semantic-repair correction at human review gate
 **Current priority:** A — Product Critical / restore autonomous dashboard-first Golden Path
 **Commercial evidence level:** C0 — Hypothesis
 
@@ -11,13 +11,23 @@ Repository: `pierluigiavvanzo-creator/forgelab`
 
 Canonical shared truth: `main`
 
-Current canonical `main`: `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2` (merge of PR #66).
+Current canonical `main`: `ad6f460e8b3cc43f041badd4686d8b09676b27c1` (merge of PR #67).
 
-Runtime code on this main includes PR #60–#66: Aider boundary/preflight, asynchronous run lifecycle and Windows UTF-8/non-interactive editor fixes.
+Runtime code on this main includes PR #60–#67: Aider boundary/preflight, asynchronous run lifecycle, Windows UTF-8/non-interactive editor fixes and Ollama semantic-correction output contract.
 
 PR #18 stabilization was merged previously; later governance updates added `AGENTS_MASTER.md v2` and `MARKETABILITY_CARD.md` on `main`.
 
-## Current checkpoint — Ollama repeat-limit recovery, 2026-10-08
+## Current checkpoint — repeated semantic repair, 2026-10-09
+
+Latest child `run-a65d908fd535` remains REVIEW / tests PASS / Repair required. Its three treatment rows, subtotals, discount validation and error handling exist, but the UI displays EUR 230 instead of discounted EUR 217 and its six helper tests lack UI coverage. Reviewer is partially correct; it also denies present implementation and extracts evaluator instructions as requirements.
+
+Branch `fix/repeated-semantic-repair-root-cause` restores native repair continuity from the parent's final cumulative patch, validates exact baseline/scope/syntax before model calls, and supplies the same candidate to planner/editor/current review. Reviewer receives complete files once, with the acceptance contract and without the duplicated diff that caused observed Ollama truncation. Dental source remains clean at `42e026093960a8acc4cb64087433d90c5f537efb`; no target edit, run or promotion.
+
+Full changes, executed evidence and limitations: [2026-10-09 audit](docs/audits/FORGELAB_REPEATED_SEMANTIC_REPAIR_ROOT_CAUSE_2026-10-09.md). Single next action: `HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`. Do not launch another Dental run now. PRE-MVP / C0 / Golden Path NOT PASS remain. Earlier checkpoints are historical; PR #67 is merged, and separate launcher hardening at `ea00719` is still unmerged.
+
+Internal stabilization PASS on code `59537cf`: 105 Python tests, four dashboard callbacks, Aider preflight/dependency consistency, production build, Windows readiness and 6/6 stability checks. Test services on 8876/5274 were stopped only after ownership/no-active-run checks; original services/PIDs are preserved. Runtime 8875 still reports main `ad6f460`, not this new candidate. No remote CI or Dental PASS is claimed.
+
+## Historical checkpoint — Ollama repeat-limit recovery, 2026-10-08
 
 The later repair `run-a9a839fc1963` closed with `PROVIDER_TRANSIENT_RETRY_EXHAUSTED` in `review-repair-1-semantic-correction`, after tests PASS and one repair, at EUR 0. Canonical-main replay reproduces repeat limit -> unload -> repeat limit. Context enlargement alone and prompt compaction alone fail.
 
@@ -1359,6 +1369,6 @@ Residual risks recorded in the audit:
 
 ## Single next action
 
-`HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`
+`HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`
 
-Review the single `fix/ollama-repeat-limit-recovery` PR. No automatic merge or Dental run; target execution requires separate Product Owner authorization.
+Review the single `fix/repeated-semantic-repair-root-cause` PR against main `ad6f460e8b3cc43f041badd4686d8b09676b27c1`. See the current checkpoint and 2026-10-09 audit for validation. No automatic merge or Dental run; target execution requires separate Product Owner authorization.

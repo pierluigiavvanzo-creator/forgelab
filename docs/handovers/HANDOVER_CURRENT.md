@@ -1,10 +1,22 @@
 # ForgeLab — HANDOVER_CURRENT
 
-**Checkpoint date:** 2026-10-08
-**Checkpoint:** PR #66 merged / Ollama repeat-limit recovery reproduced and corrected
-**Status:** PRE-MVP / Ollama correction at HUMAN REVIEW GATE / Golden Path NOT PASS
+**Checkpoint date:** 2026-10-09
+**Checkpoint:** PR #67 merged / repeated semantic-repair diagnosis and bounded correction
+**Status:** PRE-MVP / candidate-continuity correction at HUMAN REVIEW GATE / Golden Path NOT PASS
 
-## Current checkpoint — Ollama semantic correction
+## Current checkpoint — repeated semantic repair
+
+Canonical fetched main is `ad6f460e8b3cc43f041badd4686d8b09676b27c1`, containing PR #67. Child `run-a65d908fd535` of `run-797899d24f2a` is REVIEW / tests PASS / Repair required. The final candidate has three treatment rows and visible subtotals, but UI total ignores discount (230 instead of 217) and the six passing tests exercise only the helper. Reviewer is partially correct; its absent-implementation assertions and evaluator-instruction requirements are inaccurate.
+
+Native repair previously discarded the unpromoted parent candidate and restarted from source baseline. The new branch `fix/repeated-semantic-repair-root-cause` validates and carries forward the parent's final cumulative patch into planner and governed isolated editor writes, records lineage hashes, rejects stale/incompatible evidence, and reviews complete current files once with the acceptance contract. The duplicate review diff caused observed input truncation; it is removed without weakening blocking review or changing provider/model/budgets.
+
+Dental remains clean at `42e026093960a8acc4cb64087433d90c5f537efb`. No new target run/edit/promotion. Services on 8875/5273 and historical 8765/5173 are preserved; 8875 health reports baseline `ad6f460...`, so a running service is not proof that this new fix is loaded. Separate launcher hardening `ea00719` remains unmerged.
+
+Handoff report: [2026-10-09 audit](../audits/FORGELAB_REPEATED_SEMANTIC_REPAIR_ROOT_CAUSE_2026-10-09.md). Single next action: `HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`. Do not start Dental now. Historical entries below do not supersede this checkpoint.
+
+Internal stabilization PASS on `59537cf`: 105 Python tests, four dashboard callbacks, preflight, production build, initial readiness and 6/6 stability. Verification services on 8876/5274 were stopped only after ownership/no-active-run checks; original listener PIDs remain unchanged. See audit for commands, failed diagnostic attempts and remaining risks. No remote CI or Dental PASS is claimed.
+
+## Historical checkpoint — Ollama semantic correction
 
 Fetched local/remote main is `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`. The later real repair `run-a9a839fc1963` exhausted its provider retry in semantic correction. The single candidate branch `fix/ollama-repeat-limit-recovery` adds the missing explicit JSON contract and removes the duplicate diff in that prompt. Live reproduction: original repeat limit -> one unload -> corrected retry SUCCESS, with existing schema/syntax validation and EUR 0. No Dental output was applied and no Dental run was started.
 
@@ -779,15 +791,15 @@ This candidate has regression coverage but has not yet produced Windows/local PA
 
 ## 20. Single next action
 
-`HUMAN_REVIEW_AND_MERGE_OLLAMA_REPEAT_LIMIT_FIX`
+`HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`
 
-Review the single correction PR from `fix/ollama-repeat-limit-recovery`. No merge or Dental submission is automated.
+Review the single correction PR from `fix/repeated-semantic-repair-root-cause`. No merge or Dental submission is automated. Historical validation statements above are superseded by the current checkpoint and 2026-10-09 evidence.
 
 ## 21. Resume protocol
 
 1. Read `AGENTS_MASTER.md`, `AGENTS.md`, `MANIFEST.md`, current project state, roadmap and decisions.
-2. Read [the Ollama root-cause report](../audits/FORGELAB_OLLAMA_REPEAT_LIMIT_ROOT_CAUSE_2026-10-08.md).
-3. Verify Git again: baseline `main = d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`; PR #66 is merged. Do not assume the Ollama correction has merged.
+2. Read [the repeated semantic-repair report](../audits/FORGELAB_REPEATED_SEMANTIC_REPAIR_ROOT_CAUSE_2026-10-09.md).
+3. Verify Git again: baseline `main = ad6f460e8b3cc43f041badd4686d8b09676b27c1`; PR #67 is merged. Do not assume the new native-repair correction has merged or is loaded by the running service.
 4. Preserve `DENTAL_QUOTE_AUTONOMY_GATE.md`, source protection, zero paid-provider cost and human promotion.
 5. Resolve the single current review/integration gate before recommending another unchanged Dental run.
 

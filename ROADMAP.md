@@ -34,11 +34,19 @@ For Golden Path work:
 
 Current canonical `main`:
 
-`2227c2487b8858738db7bcf38cdcebeff4699c4f`
+`ad6f460e8b3cc43f041badd4686d8b09676b27c1` (PR #67 merged)
 
 ## NOW — A Product Critical
 
-### Ollama repeat-limit semantic-correction contract
+### Native semantic-repair candidate continuity and review evidence
+
+The captured latest Dental candidate is incomplete: discounted final UI total regressed and UI tests are absent. Proven ForgeLab defects discard parent progress at native repair creation and duplicate candidate context in the Reviewer prompt, causing observed Ollama truncation and inaccurate claims.
+
+One bounded correction on `fix/repeated-semantic-repair-root-cause` restores the cumulative parent candidate in governed isolation, fails closed on baseline/scope/syntax mismatch, and keeps complete current review files once with the binding acceptance contract. Evidence: [2026-10-09 audit](docs/audits/FORGELAB_REPEATED_SEMANTIC_REPAIR_ROOT_CAUSE_2026-10-09.md).
+
+Single next action: `HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`. No new Dental run, promotion or automatic merge. Golden Path remains NOT PASS; launcher hardening remains separate/unmerged.
+
+### Historical checkpoint — Ollama repeat-limit semantic-correction contract
 
 PR #66 is merged at `d9f6d2faa6fa776244f96a2be1df9d296d76d1f2`. The later repair's repeat limit was reproduced on main, including exhaustion after unload/retry.
 
