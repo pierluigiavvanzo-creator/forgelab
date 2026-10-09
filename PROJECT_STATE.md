@@ -19,6 +19,8 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 ## Current checkpoint — semantic repair no-op, 2026-10-09
 
+Delivery: [PR #69](https://github.com/pierluigiavvanzo-creator/forgelab/pull/69), OPEN/unmerged; code `555d6ee` and evidence/state `bf0b0bc` pushed. Later delivery-link update is documentation only.
+
 Fresh run `run-1772ceaf77f0` on the PR #68 baseline is CLOSED / REPAIR, six helper tests PASS, EUR 0. Candidate still has one treatment UI and no visible subtotals/multi-treatment quote or UI tests. Reviewer is partially correct: it correctly blocks missing behavior but falsely denies supported Extraction/Implant names. Parent continuity is not involved in this fresh run.
 
 Proven ForgeLab defect: zero-change semantic Aider result raises a format error, gets fabricated PREWRITE_RECOVERY_EXHAUSTED evidence, and is not counted as a repair. Branch `fix/semantic-repair-noop-root-cause` records a dedicated semantic no-op artifact/objective/output/content hashes, counts the attempt, reuses unchanged test evidence, and performs one independent reconsideration. Remaining blockers close as SEMANTIC_REPAIR_NOOP; acceptance still requires normal Reviewer/Security and human gates. PR #68 continuity/baseline/scope protections remain intact.

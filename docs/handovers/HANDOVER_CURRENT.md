@@ -6,6 +6,8 @@
 
 ## Current checkpoint — semantic repair no-op
 
+Delivery: [PR #69](https://github.com/pierluigiavvanzo-creator/forgelab/pull/69), OPEN/unmerged; code `555d6ee` and evidence/state `bf0b0bc` pushed. Later delivery-link update is documentation only.
+
 Main local/remote `741ba4f65a10a7d3628dec74982477d0108492f1` includes merged PR #68. Latest fresh `run-1772ceaf77f0`: CLOSED / REPAIR, six helper tests PASS, EUR 0, two ledger calls and two editor calls. Candidate has one treatment UI, no visible subtotals/aggregate/UI tests. Reviewer partially correct; Extraction/Implant helper support exists despite its claim.
 
 Semantic Aider returned zero authorized net changes. ForgeLab incorrectly treated that as format/prewrite recovery exhaustion and reported zero repairs; no prewrite recovery actually ran. Original successful editor stdout/stderr and sandbox snapshots were not retained. The precise historical model/CLI cause is unverified; full root-cause diagnosis is not PASS.
