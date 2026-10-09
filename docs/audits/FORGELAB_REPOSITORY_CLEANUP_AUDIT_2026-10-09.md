@@ -225,6 +225,23 @@ Expected after cleanup:
 
 The focused 108-test launcher subset is unchanged because test_editor_bakeoff.py was not part of that subset.
 
+## Cleanup candidate measured result
+
+After the removal and canonical-document compaction commits:
+
+- tracked blobs: 105 (from 125; -20 net, -16.0%);
+- tracked bytes: 1,469,963 B (from 1,613,850 B);
+- tracked-byte reduction: 143,887 B (-8.92%);
+- dashboard: 501,589 B;
+- src: 361,116 B;
+- tests: 339,254 B;
+- docs: 135,528 B;
+- compare against main: 28 changed paths, 580 additions, 4,039 deletions;
+- branch commits at this checkpoint: 2;
+- branch is ahead of main and not behind.
+
+The tracked-tree reduction is intentionally conservative. The largest remaining tracked item, pnpm-lock.yaml, is deterministic dependency state rather than disposable weight.
+
 ## Validation required before merge
 
 Because GitHub has no active remote CI workflow for this repository, cleanup must not be called PASS until a clean Windows checkout/branch executes:
