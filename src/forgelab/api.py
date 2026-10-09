@@ -21,6 +21,7 @@ from .promote import PromotionError, decide
 
 RUN_ID = re.compile(r"^run-[A-Za-z0-9_-]+$")
 ARTIFACTS = (
+    "ParentCandidate.json",
     "ExecutionPlan.json",
     "AgentResult.json",
     "TestEvidence.json",
@@ -1149,6 +1150,14 @@ class ForgeLabApi:
             )
         ).strip().lower()
 
+        try:
+            parent_base_head = _read_json(directory / "RunSummary.json").get("base_head")
+            parent_candidate_patch = (directory / "Changes.patch").read_text(encoding="utf-8")
+        except (OSError, ValueError) as error:
+            raise ApiError("repair parent candidate evidence is unavailable") from error
+        if not isinstance(parent_base_head, str) or not parent_base_head.strip() or not parent_candidate_patch.strip():
+            raise ApiError("repair requires parent baseline and final candidate patch")
+
         request = MultiAgentRequest(
             repository=repository,
             objective=repaired_objective,
@@ -1181,6 +1190,9 @@ class ForgeLabApi:
             operation="ai_generate",
             allowed_paths=allowed_paths,
             editor_engine=editor_engine,
+            parent_run_id=run_id,
+            parent_base_head=parent_base_head,
+            parent_candidate_patch=parent_candidate_patch,
         )
 
         try:

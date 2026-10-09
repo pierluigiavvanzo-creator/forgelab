@@ -4,6 +4,7 @@ import fnmatch
 import hashlib
 import json
 import os
+import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Callable, TypeVar
 
 from .domain import Role
 from .tools import CommandEvidence, replace_text, run_bounded
+from .quality import review_patch
 
 
 class PolicyViolation(PermissionError):
@@ -147,6 +149,41 @@ class ToolGateway:
             raise
         self._record(role, "repo_edit", relative_path, arguments, PolicyDecision(True, "all policies passed"), "SUCCESS")
         return target
+
+    def apply_candidate_patch(self, role: Role, workspace: Path,
+                              allowed_paths: set[str], patch: str) -> None:
+        """Materialize an existing text candidate inside its authorized workspace."""
+        review = review_patch(patch, allowed_paths)
+        headers = {f"diff --git a/{path} b/{path}" for path in allowed_paths}
+        unsupported = ("rename ", "copy ", "new file mode ", "deleted file mode ",
+                       "old mode ", "new mode ", "GIT binary patch", "Binary files ")
+        valid = review["status"] == "PASS" and all(
+            (not line.startswith("diff --git ") or line in headers)
+            and (not line.startswith("--- ") or line[4:] in {f"a/{path}" for path in allowed_paths})
+            and (not line.startswith("+++ ") or line[4:] in {f"b/{path}" for path in allowed_paths})
+            and not line.startswith(unsupported)
+            for line in patch.splitlines()
+        )
+        arguments = {"patch_sha256": hashlib.sha256(patch.encode("utf-8")).hexdigest()}
+        self._require(role, "repo_edit", "parent-candidate", arguments,
+                      self.engine.tool(role, "repo_edit"),
+                      PolicyDecision(valid, "parent candidate must modify authorized text files only"),
+                      *(self.engine.path(path, allowed_paths) for path in review["changed_paths"]))
+        try:
+            for flags in (("--check",), ()):
+                result = subprocess.run(
+                    ["git", "-C", str(workspace), "apply", *flags, "-"],
+                    input=patch, capture_output=True, text=True, encoding="utf-8",
+                    timeout=30, check=False,
+                )
+                if result.returncode:
+                    raise ValueError("parent candidate patch does not apply: " + result.stderr.strip()[:1000])
+        except Exception:
+            self._record(role, "repo_edit", "parent-candidate", arguments,
+                         PolicyDecision(True, "policies passed; tool failed"), "ERROR")
+            raise
+        self._record(role, "repo_edit", "parent-candidate", arguments,
+                     PolicyDecision(True, "all policies passed"), "SUCCESS")
 
     def run_test(self, role: Role, workspace: Path, command: list[str], timeout: int) -> CommandEvidence:
         decision = self.engine.tool(role, "test_runner")

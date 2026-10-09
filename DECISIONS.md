@@ -680,9 +680,20 @@ Executable evidence and the single review action are in PROJECT_STATE.md. The se
 
 ## Ollama semantic-correction output contract — 2026-10-08
 
-**Status:** Candidate correction; human merge pending
+**Status:** Merged via PR #67 at `ad6f460e8b3cc43f041badd4686d8b09676b27c1`
 **Class:** A — Product Critical
 
 The actual semantic-correction request reproduces repeat limit after the existing unload/retry. Context enlargement alone and prompt compaction alone fail. An explicit output contract with the duplicate diff removed recovers valid JSON/Python on the existing model. The demonstrated defect is in request construction; no claim is made about Ollama's internal token-loop mechanism.
 
 Reuse `_ai_developer_full_file_response_schema` inside the semantic-correction prompt and retain complete authorized files once. Keep objective/feedback, acceptance contract, review obligations, tests, validation, provider/model/options, bounded retry/repair budgets and human promotion unchanged. No target-product generation is applied during diagnosis. Evidence: [root-cause report](docs/audits/FORGELAB_OLLAMA_REPEAT_LIMIT_ROOT_CAUSE_2026-10-08.md).
+
+---
+
+## Native repair must preserve the current candidate — 2026-10-09
+
+**Status:** Candidate correction; human review/merge pending
+**Class:** A — Product Critical
+
+Actual child artifacts prove native repair starts from protected baseline rather than the final unpromoted parent. Actual Reviewer input is also truncated after complete files are duplicated in the diff; final extracted requirements drift into evaluator instructions. The latest Dental candidate is genuinely incomplete, so semantic review must continue to block.
+
+Carry forward the final cumulative parent patch only when exact baseline, existing authorized text targets, patch applicability and candidate syntax validate in isolation before any model call. Reuse existing full-file validators and governed edits; record parent lineage/hashes. Supply planner/editor/current Reviewer with coherent candidate evidence. Retain complete review files once and ground requirements in objective/acceptance contract. Reject stale or missing evidence; do not silently rebase or loosen gates. No target-product fixes, provider change or increased retry/repair budgets. Evidence and tests: [2026-10-09 audit](docs/audits/FORGELAB_REPEATED_SEMANTIC_REPAIR_ROOT_CAUSE_2026-10-09.md).
