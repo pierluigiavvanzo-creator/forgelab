@@ -395,8 +395,48 @@ class ApiTests(unittest.TestCase):
             "provider timeout",
         )
 
+    def prepare_parent_candidate(self, repo):
+        target = repo / "calculator.py"
+        source = target.read_text(encoding="utf-8")
+        target.write_text(source.replace("a - b", "a + b"), encoding="utf-8")
+        candidate_patch = subprocess.run(
+            ["git", "-C", str(repo), "diff", "--no-ext-diff"],
+            check=True, capture_output=True, text=True, encoding="utf-8",
+        ).stdout
+        target.write_text(source, encoding="utf-8")
+        head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        summary = json.loads((self.run / "RunSummary.json").read_text())
+        summary["base_head"] = head
+        (self.run / "RunSummary.json").write_text(json.dumps(summary), encoding="utf-8")
+        (self.run / "Changes.patch").write_text(candidate_patch, encoding="utf-8")
+
+    def test_human_repair_requires_parent_candidate_evidence_before_child(self):
+        repo = self.make_demo_repo()
+        self.prepare_parent_candidate(repo)
+        (self.run / "GateDecision.json").write_text(json.dumps({"decision": "PENDING"}), encoding="utf-8")
+        (self.run / "ExecutionPlan.json").write_text(json.dumps({
+            "repository": str(repo), "objective": "Fix addition", "change_operation": "ai_generate",
+            "allowed_paths": ["calculator.py"], "test_command": [sys.executable, "-m", "unittest"],
+        }), encoding="utf-8")
+        for missing in ("RunSummary.json", "Changes.patch"):
+            path = self.run / missing
+            original = path.read_text(encoding="utf-8")
+            path.unlink()
+            with self.subTest(missing=missing), patch("forgelab.api.run_multi_agent") as child:
+                with self.assertRaises(HTTPError) as rejected:
+                    self.request("/v1/runs/run-test123/repairs", "POST", {
+                        "actor": "Product Owner", "feedback": "Preserve existing candidate and finish.",
+                    })
+                self.assertIn(rejected.exception.code, (400, 404))
+                child.assert_not_called()
+            path.write_text(original, encoding="utf-8")
+
     def test_human_repair_creates_bounded_child_run(self):
         repo = self.make_demo_repo()
+        self.prepare_parent_candidate(repo)
 
         (self.run / "ExecutionPlan.json").write_text(
             json.dumps({
@@ -502,6 +542,12 @@ class ApiTests(unittest.TestCase):
 
         request = captured["request"]
 
+        self.assertEqual(request.parent_run_id, "run-test123")
+        self.assertEqual(
+            request.parent_candidate_patch,
+            (self.run / "Changes.patch").read_text(encoding="utf-8"),
+        )
+
         self.assertEqual(
             request.repository,
             repo.resolve(),
@@ -586,6 +632,7 @@ class ApiTests(unittest.TestCase):
 
     def test_human_repair_accepts_already_recorded_repair_gate(self):
         repo = self.make_demo_repo()
+        self.prepare_parent_candidate(repo)
 
         (self.run / "ExecutionPlan.json").write_text(
             json.dumps({

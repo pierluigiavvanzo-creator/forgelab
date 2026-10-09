@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 from dataclasses import dataclass
@@ -50,6 +51,9 @@ class MultiAgentRequest:
     operation: str = "replace_text"
     allowed_paths: tuple[str, ...] = ()
     editor_engine: str = "custom"
+    parent_run_id: str | None = None
+    parent_base_head: str | None = None
+    parent_candidate_patch: str | None = None
 
     @property
     def target_paths(self) -> tuple[str, ...]:
@@ -1935,6 +1939,39 @@ def run_multi_agent(
         RunStatus.PRECHECK
     )
 
+    policy_dir = request.repository / ".forgelab"
+    if (policy_dir / "agents.yaml").is_file() and (policy_dir / "policy.yaml").is_file():
+        policy_engine = PolicyEngine.from_directory(policy_dir)
+    else:
+        policy_engine = PolicyEngine()
+    gateway = ToolGateway(policy_engine)
+    parent_source_texts: dict[str, str] | None = None
+    parent_fields = (request.parent_run_id, request.parent_base_head, request.parent_candidate_patch)
+    if any(value is not None for value in parent_fields):
+        if request.operation != "ai_generate" or not all(parent_fields):
+            raise ValueError("native repair requires parent run, baseline and candidate patch")
+        with IsolatedWorkspace(request.repository, f"{run_id}-parent") as preview:
+            if preview.base_head != request.parent_base_head:
+                raise ValueError("parent candidate baseline differs from current source HEAD")
+            # Validate existing targets before a patch can change the preview.
+            original_texts = _read_ai_developer_targets(preview.path, target_paths)
+            gateway.apply_candidate_patch(Role.DEVELOPER, preview.path, set(target_paths), request.parent_candidate_patch)
+            parent_source_texts = _read_ai_developer_targets(preview.path, target_paths)
+            changed_files = [{"path": path, "new_text": text, "summary": "Preserve parent candidate"}
+                             for path, text in parent_source_texts.items() if text != original_texts[path]]
+            parent_payload = _validate_ai_developer_full_file_patch(json.dumps({
+                "schema_version": "2.1", "summary": "Preserve parent candidate", "files": changed_files,
+            }), target_paths, original_texts)
+            _validate_ai_developer_candidate_syntax(parent_payload, original_texts)
+        store.write_optional_json("ParentCandidate.json", {
+            "parent_run_id": request.parent_run_id, "base_head": request.parent_base_head,
+            "patch_sha256": hashlib.sha256(request.parent_candidate_patch.encode("utf-8")).hexdigest(),
+            "changed_paths": [item["path"] for item in changed_files],
+            "source_files_sha256": {path: hashlib.sha256(text.encode("utf-8")).hexdigest()
+                                    for path, text in parent_source_texts.items()},
+        })
+        store.write_text("ParentCandidate.patch", request.parent_candidate_patch)
+
     if use_ai:
         ai_router, ai_ledger = _build_local_ai_router()
 
@@ -1943,7 +1980,7 @@ def run_multi_agent(
             for path in target_paths
         )
 
-        plan_source_texts = _read_ai_developer_targets(
+        plan_source_texts = parent_source_texts or _read_ai_developer_targets(
             request.repository,
             target_paths,
         )
@@ -2275,12 +2312,6 @@ Return ONLY the required structured JSON object.
                 "context_selection_sha256": context_bundle["selection_sha256"],
             },
         )
-    policy_dir = request.repository / ".forgelab"
-    if (policy_dir / "agents.yaml").is_file() and (policy_dir / "policy.yaml").is_file():
-        policy_engine = PolicyEngine.from_directory(policy_dir)
-    else:
-        policy_engine = PolicyEngine()
-    gateway = ToolGateway(policy_engine)
     task_defs = [
         _task(run_id, "plan", Role.PROJECT_MANAGER, "Create bounded execution plan", target_paths, ["repo_read"], []),
         _task(run_id, "implement", Role.DEVELOPER, request.objective, target_paths, ["repo_edit"], ["plan"]),
@@ -2305,6 +2336,8 @@ Return ONLY the required structured JSON object.
         "max_repair_attempts": request.max_repair_attempts, "test_command": request.test_command,
         "change_operation": request.operation,
         "editor_engine": request.editor_engine,
+        "parent_run_id": request.parent_run_id,
+        "parent_candidate_ref": "ParentCandidate.json" if parent_source_texts is not None else None,
         "allowed_paths": list(target_paths),
         "timeout_seconds": request.timeout_seconds,
         "editor_timeout_seconds": request.editor_timeout_seconds,
@@ -2353,6 +2386,13 @@ Return ONLY the required structured JSON object.
     security_report: dict[str, Any] = {"status": "PASS", "findings": []}
     try:
         workspace.create()
+        if parent_source_texts is not None:
+            if workspace.base_head != request.parent_base_head:
+                raise ValueError("parent candidate baseline changed before isolation")
+            baseline_texts = _read_ai_developer_targets(workspace.path, target_paths)
+            for path, text in parent_source_texts.items():
+                if text != baseline_texts[path]:
+                    gateway.edit_text(Role.DEVELOPER, workspace.path, set(target_paths), path, baseline_texts[path], text)
         machine.transition(RunStatus.IMPLEMENTING)
 
         if request.operation == "ai_generate":
@@ -4027,14 +4067,14 @@ gate, not advisory prose.
 Objective:
 {request.objective}
 
+Binding Product Owner acceptance contract:
+{plan_contract_text}
+
 Allowed targets:
 {chr(10).join(f"- {path}" for path in target_paths)}
 
 Current complete authorized candidate files:
 {review_files_context}
-
-Patch:
-{diff[-8000:]}
 
 Latest deterministic test evidence:
 stdout:
@@ -4044,11 +4084,14 @@ stderr:
 {test.stderr[-2500:]}
 
 Instructions:
+- requirements[] must describe only obligations from the Objective and
+  binding acceptance contract above; these review instructions are not
+  product requirements;
 - decompose the objective into EVERY explicit obligation;
 - include one requirements[] entry for each obligation;
 - preserve quantitative requirements such as exact counts,
   "three", "each", "all", percentages, validation, and tests;
-- mark SATISFIED only when the candidate files, patch, and test
+- mark SATISFIED only when the candidate files and test
   evidence contain direct support for the complete requirement;
 - evaluate user-visible requirements end-to-end through the
   existing interface or entry point when one is present;

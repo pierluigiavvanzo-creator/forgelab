@@ -9,6 +9,22 @@ from forgelab.governance import PolicyEngine, PolicyViolation, ToolGateway
 
 
 class GovernanceTests(unittest.TestCase):
+    def test_parent_candidate_denies_scope_mode_and_rename_before_git(self):
+        candidate = "diff --git a/file.py b/file.py\n--- a/file.py\n+++ b/file.py\n@@ -1 +1 @@\n-old\n+new\n"
+        for invalid in (
+            candidate.replace("file.py", "outside.py"),
+            candidate.replace("--- a/file.py", "--- a/outside.py"),
+            candidate + "old mode 100644\nnew mode 100755\n",
+            candidate + "rename from file.py\nrename to other.py\n",
+            candidate + "GIT binary patch\n",
+        ):
+            with self.subTest(patch=invalid), patch("forgelab.governance.subprocess.run") as command:
+                gateway = ToolGateway(PolicyEngine())
+                with self.assertRaises(PolicyViolation):
+                    gateway.apply_candidate_patch(Role.DEVELOPER, Path("unused"), {"file.py"}, invalid)
+                command.assert_not_called()
+                self.assertEqual(gateway.report()["denied_count"], 1)
+
     def test_role_cannot_use_unassigned_tool(self):
         gateway = ToolGateway(PolicyEngine())
         with tempfile.TemporaryDirectory() as folder:

@@ -229,6 +229,72 @@ def add_m88_context(repo: Path, marker: str = "M88_SHARED_CONTEXT_MARKER") -> No
 
 
 class MultiAgentTests(unittest.TestCase):
+    def test_native_repair_rejects_stale_baseline_and_invalid_candidate_before_model(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = make_demo(Path(folder))
+            source = (repo / "calculator.py").read_text(encoding="utf-8")
+            candidate = source.replace("a - b", "a + b")
+            (repo / "calculator.py").write_text(candidate, encoding="utf-8")
+            valid_patch = git(repo, "diff", "--no-ext-diff") + "\n"
+            (repo / "calculator.py").write_text(source, encoding="utf-8")
+            head = git(repo, "rev-parse", "HEAD")
+            cases = (
+                ("0" * 40, valid_patch, "baseline differs"),
+                (head, valid_patch.replace("a + b", "a +"), "candidate does not parse"),
+                (head, valid_patch.replace("a - b", "not the baseline"), "does not apply"),
+            )
+            for baseline, candidate_patch, error in cases:
+                with self.subTest(error=error), patch("forgelab.orchestrator.OllamaProvider.invoke") as invoke, patch("forgelab.orchestrator._run_aider_editor") as editor:
+                    with self.assertRaisesRegex(ValueError, error):
+                        run_multi_agent(MultiAgentRequest(
+                            repository=repo, objective="Repair", target_path="calculator.py", old_text="", new_text="",
+                            test_command=[sys.executable, "-m", "unittest"], operation="ai_generate", ai_mode=True,
+                            editor_engine="aider", allowed_paths=("calculator.py",), parent_run_id="run-parent",
+                            parent_base_head=baseline, parent_candidate_patch=candidate_patch,
+                        ), Path(folder) / "runs")
+                    invoke.assert_not_called()
+                    editor.assert_not_called()
+                    self.assertEqual((repo / "calculator.py").read_text(encoding="utf-8"), source)
+                    self.assertEqual(git(repo, "status", "--porcelain"), "")
+
+    def test_native_repair_preserves_parent_candidate_for_planner_aider_and_review(self):
+        with tempfile.TemporaryDirectory() as folder:
+            repo = make_demo(Path(folder))
+            source = (repo / "calculator.py").read_text(encoding="utf-8")
+            parent = source.replace("a - b", "a + b") + "\nPARENT_FEATURE = True\n"
+            (repo / "calculator.py").write_text(parent, encoding="utf-8")
+            parent_patch = git(repo, "diff", "--no-ext-diff") + "\n"
+            (repo / "calculator.py").write_text(source, encoding="utf-8")
+            child = parent + "CHILD_FEATURE = True\n"
+            seen = {}
+            def editor(**kwargs):
+                seen["aider_source"] = (kwargs["repository"] / "calculator.py").read_text(encoding="utf-8")
+                return EditorResult("aider-cli", {"calculator.py":child}, ("calculator.py",), "", "", 0, False, 1, ("aider",))
+            scripted = [
+                ProviderResponse(ai_plan(), 1, 1, actual_cost=Decimal("0")),
+                ProviderResponse(semantic_review_pass(), 1, 1, actual_cost=Decimal("0")),
+            ]
+            with patch("forgelab.orchestrator.OllamaProvider.invoke", side_effect=scripted) as invoke, patch("forgelab.orchestrator._run_aider_editor", side_effect=editor):
+                run_dir = run_multi_agent(MultiAgentRequest(
+                    repository=repo, objective="Add CHILD_FEATURE while preserving PARENT_FEATURE", target_path="calculator.py",
+                    old_text="", new_text="", test_command=[sys.executable,"-m","unittest","discover","-v"],
+                    operation="ai_generate", ai_mode=True, editor_engine="aider", allowed_paths=("calculator.py",),
+                    parent_run_id="run-parent", parent_base_head=git(repo,"rev-parse","HEAD"), parent_candidate_patch=parent_patch,
+                ), Path(folder) / "runs")
+            self.assertEqual(seen["aider_source"], parent)
+            self.assertIn(parent, invoke.call_args_list[0].args[1])
+            review_prompt = invoke.call_args_list[1].args[1]
+            self.assertIn(child, review_prompt)
+            self.assertEqual(review_prompt.count("PARENT_FEATURE = True"), 1)
+            self.assertNotIn("\nPatch:\n", review_prompt)
+            summary = json.loads((run_dir / "RunSummary.json").read_text())
+            self.assertEqual(summary["status"], "READY_FOR_DECISION")
+            self.assertEqual((repo / "calculator.py").read_text(encoding="utf-8"), source)
+            self.assertEqual(git(repo, "status", "--porcelain"), "")
+            self.assertIn("PARENT_FEATURE", (run_dir / "Changes.patch").read_text())
+            lineage = json.loads((run_dir / "ParentCandidate.json").read_text())
+            self.assertEqual(lineage["parent_run_id"], "run-parent")
+
     def test_cyclic_task_graph_is_rejected(self):
         tasks = [
             {"task_id": "a", "dependencies": ["b"]},
@@ -3540,14 +3606,11 @@ class MultiAgentTests(unittest.TestCase):
                 "misleading test names",
                 first_reviewer_prompt,
             )
-            self.assertNotIn(
-                plan_marker,
-                first_reviewer_prompt,
-            )
-            self.assertNotIn(
-                plan_marker,
-                second_reviewer_prompt,
-            )
+            for reviewer_prompt in (first_reviewer_prompt, second_reviewer_prompt):
+                self.assertIn(plan_marker, reviewer_prompt)
+                self.assertIn("Binding Product Owner acceptance contract:", reviewer_prompt)
+                self.assertNotIn("\nPatch:\n", reviewer_prompt)
+                self.assertIn("these review instructions are not", reviewer_prompt)
 
             self.assertEqual(
                 git(repo, "status", "--porcelain"),
