@@ -230,14 +230,13 @@ The focused 108-test launcher subset is unchanged because test_editor_bakeoff.py
 After the removal and canonical-document compaction commits:
 
 - tracked blobs: 105 (from 125; -20 net, -16.0%);
-- tracked bytes: 1,469,963 B (from 1,613,850 B);
-- tracked-byte reduction: 143,887 B (-8.92%);
+- tracked bytes: approximately 1.47 MB (from 1,613,850 B baseline);
+- tracked-byte reduction: approximately 143 KB (~8.9%);
 - dashboard: 501,589 B;
 - src: 361,116 B;
 - tests: 339,254 B;
 - docs: 135,528 B;
-- compare against main: 28 changed paths, 580 additions, 4,039 deletions;
-- branch commits at this checkpoint: 2;
+- compare against main: 28 changed paths and more than 4,000 deleted lines;
 - branch is ahead of main and not behind.
 
 The tracked-tree reduction is intentionally conservative. The largest remaining tracked item, pnpm-lock.yaml, is deterministic dependency state rather than disposable weight.
