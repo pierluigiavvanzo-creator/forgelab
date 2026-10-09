@@ -6,6 +6,8 @@
 
 ## Current checkpoint — repeated semantic repair
 
+Delivery: [PR #68](https://github.com/pierluigiavvanzo-creator/forgelab/pull/68), OPEN/unmerged, code `59537cf` and evidence/state `dd6db94` pushed. Later delivery-link updates are documentation only.
+
 Canonical fetched main is `ad6f460e8b3cc43f041badd4686d8b09676b27c1`, containing PR #67. Child `run-a65d908fd535` of `run-797899d24f2a` is REVIEW / tests PASS / Repair required. The final candidate has three treatment rows and visible subtotals, but UI total ignores discount (230 instead of 217) and the six passing tests exercise only the helper. Reviewer is partially correct; its absent-implementation assertions and evaluator-instruction requirements are inaccurate.
 
 Native repair previously discarded the unpromoted parent candidate and restarted from source baseline. The new branch `fix/repeated-semantic-repair-root-cause` validates and carries forward the parent's final cumulative patch into planner and governed isolated editor writes, records lineage hashes, rejects stale/incompatible evidence, and reviews complete current files once with the acceptance contract. The duplicate review diff caused observed input truncation; it is removed without weakening blocking review or changing provider/model/budgets.

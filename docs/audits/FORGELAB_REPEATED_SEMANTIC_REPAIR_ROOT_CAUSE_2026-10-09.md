@@ -70,7 +70,7 @@ Ignored diagnostic artifacts: `.forgelab/runtime/semantic-repair-proof/`, `repea
 
 ## Delivery
 
-One branch/PR; no automatic merge. Canonical state files updated: PROJECT_STATE, ROADMAP, DECISIONS, HANDOVER_CURRENT, AGENTS and MANIFEST. The permanent AGENTS_MASTER mandate is unchanged. Frozen older PRs are untouched; no PR has been closed. Full report above is the handoff for ChatGPT Web.
+Published single [PR #68](https://github.com/pierluigiavvanzo-creator/forgelab/pull/68), OPEN/unmerged against main `ad6f460e8b3cc43f041badd4686d8b09676b27c1`. Code commit `59537cf`, evidence/state commit `dd6db94`; subsequent delivery-link commit changes documentation only. No automatic merge. Canonical state files updated: PROJECT_STATE, ROADMAP, DECISIONS, HANDOVER_CURRENT, AGENTS and MANIFEST. The permanent AGENTS_MASTER mandate is unchanged. Frozen older PRs are untouched; no PR has been closed. Full report above is the handoff for ChatGPT Web.
 
 The temporary checkout registration and files were removed after stopping only its owned services. Git removal encountered Windows `Filename too long`; native PowerShell cleanup used the verified literal extended path after removing the Aider junction. The original Aider executable remains present. Ignored proof/metadata/log artifacts remain in the primary repository.
 

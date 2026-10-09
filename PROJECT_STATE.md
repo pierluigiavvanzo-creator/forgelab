@@ -19,6 +19,8 @@ PR #18 stabilization was merged previously; later governance updates added `AGEN
 
 ## Current checkpoint — repeated semantic repair, 2026-10-09
 
+Delivery: [PR #68](https://github.com/pierluigiavvanzo-creator/forgelab/pull/68), OPEN/unmerged; one branch, code `59537cf` and evidence/state `dd6db94` pushed. Later delivery-link updates are documentation only.
+
 Latest child `run-a65d908fd535` remains REVIEW / tests PASS / Repair required. Its three treatment rows, subtotals, discount validation and error handling exist, but the UI displays EUR 230 instead of discounted EUR 217 and its six helper tests lack UI coverage. Reviewer is partially correct; it also denies present implementation and extracts evaluator instructions as requirements.
 
 Branch `fix/repeated-semantic-repair-root-cause` restores native repair continuity from the parent's final cumulative patch, validates exact baseline/scope/syntax before model calls, and supplies the same candidate to planner/editor/current review. Reviewer receives complete files once, with the acceptance contract and without the duplicated diff that caused observed Ollama truncation. Dental source remains clean at `42e026093960a8acc4cb64087433d90c5f537efb`; no target edit, run or promotion.
