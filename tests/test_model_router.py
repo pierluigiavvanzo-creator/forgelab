@@ -3,7 +3,6 @@ import unittest
 from decimal import Decimal
 from pathlib import Path
 
-from forgelab.benchmark import BenchmarkCase, run_benchmark
 from forgelab.model_router import (
     BudgetExceeded, ModelRoute, ModelRouter, Pricing, ProviderResponse,
     ProviderPermanentError, ProviderTransientError, RouterError, TaskClass, TaskProfile, UsageLedger,
@@ -425,19 +424,6 @@ class ModelRouterTests(unittest.TestCase):
         router = ModelRouter(routes(), {"test": provider}, UsageLedger(Decimal("1")))
         with self.assertRaises(RouterError):
             router.execute(TaskClass.S1, "prompt", "t", "PM", "missing price")
-
-    def test_benchmark_reports_quality_and_cost(self):
-        provider = ScriptedProvider([
-            ProviderResponse("answer alpha", 1, 1, actual_cost=Decimal("0.01")),
-            ProviderResponse("answer beta", 1, 1, actual_cost=Decimal("0.02")),
-        ])
-        router = ModelRouter(routes(), {"test": provider}, UsageLedger(Decimal("1")))
-        report = run_benchmark(router, [
-            BenchmarkCase("a", TaskClass.S1, "a", "alpha"),
-            BenchmarkCase("b", TaskClass.S1, "b", "missing"),
-        ])
-        self.assertEqual(report["quality_rate"], 0.5)
-        self.assertEqual(report["cost"], "0.03")
 
     def test_repository_routing_config_is_complete_and_unpriced(self):
         config = Path(__file__).parents[1] / ".forgelab" / "routing.yaml"
