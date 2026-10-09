@@ -1,10 +1,22 @@
 # ForgeLab — HANDOVER_CURRENT
 
 **Checkpoint date:** 2026-10-09
-**Checkpoint:** PR #67 merged / repeated semantic-repair diagnosis and bounded correction
-**Status:** PRE-MVP / candidate-continuity correction at HUMAN REVIEW GATE / Golden Path NOT PASS
+**Checkpoint:** PR #68 merged / semantic repair no-op evidence and bounded correction
+**Status:** PRE-MVP / no-op correction at HUMAN REVIEW GATE / original model motive UNVERIFIED / Golden Path NOT PASS
 
-## Current checkpoint — repeated semantic repair
+## Current checkpoint — semantic repair no-op
+
+Main local/remote `741ba4f65a10a7d3628dec74982477d0108492f1` includes merged PR #68. Latest fresh `run-1772ceaf77f0`: CLOSED / REPAIR, six helper tests PASS, EUR 0, two ledger calls and two editor calls. Candidate has one treatment UI, no visible subtotals/aggregate/UI tests. Reviewer partially correct; Extraction/Implant helper support exists despite its claim.
+
+Semantic Aider returned zero authorized net changes. ForgeLab incorrectly treated that as format/prewrite recovery exhaustion and reported zero repairs; no prewrite recovery actually ran. Original successful editor stdout/stderr and sandbox snapshots were not retained. The precise historical model/CLI cause is unverified; full root-cause diagnosis is not PASS.
+
+Branch `fix/semantic-repair-noop-root-cause` records no-op objective/output/hash evidence and truthful accounting, verifies identical content before reusing tests, and independently reconsiders the current candidate once. Persistent blockers -> CLOSED/SEMANTIC_REPAIR_NOOP/REPAIR; acceptance -> existing Security/human gates. No generic retry, budget increase, Dental fix/run/promotion or PR #68 bypass. Running 8875 health reports main `741ba4f`; existing services are preserved.
+
+Complete handoff: [no-op report](../audits/FORGELAB_SEMANTIC_REPAIR_NOOP_ROOT_CAUSE_2026-10-09.md). Single next action: `HUMAN_REVIEW_AND_MERGE_SEMANTIC_REPAIR_NOOP_FIX`. Do not launch Dental now. Earlier dated checkpoints are historical.
+
+Internal gate PASS on code `555d6ee`: 108 Python tests, four dashboard callbacks, Aider preflight/pip consistency, production build, actual readiness and Windows stability 6/6. This validates the ForgeLab outcome correction; it does not recover the discarded historical Aider response or establish Golden Path PASS.
+
+## Historical checkpoint — repeated semantic repair
 
 Delivery: [PR #68](https://github.com/pierluigiavvanzo-creator/forgelab/pull/68), OPEN/unmerged, code `59537cf` and evidence/state `dd6db94` pushed. Later delivery-link updates are documentation only.
 
@@ -793,15 +805,15 @@ This candidate has regression coverage but has not yet produced Windows/local PA
 
 ## 20. Single next action
 
-`HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`
+`HUMAN_REVIEW_AND_MERGE_SEMANTIC_REPAIR_NOOP_FIX`
 
-Review the single correction PR from `fix/repeated-semantic-repair-root-cause`. No merge or Dental submission is automated. Historical validation statements above are superseded by the current checkpoint and 2026-10-09 evidence.
+Review the single correction PR from `fix/semantic-repair-noop-root-cause`. No merge or Dental submission is automated. Historical statements above are superseded by the current checkpoint and no-op report; original discarded editor response must not be reconstructed by speculation.
 
 ## 21. Resume protocol
 
 1. Read `AGENTS_MASTER.md`, `AGENTS.md`, `MANIFEST.md`, current project state, roadmap and decisions.
-2. Read [the repeated semantic-repair report](../audits/FORGELAB_REPEATED_SEMANTIC_REPAIR_ROOT_CAUSE_2026-10-09.md).
-3. Verify Git again: baseline `main = ad6f460e8b3cc43f041badd4686d8b09676b27c1`; PR #67 is merged. Do not assume the new native-repair correction has merged or is loaded by the running service.
+2. Read [the semantic no-op report](../audits/FORGELAB_SEMANTIC_REPAIR_NOOP_ROOT_CAUSE_2026-10-09.md).
+3. Verify Git again: baseline `main = 741ba4f65a10a7d3628dec74982477d0108492f1`; PR #68 is merged. Do not assume the new no-op correction has merged or is loaded by the running service.
 4. Preserve `DENTAL_QUOTE_AUTONOMY_GATE.md`, source protection, zero paid-provider cost and human promotion.
 5. Resolve the single current review/integration gate before recommending another unchanged Dental run.
 

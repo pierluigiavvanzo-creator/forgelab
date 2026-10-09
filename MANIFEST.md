@@ -336,6 +336,6 @@ One preferred next action with owner.
 
 ## 21. Immediate next action
 
-`HUMAN_REVIEW_AND_MERGE_REPEATED_SEMANTIC_REPAIR_FIX`
+`HUMAN_REVIEW_AND_MERGE_SEMANTIC_REPAIR_NOOP_FIX`
 
-PR #67 is merged at `ad6f460e8b3cc43f041badd4686d8b09676b27c1`. Review `fix/repeated-semantic-repair-root-cause`. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run; latest captured Dental candidate remains incomplete.
+PR #68 is merged at `741ba4f65a10a7d3628dec74982477d0108492f1`. Review `fix/semantic-repair-noop-root-cause`. Evidence: [PROJECT_STATE.md](PROJECT_STATE.md). No automatic merge or Dental run; captured candidate remains incomplete and original no-op response was not preserved.

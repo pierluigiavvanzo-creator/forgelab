@@ -34,11 +34,17 @@ For Golden Path work:
 
 Current canonical `main`:
 
-`ad6f460e8b3cc43f041badd4686d8b09676b27c1` (PR #67 merged)
+`741ba4f65a10a7d3628dec74982477d0108492f1` (PR #68 merged)
 
 ## NOW — A Product Critical
 
-### Native semantic-repair candidate continuity and review evidence
+### Govern semantic-repair no-op and preserve decision evidence
+
+The latest clean run `run-1772ceaf77f0` still lacks three-treatment UI/subtotals/UI coverage. A semantic editor no-op was falsely classified as prewrite recovery exhaustion with zero repairs counted. Correct that proven outcome/evidence/accounting defect on `fix/semantic-repair-noop-root-cause`: one independent reconsideration of unchanged candidate, normal blocking gates, dedicated output/hash artifact and truthful terminal reason.
+
+The original Aider response was not preserved; its model/CLI motive remains unverified. No full historical root-cause or Dental PASS claim. Evidence: [no-op report](docs/audits/FORGELAB_SEMANTIC_REPAIR_NOOP_ROOT_CAUSE_2026-10-09.md). Single next action: `HUMAN_REVIEW_AND_MERGE_SEMANTIC_REPAIR_NOOP_FIX`. No new Dental run or automatic merge. PR #68 remains intact.
+
+### Historical checkpoint — native semantic-repair candidate continuity and review evidence
 
 The captured latest Dental candidate is incomplete: discounted final UI total regressed and UI tests are absent. Proven ForgeLab defects discard parent progress at native repair creation and duplicate candidate context in the Reviewer prompt, causing observed Ollama truncation and inaccurate claims.
 
