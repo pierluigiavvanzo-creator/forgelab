@@ -222,6 +222,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $RequiredAiderFlags = @(
     "--model-metadata-file",
+    "--model-settings-file",
     "--timeout",
     "--map-tokens",
     "--no-git",
@@ -295,7 +296,51 @@ $env:FORGELAB_AIDER_EXECUTABLE = $AiderExe
 $env:FORGELAB_OLLAMA_URL = "http://127.0.0.1:11434"
 
 Write-Host "Aider    : $AiderVersionText"
-Write-Host "Editor   : REUSE-FIRST / Aider + Ollama locale"
+
+# ---------------------------------------------------------
+# MODEL PROVIDER PREFLIGHT
+# ---------------------------------------------------------
+
+$RoutingConfig = Join-Path $ProjectRoot ".forgelab\routing.yaml"
+
+if ($env:FORGELAB_ROUTING_CONFIG) {
+    $RoutingConfig = $env:FORGELAB_ROUTING_CONFIG
+}
+
+if (-not (Test-Path $RoutingConfig)) {
+    throw "Routing config non trovato: $RoutingConfig"
+}
+
+$RoutingConfig = (Resolve-Path $RoutingConfig).Path
+
+if ($env:FORGELAB_ROUTING_CONFIG) {
+    # API and editor processes may start from another folder.
+    $env:FORGELAB_ROUTING_CONFIG = $RoutingConfig
+}
+
+$RoutingProviders = @(
+    (Get-Content $RoutingConfig -Raw | ConvertFrom-Json).routes.PSObject.Properties |
+        ForEach-Object { $_.Value.provider } |
+        Where-Object { $_ }
+)
+
+if ($RoutingProviders -contains "anthropic") {
+    if (-not $env:ANTHROPIC_API_KEY) {
+        throw "Il routing usa il provider anthropic: imposta la variabile d'ambiente ANTHROPIC_API_KEY (mai nei file del progetto)."
+    }
+
+    & $PythonExe -c "import anthropic"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "SDK Anthropic mancante: esegui '$PythonExe -m pip install anthropic'."
+    }
+
+    Write-Host "Editor   : REUSE-FIRST / Aider + Anthropic API (nessun modello locale)"
+    Write-Host "Routing  : $RoutingConfig"
+}
+else {
+    Write-Host "Editor   : REUSE-FIRST / Aider + Ollama locale"
+}
 
 
 # ---------------------------------------------------------

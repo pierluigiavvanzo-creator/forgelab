@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 import time
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlparse
@@ -24,6 +26,9 @@ class EditorRequest:
     model: str = "qwen2.5-coder:7b"
     timeout_seconds: int = 300
     read_only_paths: tuple[str, ...] = ()
+    provider: str = "ollama"
+    # (input, output) USD per million tokens; required for remote providers.
+    pricing: tuple[Decimal, Decimal] | None = None
 
 
 @dataclass(frozen=True)
@@ -37,6 +42,8 @@ class EditorResult:
     timed_out: bool
     duration_ms: int
     command: tuple[str, ...]
+    # Session cost reported by the editor for remote providers; None if absent.
+    reported_cost: Decimal | None = None
 
 
 class EditorAdapter(Protocol):
@@ -155,13 +162,52 @@ def _ollama_url() -> str:
     return raw.rstrip("/")
 
 
-def _sandbox_environment(tool_home: Path) -> dict[str, str]:
+_REMOTE_PROVIDERS = {
+    # provider: (credential environment variable, the only reachable API host)
+    "anthropic": ("ANTHROPIC_API_KEY", "api.anthropic.com"),
+}
+
+_COST_PATTERN = re.compile(
+    r"Cost: \$[0-9.]+ message, \$([0-9.]+) session"
+)
+
+
+def _reported_cost(stdout: str) -> Decimal | None:
+    matches = _COST_PATTERN.findall(stdout)
+    if not matches:
+        return None
+    try:
+        return Decimal(matches[-1])
+    except InvalidOperation:
+        return None
+
+
+def _sandbox_environment(
+    tool_home: Path,
+    provider: str = "ollama",
+) -> dict[str, str]:
     environment = {
         key: value
         for key, value in os.environ.items()
         if key.upper() in _SAFE_INHERITED_ENV_NAMES
     }
     ollama_url = _ollama_url()
+    direct_hosts = "127.0.0.1,localhost,::1"
+    if provider != "ollama":
+        if provider not in _REMOTE_PROVIDERS:
+            raise EditorAdapterError(
+                f"editor provider is not supported: {provider}"
+            )
+        credential_name, api_host = _REMOTE_PROVIDERS[provider]
+        credential = os.environ.get(credential_name, "").strip()
+        if not credential:
+            raise EditorAdapterError(
+                f"{credential_name} is required for the {provider} editor"
+            )
+        # Only the selected credential crosses the sandbox boundary, and only
+        # that provider's API host bypasses the blocked proxy.
+        environment[credential_name] = credential
+        direct_hosts = f"{direct_hosts},{api_host}"
     environment.update({
         "HOME": str(tool_home),
         "USERPROFILE": str(tool_home),
@@ -172,11 +218,11 @@ def _sandbox_environment(tool_home: Path) -> dict[str, str]:
         "HTTP_PROXY": _BLOCKED_PROXY,
         "HTTPS_PROXY": _BLOCKED_PROXY,
         "ALL_PROXY": _BLOCKED_PROXY,
-        "NO_PROXY": "127.0.0.1,localhost,::1",
+        "NO_PROXY": direct_hosts,
         "http_proxy": _BLOCKED_PROXY,
         "https_proxy": _BLOCKED_PROXY,
         "all_proxy": _BLOCKED_PROXY,
-        "no_proxy": "127.0.0.1,localhost,::1",
+        "no_proxy": direct_hosts,
     })
     return environment
 
@@ -196,10 +242,18 @@ class AiderCliAdapter:
         self.config = config or AiderCliConfig()
 
     @staticmethod
-    def _model(model: str) -> str:
+    def _model(model: str, provider: str = "ollama") -> str:
         model = model.strip()
         if not model:
             raise EditorAdapterError("editor model must not be empty")
+        if provider != "ollama":
+            if provider not in _REMOTE_PROVIDERS:
+                raise EditorAdapterError(
+                    f"editor provider is not supported: {provider}"
+                )
+            if model.startswith(f"{provider}/"):
+                return model
+            return f"{provider}/{model}"
         if model.startswith(("ollama/", "ollama_chat/")):
             return model
         return f"ollama_chat/{model}"
@@ -299,20 +353,50 @@ including tests only when they are inside the writable set.
                 "",
                 encoding="utf-8",
             )
-            model_name = self._model(request.model)
+            model_name = self._model(request.model, request.provider)
+            remote = request.provider != "ollama"
+            model_metadata: dict[str, object] = {
+                "litellm_provider": (
+                    request.provider if remote else "ollama_chat"
+                ),
+                "mode": "chat",
+            }
+            if remote:
+                if request.pricing is None:
+                    raise EditorAdapterError(
+                        "pricing is required for a remote editor provider"
+                    )
+                million = Decimal("1000000")
+                model_metadata.update({
+                    "max_tokens": 16000,
+                    "max_output_tokens": 16000,
+                    "input_cost_per_token": float(
+                        request.pricing[0] / million
+                    ),
+                    "output_cost_per_token": float(
+                        request.pricing[1] / million
+                    ),
+                })
             model_metadata_file.write_text(
                 json.dumps(
-                    {
-                        model_name: {
-                            "litellm_provider": "ollama_chat",
-                            "mode": "chat",
-                        }
-                    },
+                    {model_name: model_metadata},
                     indent=2,
                     sort_keys=True,
                 ) + "\n",
                 encoding="utf-8",
             )
+            model_settings_file = (
+                tool_home / ".forgelab-aider.model.settings.yml"
+            )
+            if remote:
+                # Current Claude models reject non-default sampling parameters.
+                model_settings_file.write_text(
+                    f"- name: {model_name}\n"
+                    f"  edit_format: {self.config.edit_format}\n"
+                    "  use_temperature: false\n"
+                    "  use_repo_map: false\n",
+                    encoding="utf-8",
+                )
 
             command = [
                 *self.config.executable,
@@ -351,11 +435,19 @@ including tests only when they are inside the writable set.
                 "--input-history-file",
                 str(input_history_file),
             ]
+            if remote:
+                command.extend([
+                    "--model-settings-file",
+                    str(model_settings_file),
+                ])
             for path in request.read_only_paths:
                 command.extend(["--read", path])
             command.extend(request.allowed_paths)
 
-            environment = _sandbox_environment(tool_home)
+            environment = _sandbox_environment(
+                tool_home,
+                request.provider,
+            )
             started = time.monotonic()
             try:
                 completed = subprocess.run(
@@ -388,6 +480,8 @@ including tests only when they are inside the writable set.
                     True,
                     int((time.monotonic() - started) * 1000),
                     tuple(command),
+                    _reported_cost(_process_output(error.stdout))
+                    if remote else None,
                 )
             except OSError as error:
                 raise EditorAdapterError(
@@ -443,4 +537,5 @@ including tests only when they are inside the writable set.
                 timed_out,
                 int((time.monotonic() - started) * 1000),
                 tuple(command),
+                _reported_cost(stdout) if remote else None,
             )

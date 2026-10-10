@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "run_budget": "1.00",
+  "routes": {
+    "S0": {
+      "provider": null,
+      "model": "deterministic",
+      "max_retries": 0,
+      "max_call_cost": "0",
+      "human_review_required": false
+    },
+    "S1": {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "max_retries": 1,
+      "max_call_cost": "0.05",
+      "pricing": {"input_per_million": "0.10", "output_per_million": "0.50"},
+      "human_review_required": false
+    },
+    "S2": {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "max_retries": 1,
+      "max_call_cost": "0.05",
+      "pricing": {"input_per_million": "0.10", "output_per_million": "0.50"},
+      "human_review_required": false
+    },
+    "S3": {
+      "provider": "premium",
+      "model": "reasoning-default",
+      "max_retries": 1,
+      "max_call_cost": "1.00",
+      "human_review_required": true
+    },
+    "S4": {
+      "provider": "premium",
+      "model": "high-impact-default",
+      "max_retries": 0,
+      "max_call_cost": "2.00",
+      "human_review_required": true
+    }
+  }
+}

@@ -4,6 +4,7 @@ import ast
 import hashlib
 import json
 import os
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -17,13 +18,18 @@ from .quality import review_patch, security_review_patch
 from .state_machine import RunStateMachine
 from .workspace import IsolatedWorkspace
 from .model_router import (
+    ModelProvider,
+    ModelRoute,
     ModelRouter,
     ProviderTransientError,
     TaskClass,
     UsageLedger,
+    UsageRecord,
     load_routes,
+    load_run_budget,
 )
 from .ollama_provider import OllamaProvider
+from .anthropic_provider import AnthropicProvider
 from .memory import ProjectMemory
 from .governance import PolicyEngine, ToolGateway
 from .editor_adapter import (
@@ -226,6 +232,14 @@ def _build_local_ai_router() -> tuple[ModelRouter, UsageLedger]:
         else Path.cwd() / ".forgelab" / "routing.yaml"
     )
 
+    if not configured and not routing_path.is_file():
+        # Launched from outside the project folder: use the checkout's config.
+        routing_path = (
+            Path(__file__).resolve().parents[2]
+            / ".forgelab"
+            / "routing.yaml"
+        )
+
     if not routing_path.is_file():
         raise FileNotFoundError(
             f"ForgeLab routing config not found: {routing_path}"
@@ -238,18 +252,25 @@ def _build_local_ai_router() -> tuple[ModelRouter, UsageLedger]:
 
     routes = load_routes(routing_path)
 
-    # Hard zero-spend budget for the local provider.
+    # Zero-spend unless the routing config sets an explicit run_budget.
     ledger = UsageLedger(
-        Decimal("0")
+        load_run_budget(routing_path)
     )
+
+    providers: dict[str, ModelProvider] = {
+        "ollama": OllamaProvider(
+            endpoint
+        ),
+    }
+    if any(
+        route.provider == "anthropic"
+        for route in routes.values()
+    ):
+        providers["anthropic"] = AnthropicProvider()
 
     router = ModelRouter(
         routes,
-        {
-            "ollama": OllamaProvider(
-                endpoint
-            ),
-        },
+        providers,
         ledger,
     )
 
@@ -1502,6 +1523,9 @@ def _aider_process_failure_message(
     return "\n".join(parts)
 
 
+_EDITOR_PROVIDER_ERROR = re.compile(r"litellm\.\w*Error")
+
+
 def _run_aider_editor(
     *,
     repository: Path,
@@ -1510,6 +1534,8 @@ def _run_aider_editor(
     model: str,
     timeout_seconds: int,
     phase: str,
+    route: ModelRoute | None = None,
+    ledger: UsageLedger | None = None,
 ) -> EditorResult:
     labels = {
         "implementation": "Aider editor",
@@ -1528,6 +1554,33 @@ def _run_aider_editor(
         "FORGELAB_AIDER_EXECUTABLE",
         "aider",
     )
+    provider = (
+        route.provider
+        if route is not None and route.provider
+        else "ollama"
+    )
+    remote_route = route if provider != "ollama" else None
+    pricing = None
+    if remote_route is not None:
+        if remote_route.pricing is None:
+            raise AIEditorExecutionError(
+                phase,
+                f"{label} blocked: the {provider} route has no "
+                "configured pricing",
+            )
+        if (
+            ledger is not None
+            and remote_route.max_call_cost > ledger.remaining
+        ):
+            raise AIEditorExecutionError(
+                phase,
+                f"{label} blocked: route reservation exceeds the "
+                "remaining run budget",
+            )
+        pricing = (
+            remote_route.pricing.input_per_million,
+            remote_route.pricing.output_per_million,
+        )
     try:
         result = AiderCliAdapter(
             AiderCliConfig(
@@ -1541,6 +1594,8 @@ def _run_aider_editor(
                 allowed_paths=allowed_paths,
                 model=model,
                 timeout_seconds=timeout_seconds,
+                provider=provider,
+                pricing=pricing,
             )
         )
     except EditorAdapterError as error:
@@ -1548,6 +1603,44 @@ def _run_aider_editor(
             phase,
             f"{label} failed before governed write: {error}",
         ) from error
+
+    # Aider exits 0 when the provider rejects the call (bad key, quota, ...).
+    provider_error = (
+        remote_route is not None
+        and not result.changed_paths
+        and _EDITOR_PROVIDER_ERROR.search(result.stdout) is not None
+    )
+
+    if remote_route is not None and ledger is not None:
+        # The editor calls the provider itself: charge what it reports, or
+        # the full route reservation when a completed call reports nothing.
+        cost = result.reported_cost
+        if cost is None:
+            cost = (
+                Decimal("0")
+                if provider_error
+                else remote_route.max_call_cost
+            )
+        ledger.records.append(UsageRecord(
+            f"aider-cli/{provider}", model,
+            remote_route.task_class.value, "DEVELOPER", phase,
+            0, 0, 0, str(cost),
+            result.duration_ms, 1,
+            "FAIL" if provider_error and cost == 0 else "SUCCESS",
+            "Reusable editor call priced from its session report",
+            "provider rejected the editor call" if provider_error
+            else None if result.reported_cost is not None
+            else "editor reported no cost; route reservation charged",
+        ))
+
+    if provider_error:
+        raise AIEditorExecutionError(
+            phase,
+            _aider_process_failure_message(
+                f"{label} was rejected by the {provider} provider",
+                result,
+            ),
+        )
 
     if (
         result.exit_status != 0
@@ -2546,8 +2639,12 @@ Rules:
                         "isolated_tool_home",
                     "model_metadata_policy":
                         "local_explicit_metadata",
-                    "network_policy":
-                        "loopback_ollama_with_process_env_egress_guard",
+                    "network_policy": (
+                        "loopback_ollama_with_process_env_egress_guard"
+                        if developer_route.provider in (None, "ollama")
+                        else f"{developer_route.provider}_api_host_only_"
+                        "with_process_env_egress_guard"
+                    ),
                     "environment_policy":
                         "minimal_safe_allowlist",
                 })
@@ -2568,6 +2665,8 @@ Rules:
                         allowed_paths=target_paths,
                         model=developer_route.model,
                         timeout_seconds=request.editor_timeout_seconds,
+                        route=developer_route,
+                        ledger=ai_ledger,
                         phase="implementation",
                     )
 
@@ -2700,6 +2799,8 @@ Rules:
                         allowed_paths=target_paths,
                         model=developer_route.model,
                         timeout_seconds=request.editor_timeout_seconds,
+                        route=developer_route,
+                        ledger=ai_ledger,
                         phase="initial_prewrite_correction",
                     )
 
@@ -3629,6 +3730,8 @@ Rules:
                             allowed_paths=target_paths,
                             model=repair_route.model,
                             timeout_seconds=request.editor_timeout_seconds,
+                            route=repair_route,
+                            ledger=ai_ledger,
                             phase="test_failure_repair",
                         )
 
@@ -4886,6 +4989,8 @@ Return ONLY the required structured JSON object.
                         allowed_paths=target_paths,
                         model=semantic_repair_route.model,
                         timeout_seconds=request.editor_timeout_seconds,
+                        route=semantic_repair_route,
+                        ledger=ai_ledger,
                         phase="semantic_review_repair",
                     )
 

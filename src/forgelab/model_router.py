@@ -151,6 +151,15 @@ def load_routes(path: Path) -> dict[TaskClass, ModelRoute]:
     return routes
 
 
+def load_run_budget(path: Path) -> Decimal:
+    """Maximum paid spend per run; absent means the zero-spend local default."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    budget = Decimal(str(payload.get("run_budget", "0")))
+    if budget < 0:
+        raise RouterError("run_budget cannot be negative")
+    return budget
+
+
 def _cost(response: ProviderResponse, pricing: Pricing | None) -> Decimal:
     if response.actual_cost is not None:
         return response.actual_cost

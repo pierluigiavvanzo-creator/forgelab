@@ -9,6 +9,10 @@ description = "Policy-governed control plane for auditable agentic software runs
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+# Remote model provider; the default local Ollama path needs no dependency.
+cloud = ["anthropic"]
+
 [project.scripts]
 forgelab = "forgelab.cli:main"
 
