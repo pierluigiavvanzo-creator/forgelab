@@ -2,17 +2,19 @@
 
 Last updated: 2026-10-21
 
-## Current cloud STOP correction checkpoint — 2026-10-21
+## Current all-real-role diagnostic checkpoint — 2026-10-21
 
-PR #74 is merged at synchronized baseline `8f2c47d7e517cc92eee816960b61cb8cb6dcd40a`. Proposed fix on `codex/fix-cloud-editor-error-classification`: route only on separately captured provider exceptions, never generated code or stdout/stderr. Exit-0 provider errors still stop/switch correctly. Original exception-chain HTTP codes survive litellm mapping. Launcher text now names the approved cloud chain. Model order, flags, version, timeouts, budgets, non-editor roles and human gate are unchanged.
+Task A / PR #75 is merged; synchronized baseline main `4dfb0ab596ba1d94b2fc27abc7e81b1ac6645b97`. Task B ran the protected fixture and unchanged objective through the real production orchestrator with real local planner/reviewer and cloud Aider, without response stubs.
 
-Validation: 192 Python tests PASS in 68.697 s; offline installed Aider/litellm boundary verified with network forbidden. Exactly one authorized retired-model diagnostic: exit 0, 73.655 s, no changed files/completion; nine Aider-internal attempts, no external retry. Protected fixture hashes match. EUR 0; no paid action, Dental, promotion, service restart or merge.
+Run 1 CLOSED after 167.187 s; Run 2 NOT RUN under the stop rule. Initial/final candidates passed generated tests (9/11, child exit 0) and independent acceptance 6/6 each. Two local reviews falsely denied implemented validation. Ollama logs prove reviewer prompts were truncated from 4,475/4,815 to 2,050 tokens. Final unchanged editor correction was rejected before write. Support was not called despite appearing in selected_roles; it remains unqualified.
 
-Not verified: real 402/429, remaining Free quota, post-fix successful live cloud edit, Dental and live non-editor roles. Existing internal retries and pinned-version observer compatibility remain risks. Runtime evidence stays ignored. This is proposed branch state, not a deployment claim.
+Three primary cloud completions used 29,557 tokens (17,474 input / 12,083 output). EUR 0, no paid action or quota error observed. Original fixture/source and API/dashboard/Ollama processes unchanged. No Dental, approval or promotion. The unchanged failed-run gate writes SYSTEM/REPAIR, not PENDING; it was preserved, not rewritten.
 
-Evidence: `docs/audits/FORGELAB_EDITOR_CLOUD_STOP_FIX_2026-10-21.md`.
+Verdict: current non-editor route cannot be accepted unchanged for Dental. Reviewer needs full-context qualification or separately approved migration; a single planner success and no Support invocation do not qualify those roles. Intrinsic 7B capability with full context and Free allowance remain unknown. RAM headroom fell to 0.72 GB; no observed OOM/timeout.
 
-Single next action: PO reviews the PR and Ollama usage, then decides whether to merge.
+Evidence: `docs/audits/FORGELAB_ALL_REAL_ROLES_SYNTHETIC_2026-10-21.md`. Documentation-only branch `codex/all-real-roles-synthetic-audit`; no production change or merge in Task B.
+
+Single next action: authorize a bounded reviewer qualification with complete context before any Dental decision.
 
 ## Current state
 
