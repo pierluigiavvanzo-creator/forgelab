@@ -751,3 +751,13 @@ Decision: stdout/stderr are not an error-provenance boundary because Aider rende
 Evidence: one diagnostic exited 0 in 73.655 s with the retirement error, no completion or modified fixture, nine existing Aider-internal attempts and no external retry. Full suite: 192 PASS in 68.697 s. Offline installed boundary verified; real quota/account usage and Dental remain unverified. Cost EUR 0; no payment action.
 
 Audit: [cloud STOP fix](docs/audits/FORGELAB_EDITOR_CLOUD_STOP_FIX_2026-10-21.md). Next: PO reviews the PR and Ollama usage, then decides whether to merge.
+
+## All-real-role synthetic diagnostic — 2026-10-21
+
+PO authorized at most two sequential synthetic-only runs after Task A merge, with all actual production roles, unchanged objective/routes/models/limits/gates, EUR 0 and no dashboard-token use. Stop after Run 1 unless READY_FOR_DECISION; no Dental, approval, promotion or production modification.
+
+Observed on main baseline 4dfb0ab: Run 1 CLOSED in 167.187 s; Run 2 omitted. Initial/final candidates pass generated tests and independent acceptance 6/6; both real local reviews falsely reject implemented behavior. Ollama proves review prompt truncation to 2,050 tokens from 4,475/4,815. The last cloud correction is unchanged and rejected before write. Planner succeeds once; Support has no actual call. Three cloud completions use 29,557 tokens; no paid action/quota error. Services and protected source remain unchanged. Production automatically writes gate SYSTEM/REPAIR on this failure; no human approval was applied and the gate artifact was not altered to PENDING.
+
+Disposition: the current non-editor path is not qualified for Dental. Do not infer inherent model incapability from a truncated-context run or qualify Support from selected_roles metadata. No route/configuration change is authorized by this diagnostic result.
+
+Evidence: [all-real-role audit](docs/audits/FORGELAB_ALL_REAL_ROLES_SYNTHETIC_2026-10-21.md). Next: authorize one bounded reviewer qualification with complete context before any Dental decision.
