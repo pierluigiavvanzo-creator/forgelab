@@ -295,7 +295,7 @@ $env:FORGELAB_AIDER_EXECUTABLE = $AiderExe
 $env:FORGELAB_OLLAMA_URL = "http://127.0.0.1:11434"
 
 Write-Host "Aider    : $AiderVersionText"
-Write-Host "Editor   : REUSE-FIRST / Aider + Ollama locale"
+Write-Host "Editor   : Aider + Ollama Cloud: gpt-oss:120b-cloud / gemma4:31b-cloud (nessun fallback locale)"
 
 
 # ---------------------------------------------------------

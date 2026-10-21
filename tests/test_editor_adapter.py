@@ -765,7 +765,7 @@ class EditorAdapterTests(unittest.TestCase):
             with patch(
                 "forgelab.editor_adapter.subprocess.run",
                 side_effect=timeout,
-            ):
+            ), patch("forgelab.editor_adapter._provider_errors", return_value=""):
                 result = adapter.run(
                     EditorRequest(
                         repository=repo,

@@ -35,12 +35,29 @@ EDITOR_MODELS = EditorModelConfig()
 
 
 def editor_cloud_stop_reason(output: str) -> str | None:
-    """Fail closed on credit/quota messages, even when Aider exits zero."""
+    """Classify trusted provider exceptions ONLY; never pass stdout/completions."""
     if re.search(r"(?:quota|credit|billing)|payment required|rate.?limit|(?:http|status(?:_code)?|error)[^\n]{0,30}\b(?:402|429)\b", output, re.I):
         return "EDITOR_CLOUD_QUOTA_STOP"
     if re.search(r"(?:http|status(?:_code)?|error)[^\n]{0,30}\b(?:404|410)\b|\bretired\b|model[^\n]{0,160}(?:not found|unavailable)|\bNotFoundError\b", output, re.I):
         return "EDITOR_MODEL_UNAVAILABLE"
     return None
+
+
+def _provider_errors(path: Path) -> str:
+    if not path.is_file():
+        raise EditorAdapterError("Aider provider-error observer did not initialize")
+    try:
+        events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+        if not events or events[0] != {"event": "observer_ready"}:
+            raise ValueError("missing observer readiness")
+        errors = []
+        for event in events:
+            if event["event"] == "provider_error":
+                for error in event["exceptions"]:
+                    errors.append(f"{error['type']}: HTTP {error['status_code']} {error['message']}")
+        return "\n".join(errors)
+    except (ValueError, KeyError, TypeError) as error:
+        raise EditorAdapterError("Invalid Aider provider-error evidence") from error
 
 
 @dataclass(frozen=True)
@@ -67,6 +84,7 @@ class EditorResult:
     model: str = ""
     routing_status: str = "EDITOR_COMPLETED"
     routing_attempts: tuple[dict[str, object], ...] = ()
+    provider_errors: str = ""
 
 
 class EditorAdapter(Protocol):
@@ -265,7 +283,7 @@ including tests only when they are inside the writable set.
                 return replace(result, routing_status="EDITOR_MODEL_UNAVAILABLE",
                                routing_attempts=tuple(attempts))
             result = self._run_once(replace(request, model=model, timeout_seconds=remaining))
-            reason = editor_cloud_stop_reason(result.stdout + "\n" + result.stderr)
+            reason = editor_cloud_stop_reason(result.provider_errors)
             status = reason or ("EDITOR_EXECUTION_FAILED" if result.exit_status or result.timed_out else "EDITOR_COMPLETED")
             attempts.append({"model": model, "reason": "PRIMARY" if index == 0 else "PRIMARY_UNAVAILABLE",
                              "status": status, "exit_status": result.exit_status,
@@ -411,7 +429,11 @@ including tests only when they are inside the writable set.
                 command.extend(["--read", path])
             command.extend(request.allowed_paths)
 
+            error_file = tool_home / "provider-errors.jsonl"
+            shutil.copyfile(Path(__file__).with_name("editor_error_capture.py"), tool_home / "sitecustomize.py")
             environment = _sandbox_environment(tool_home)
+            environment["PYTHONPATH"] = str(tool_home)
+            environment["FORGELAB_EDITOR_ERRORS"] = str(error_file)
             started = time.monotonic()
             try:
                 completed = subprocess.run(
@@ -444,6 +466,7 @@ including tests only when they are inside the writable set.
                     True,
                     int((time.monotonic() - started) * 1000),
                     tuple(command),
+                    provider_errors=_provider_errors(error_file),
                 )
             except OSError as error:
                 raise EditorAdapterError(
@@ -499,4 +522,5 @@ including tests only when they are inside the writable set.
                 timed_out,
                 int((time.monotonic() - started) * 1000),
                 tuple(command),
+                provider_errors=_provider_errors(error_file),
             )

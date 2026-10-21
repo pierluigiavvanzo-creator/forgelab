@@ -2,15 +2,17 @@
 
 Date: 2026-10-21
 
-## Current editor-routing checkpoint — 2026-10-21
+## Current cloud STOP correction checkpoint — 2026-10-21
 
-Implementation prepared on `feat/qualified-cloud-editor-chain-2026-10-21`, based on synchronized main `eed3a86460ec3c874eb19ed78b4fcb8a8a39647f` (PR #73). All Aider editor phases use validated gpt-oss:120b-cloud primary / gemma4:31b-cloud alternative; no local fallback. Three formerly direct S2 correction subpaths now use Aider. Primary unavailable permits one alternative; quota stops without switching; both unavailable stops. Model/reason evidence is recorded.
+PR #74 is merged at synchronized baseline `8f2c47d7e517cc92eee816960b61cb8cb6dcd40a`. Proposed fix on `codex/fix-cloud-editor-error-classification`: route only on separately captured provider exceptions, never generated code or stdout/stderr. Exit-0 provider errors still stop/switch correctly. Original exception-chain HTTP codes survive litellm mapping. Launcher text now names the approved cloud chain. Model order, flags, version, timeouts, budgets, non-editor roles and human gate are unchanged.
 
-Validation: 186 Python tests PASS; one production-orchestrator/Aider synthetic smoke PASS, READY_FOR_DECISION with human gate pending, 8 generated tests and 6/6 independent acceptance. One real completion: 2,052 input / 3,190 output tokens, 23.171 s total. Planner/reviewer responses were synthetic fixtures; their live models were not qualified. No paid action, Dental run, promotion, merge or service restart.
+Validation: 192 Python tests PASS in 68.697 s; offline installed Aider/litellm boundary verified with network forbidden. Exactly one authorized retired-model diagnostic: exit 0, 73.655 s, no changed files/completion; nine Aider-internal attempts, no external retry. Protected fixture hashes match. EUR 0; no paid action, Dental, promotion, service restart or merge.
 
-S1 planner/reviewer and S2 Support remain local; Security is deterministic. The explicitly selected legacy custom engine remains a separate path and is never an Aider fallback. Free allowance/debits are not inspected. Only synthetic data is authorized; Dental source transfer still requires PO decision. Dental Golden Path remains NOT PASS.
+Not verified: real 402/429, remaining Free quota, post-fix successful live cloud edit, Dental and live non-editor roles. Existing internal retries and pinned-version observer compatibility remain risks. Runtime evidence stays ignored. This is proposed branch state, not a deployment claim.
 
-Audit: `docs/audits/FORGELAB_CLOUD_EDITOR_ROUTING_2026-10-21.md`. PO must read Ollama usage before deciding on merge. This is proposed branch state, not a claim that the running service has been updated.
+Evidence: `docs/audits/FORGELAB_EDITOR_CLOUD_STOP_FIX_2026-10-21.md`.
+
+Single next action: PO reviews the PR and Ollama usage, then decides whether to merge.
 
 ## Canonical repository
 

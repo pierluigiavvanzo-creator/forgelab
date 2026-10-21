@@ -16,7 +16,7 @@ from forgelab.orchestrator import AIEditorExecutionError, _run_aider_editor
 
 def result(output='', exit_status=0):
     return EditorResult('aider-cli', {'app.py': 'VALUE = 2\n'}, ('app.py',),
-                        output, '', exit_status, False, 1, ('aider',))
+                        output, '', exit_status, False, 1, ('aider',), provider_errors=output)
 
 
 class CloudRoutingTests(unittest.TestCase):
