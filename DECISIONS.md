@@ -708,3 +708,16 @@ Carry forward the final cumulative parent patch only when exact baseline, existi
 The fresh real run proves a completed zero-change semantic editor call is thrown as AIDeveloperFormatError and mapped to fabricated prewrite exhaustion, while repair accounting remains zero. Candidate is incomplete and Reviewer partially inaccurate. The original editor response was discarded; its model/CLI motive is unverified and must not be invented.
 
 Record no-op objective/output/hashes, consume one semantic attempt and use one independent review of the same candidate with unchanged passing deterministic evidence. Only normal Reviewer/Security PASS permits READY_FOR_DECISION, with promotion still human-gated. Persistent blockers close with SEMANTIC_REPAIR_NOOP; real prewrite exhaustion stays unchanged. Reject inconsistent returned-file evidence before test reuse. Preserve PR #68, models/providers/budgets and Dental boundary. Evidence: [no-op report](docs/audits/FORGELAB_SEMANTIC_REPAIR_NOOP_ROOT_CAUSE_2026-10-09.md).
+
+## Scoped ADR-002 exception — Ollama Cloud qualification — 2026-10-21
+
+**Status:** Explicitly authorized by Product Owner for this diagnostic only; execution stopped after model-retired smoke.
+**Class:** D, to unblock A-class semantic repair.
+
+Exception scope: only `qwen3-coder:480b-cloud`, only via signed-in local Ollama at `http://127.0.0.1:11434`, only the synthetic qualification fixture, EUR 0 Free plan. Exactly one smoke, then at most the two prescribed independent unchanged-gate executions if available. No retries beyond the specified boundary, timeout/repair-budget increase, manual correction, account/credential handling, direct ollama.com API/key, paid plan/trial/credits/spend, other model, Dental run, promotion, production source/configuration change or merge. Stop on auth/model/quota failure. One documentation-only branch and PR authorized.
+
+Observed: one smoke returned HTTP 410, model retired July 15, 2026; qualification executions 0, no alternate attempted. This is not evidence about model quality or Aider. Production ADR-002 restrictions remain unchanged. Any replacement model or later production route needs a new explicit decision.
+
+Evidence: [cloud qualification audit](docs/audits/FORGELAB_OLLAMA_CLOUD_QWEN3_CODER_480B_QUALIFICATION_2026-10-21.md).
+
+Next: Product Owner decision on a separately named Free-plan candidate after checking the account usage page.

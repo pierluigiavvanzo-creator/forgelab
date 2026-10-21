@@ -1,6 +1,16 @@
 # HANDOVER_CURRENT.md — ForgeLab
 
-Date: 2026-10-09
+Date: 2026-10-21
+
+## Current qualification checkpoint — 2026-10-21
+
+Verified precheck main: `b9ba77db5db89ffdf4e5fdda41de18cfaca9e23c`, identical to remote main, clean working tree. The repository-cleanup branch was merged in `8c1f442`; old cleanup counts below are historical evidence, not today's test results.
+
+**Ollama Cloud qualification BLOCKED:** the one authorized `qwen3-coder:480b-cloud` smoke through local Ollama returned HTTP 410, reporting retirement on July 15, 2026. No qualification runs, fallback model or Dental run occurred. The 2/2 gate is NOT EVALUATED; the capability/hardware hypothesis remains untested. Production routing and source are unchanged.
+
+The PO authorized a diagnostic-only ADR-002 exception, synthetic data only and EUR 0 Free plan. No paid activation/purchase occurred; actual account allowance/debits are not inspected. Ask the PO to read session/weekly usage if displayed, otherwise monthly included credits/reset date. Further inference needs a separately named model authorization.
+
+Audit: `docs/audits/FORGELAB_OLLAMA_CLOUD_QWEN3_CODER_480B_QUALIFICATION_2026-10-21.md`. Dental Golden Path remains NOT PASS.
 
 ## Canonical repository
 
@@ -10,7 +20,7 @@ pierluigiavvanzo-creator/forgelab
 Canonical main before repository-cleanup proposal:
 1d7024f46d03709587913b3e4905d0b324ae7f40
 
-Current cleanup branch:
+Historical cleanup branch (merged):
 cleanup/repository-weight-redundancy-2026-10-09
 
 Never reconstruct current state from old chat history when GitHub is available.
@@ -60,7 +70,7 @@ The current local qwen2.5-coder:7b semantic-repair path has not met the required
 
 Do not start a fresh Dental target run until the semantic-repair execution path first passes the unchanged synthetic qualification gate.
 
-## Repository cleanup proposal
+## Historical repository cleanup proposal (merged)
 
 The cleanup branch removes only high-confidence live-tree waste:
 - generic dashboard starter documentation/assets no longer referenced;
@@ -112,9 +122,9 @@ No new CI/PASS claim exists until local validation is executed.
 3. Read PROJECT_STATE.md and ROADMAP.md.
 4. Read only the audit/ADR relevant to the active task.
 5. Verify remote main and current branch/head.
-6. For cleanup, validate the branch before requesting merge.
+6. For cloud qualification, read the current checkpoint and model-specific authorization before inference.
 7. For product work, return to semantic-model qualification before Dental.
 
 ## Single next action
 
-HUMAN_REVIEW_AND_VALIDATE_REPOSITORY_CLEANUP
+PO_DECISION_ON_SEPARATELY_AUTHORIZED_AVAILABLE_FREE_MODEL

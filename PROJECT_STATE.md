@@ -1,6 +1,16 @@
 # PROJECT_STATE.md
 
-Last updated: 2026-10-09
+Last updated: 2026-10-21
+
+## Current qualification checkpoint — 2026-10-21
+
+Verified precheck main: `b9ba77db5db89ffdf4e5fdda41de18cfaca9e23c`, identical to remote main, clean working tree. The repository-cleanup branch was merged in `8c1f442`; old cleanup counts below are historical evidence, not today's test results.
+
+**Ollama Cloud qualification BLOCKED:** the one authorized `qwen3-coder:480b-cloud` smoke through local Ollama returned HTTP 410, reporting retirement on July 15, 2026. No qualification runs, fallback model or Dental run occurred. The 2/2 gate is NOT EVALUATED; the capability/hardware hypothesis remains untested. Production routing and source are unchanged.
+
+The PO authorized a diagnostic-only ADR-002 exception, synthetic data only and EUR 0 Free plan. No paid activation/purchase occurred; actual account allowance/debits are not inspected. Ask the PO to read session/weekly usage if displayed, otherwise monthly included credits/reset date. Further inference needs a separately named model authorization.
+
+Audit: `docs/audits/FORGELAB_OLLAMA_CLOUD_QWEN3_CODER_480B_QUALIFICATION_2026-10-21.md`. Dental Golden Path remains NOT PASS.
 
 ## Current state
 
@@ -64,7 +74,7 @@ Purpose:
 - compact canonical state files that had accumulated repeated historical checkpoints;
 - keep production behavior, security gates and current runtime architecture unchanged.
 
-The cleanup is not merged until validation and Product Owner approval.
+Historical cleanup proposal; merged in 8c1f442. No new test PASS is claimed here.
 
 ## Test inventory at cleanup baseline
 
@@ -116,4 +126,4 @@ Do not:
 
 ## Single next action
 
-HUMAN_REVIEW_AND_VALIDATE_REPOSITORY_CLEANUP
+PO_DECISION_ON_SEPARATELY_AUTHORIZED_AVAILABLE_FREE_MODEL
