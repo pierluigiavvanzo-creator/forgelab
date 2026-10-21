@@ -4,13 +4,13 @@ Last updated: 2026-10-21
 
 ## Current qualification checkpoint — 2026-10-21
 
-Verified precheck main: `b9ba77db5db89ffdf4e5fdda41de18cfaca9e23c`, identical to remote main, clean working tree. The repository-cleanup branch was merged in `8c1f442`; old cleanup counts below are historical evidence, not today's test results.
+**Synthetic cloud qualification PASS:** `gpt-oss:120b-cloud` 2/2 and `gemma4:31b-cloud` 2/2. Four sequential executions, no new smoke/retry: editor exits 0 in 12.640–18.202 seconds, generated-test child exits 0, independent acceptance 6/6 each. Both gpt-oss completions contained final content. Fixture/objective hashes unchanged; no manual output correction. Prior Qwen retirement remains historical, not the current qualification blocker.
 
-**Ollama Cloud qualification BLOCKED:** the one authorized `qwen3-coder:480b-cloud` smoke through local Ollama returned HTTP 410, reporting retirement on July 15, 2026. No qualification runs, fallback model or Dental run occurred. The 2/2 gate is NOT EVALUATED; the capability/hardware hypothesis remains untested. Production routing and source are unchanged.
+This diagnostic extended the PO-authorized ADR-002 exception only to these two models, local signed-in Ollama, synthetic data and EUR 0 Free plan. No payment action or quota/credit error observed; actual account usage/debits are not inspected. PO should read the usage page (session/weekly or monthly included credits/reset). Production routing/configuration and services are unchanged. Dental Golden Path remains NOT PASS.
 
-The PO authorized a diagnostic-only ADR-002 exception, synthetic data only and EUR 0 Free plan. No paid activation/purchase occurred; actual account allowance/debits are not inspected. Ask the PO to read session/weekly usage if displayed, otherwise monthly included credits/reset date. Further inference needs a separately named model authorization.
+Base: PR #72 head `a4be803e7449aa600d05c024ea30e6a26190e9ac`; fetched main `b9ba77db5db89ffdf4e5fdda41de18cfaca9e23c` did not yet include it. Follow-up branch: `audit/ollama-cloud-two-models-2026-10-21`. Repository cleanup was already merged; older cleanup test counts below remain historical.
 
-Audit: `docs/audits/FORGELAB_OLLAMA_CLOUD_QWEN3_CODER_480B_QUALIFICATION_2026-10-21.md`. Dental Golden Path remains NOT PASS.
+Audit: `docs/audits/FORGELAB_OLLAMA_CLOUD_TWO_MODEL_QUALIFICATION_2026-10-21.md`. Proposed separate routing PR/ADR update requires PO approval; no production/Dental readiness claim follows from this fixture alone.
 
 ## Current state
 
@@ -126,4 +126,4 @@ Do not:
 
 ## Single next action
 
-PO_DECISION_ON_SEPARATELY_AUTHORIZED_AVAILABLE_FREE_MODEL
+PO_APPROVAL_OF_SEPARATE_SEMANTIC_ROUTING_PR_AND_ADR_UPDATE_AFTER_USAGE_REVIEW

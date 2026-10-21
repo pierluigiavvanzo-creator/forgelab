@@ -721,3 +721,13 @@ Observed: one smoke returned HTTP 410, model retired July 15, 2026; qualificatio
 Evidence: [cloud qualification audit](docs/audits/FORGELAB_OLLAMA_CLOUD_QWEN3_CODER_480B_QUALIFICATION_2026-10-21.md).
 
 Next: Product Owner decision on a separately named Free-plan candidate after checking the account usage page.
+
+## Scoped ADR-002 exception extension — two Cloud Free models — 2026-10-21
+
+PO explicitly authorized exactly `gpt-oss:120b-cloud`, then `gemma4:31b-cloud`, through local signed-in Ollama only, synthetic qualification only, EUR 0 Free plan. No new smoke; exactly two independent unchanged-gate executions per model, sequential, with model 2 required even if model 1 passes. STOP on HTTP 402/429 or any quota/credit message; existing auth/unavailability stop conditions remain. No paid plan/trial/purchase/payment method, other model, direct cloud API/key, credentials handling, timeout/repair-budget increase, manual output fixes, reasoning-setting change, Dental, production changes, promotion or merge. One documentation-only PR is authorized, based on PR #72 while it is unmerged.
+
+Observed: both models PASS 2/2; four editor exits 0 within 300 seconds, four generated-test child exits 0 and independent acceptance 24/24. Both gpt-oss runs returned final content. No new smoke/retry; fixture unchanged. This qualifies the synthetic path only; production ADR-002 restrictions remain in force. Account quota/debits and Dental capacity are not verified; PO usage-page check requested.
+
+Evidence: [two-model qualification](docs/audits/FORGELAB_OLLAMA_CLOUD_TWO_MODEL_QUALIFICATION_2026-10-21.md).
+
+Next: PO decision on a separate semantic-routing implementation PR and ADR-002 update after reviewing usage. No production routing change is included here.
