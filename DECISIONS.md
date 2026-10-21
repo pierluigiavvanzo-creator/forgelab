@@ -741,3 +741,13 @@ Local signed-in Ollama only; EUR 0; no key/direct cloud API/new provider/payment
 Validation: full Python suite PASS; one real primary-editor integration smoke through the production orchestrator, with synthetic non-editor responses, reached READY_FOR_DECISION; generated tests exit 0 and independent acceptance 6/6. Actual account quota/billing and live non-editor capability remain unverified.
 
 Evidence: [cloud routing audit](docs/audits/FORGELAB_CLOUD_EDITOR_ROUTING_2026-10-21.md). Next: PO reviews usage page and decides whether to merge the implementation PR.
+
+## Provider-only cloud STOP detection — 2026-10-21
+
+PO authorized the Class-A correction to PR #74 and exactly one retired qwen3-coder:480b-cloud editor diagnostic on the protected synthetic fixture, through signed-in loopback Ollama, EUR 0. This is not qualification or production model expansion. No real 402/429 is provoked; signatures come from installed source and offline injected exceptions. One branch/PR, no merge.
+
+Decision: stdout/stderr are not an error-provenance boundary because Aider renders generated files there. Observe raised provider exceptions at Aider's send_completion boundary into private tool-home JSONL; classify only this evidence and preserve original HTTP codes through exception chains. Missing/corrupt observer evidence fails closed. No model/flag/version/timeout/budget/gate/non-editor-role change; launcher text only.
+
+Evidence: one diagnostic exited 0 in 73.655 s with the retirement error, no completion or modified fixture, nine existing Aider-internal attempts and no external retry. Full suite: 192 PASS in 68.697 s. Offline installed boundary verified; real quota/account usage and Dental remain unverified. Cost EUR 0; no payment action.
+
+Audit: [cloud STOP fix](docs/audits/FORGELAB_EDITOR_CLOUD_STOP_FIX_2026-10-21.md). Next: PO reviews the PR and Ollama usage, then decides whether to merge.
