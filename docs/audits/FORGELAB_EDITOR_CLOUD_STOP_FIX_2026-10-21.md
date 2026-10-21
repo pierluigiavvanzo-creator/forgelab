@@ -25,7 +25,7 @@ Fixture SHA-256 verified before execution:
 
 Exactly one Aider invocation: exit 0, 73,655 ms, no timeout, no changed paths, original fixture unchanged. Stdout contains `litellm.APIConnectionError: Ollama_chatException` and the retirement message; stderr is empty. The known HTTP-410 retirement is rendered without its numeric status. Aider made nine internal attempts (eight retry messages) within that one invocation. There were no external retries. These internal retries are disclosed, not counted as one HTTP request. No completion or token usage was returned. Two preceding preflight failures (Python import path and hashing newline-normalized text) occurred before invoking Aider; the recorded raw-byte hash matched.
 
-Runtime evidence: `.forgelab/runtime/semantic-completion-audit/cloud-stop-diagnostic-2026-10-21/{stdout.txt,stderr.txt,result.json}`. The complete non-secret stdout is retained as `tests/fixtures/aider_retired_stdout.txt` for replay. No further live model call was made.
+Runtime evidence: `.forgelab/runtime/semantic-completion-audit/cloud-stop-diagnostic-2026-10-21/{stdout.txt,stderr.txt,result.json}`. The non-secret stdout is retained as `tests/fixtures/aider_retired_stdout.txt` for replay, with trailing whitespace/blank EOF lines normalized for Git; raw output remains unchanged in runtime. No further live model call was made.
 
 ## Source-derived 402/429 evidence
 
