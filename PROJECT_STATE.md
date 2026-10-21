@@ -2,15 +2,15 @@
 
 Last updated: 2026-10-21
 
-## Current qualification checkpoint — 2026-10-21
+## Current editor-routing checkpoint — 2026-10-21
 
-**Synthetic cloud qualification PASS:** `gpt-oss:120b-cloud` 2/2 and `gemma4:31b-cloud` 2/2. Four sequential executions, no new smoke/retry: editor exits 0 in 12.640–18.202 seconds, generated-test child exits 0, independent acceptance 6/6 each. Both gpt-oss completions contained final content. Fixture/objective hashes unchanged; no manual output correction. Prior Qwen retirement remains historical, not the current qualification blocker.
+Implementation prepared on `feat/qualified-cloud-editor-chain-2026-10-21`, based on synchronized main `eed3a86460ec3c874eb19ed78b4fcb8a8a39647f` (PR #73). All Aider editor phases use validated gpt-oss:120b-cloud primary / gemma4:31b-cloud alternative; no local fallback. Three formerly direct S2 correction subpaths now use Aider. Primary unavailable permits one alternative; quota stops without switching; both unavailable stops. Model/reason evidence is recorded.
 
-This diagnostic extended the PO-authorized ADR-002 exception only to these two models, local signed-in Ollama, synthetic data and EUR 0 Free plan. No payment action or quota/credit error observed; actual account usage/debits are not inspected. PO should read the usage page (session/weekly or monthly included credits/reset). Production routing/configuration and services are unchanged. Dental Golden Path remains NOT PASS.
+Validation: 186 Python tests PASS; one production-orchestrator/Aider synthetic smoke PASS, READY_FOR_DECISION with human gate pending, 8 generated tests and 6/6 independent acceptance. One real completion: 2,052 input / 3,190 output tokens, 23.171 s total. Planner/reviewer responses were synthetic fixtures; their live models were not qualified. No paid action, Dental run, promotion, merge or service restart.
 
-Base: PR #72 head `a4be803e7449aa600d05c024ea30e6a26190e9ac`; fetched main `b9ba77db5db89ffdf4e5fdda41de18cfaca9e23c` did not yet include it. Follow-up branch: `audit/ollama-cloud-two-models-2026-10-21`. Repository cleanup was already merged; older cleanup test counts below remain historical.
+S1 planner/reviewer and S2 Support remain local; Security is deterministic. The explicitly selected legacy custom engine remains a separate path and is never an Aider fallback. Free allowance/debits are not inspected. Only synthetic data is authorized; Dental source transfer still requires PO decision. Dental Golden Path remains NOT PASS.
 
-Audit: `docs/audits/FORGELAB_OLLAMA_CLOUD_TWO_MODEL_QUALIFICATION_2026-10-21.md`. Proposed separate routing PR/ADR update requires PO approval; no production/Dental readiness claim follows from this fixture alone.
+Audit: `docs/audits/FORGELAB_CLOUD_EDITOR_ROUTING_2026-10-21.md`. PO must read Ollama usage before deciding on merge. This is proposed branch state, not a claim that the running service has been updated.
 
 ## Current state
 
@@ -126,4 +126,4 @@ Do not:
 
 ## Single next action
 
-PO_APPROVAL_OF_SEPARATE_SEMANTIC_ROUTING_PR_AND_ADR_UPDATE_AFTER_USAGE_REVIEW
+PO_USAGE_PAGE_REVIEW_AND_IMPLEMENTATION_PR_MERGE_DECISION

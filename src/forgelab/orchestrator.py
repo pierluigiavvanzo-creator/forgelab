@@ -4,7 +4,7 @@ import ast
 import hashlib
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +19,7 @@ from .workspace import IsolatedWorkspace
 from .model_router import (
     ModelRouter,
     ProviderTransientError,
+    ProviderResponse,
     TaskClass,
     UsageLedger,
     load_routes,
@@ -31,6 +32,7 @@ from .editor_adapter import (
     AiderCliConfig,
     EditorAdapterError,
     EditorRequest,
+    EDITOR_MODELS,
 )
 
 
@@ -483,8 +485,9 @@ def _ai_developer_full_file_response_schema(
 class AIEditorExecutionError(RuntimeError):
     """Governed reusable-editor process or sandbox failure."""
 
-    def __init__(self, phase: str, message: str) -> None:
+    def __init__(self, phase: str, message: str, reason: str = "EDITOR_EXECUTION_FAILED") -> None:
         self.phase = phase
+        self.reason = reason
         super().__init__(message)
 
 
@@ -1507,9 +1510,9 @@ def _run_aider_editor(
     repository: Path,
     objective: str,
     allowed_paths: tuple[str, ...],
-    model: str,
     timeout_seconds: int,
     phase: str,
+    store: ArtifactStore | None = None,
 ) -> EditorResult:
     labels = {
         "implementation": "Aider editor",
@@ -1539,7 +1542,7 @@ def _run_aider_editor(
                 repository=repository,
                 objective=objective,
                 allowed_paths=allowed_paths,
-                model=model,
+                model=EDITOR_MODELS.primary,
                 timeout_seconds=timeout_seconds,
             )
         )
@@ -1549,6 +1552,15 @@ def _run_aider_editor(
             f"{label} failed before governed write: {error}",
         ) from error
 
+    if store is not None:
+        routing_file = store.root / "EditorRouting.json"
+        routing = json.loads(routing_file.read_text(encoding="utf-8")) if routing_file.exists() else {"calls": []}
+        routing["calls"].append({"phase": phase, "model": result.model,
+                                 "status": result.routing_status,
+                                 "attempts": list(result.routing_attempts)})
+        store.write_optional_json("EditorRouting.json", routing)
+    if result.routing_status in {"EDITOR_CLOUD_QUOTA_STOP", "EDITOR_MODEL_UNAVAILABLE"}:
+        raise AIEditorExecutionError(phase, _aider_process_failure_message(label, result), result.routing_status)
     if (
         result.exit_status != 0
         or result.timed_out
@@ -1562,6 +1574,22 @@ def _run_aider_editor(
         )
 
     return result
+
+
+def _aider_full_file_response(result: EditorResult) -> ProviderResponse:
+    """Adapt already-produced files to the existing deterministic recovery validator.
+
+    This is not an LLM invocation or a metered ledger entry.
+    """
+    return ProviderResponse(
+        text=json.dumps({
+            "schema_version": "2.1", "summary": "Aider bounded correction",
+            "files": [{"path": path, "new_text": result.files[path],
+                       "summary": "Aider bounded correction"}
+                      for path in result.changed_paths],
+        }),
+        input_tokens=0, output_tokens=0, actual_cost=Decimal("0"),
+    )
 
 
 def _validate_ai_developer_candidate_syntax(
@@ -2336,6 +2364,7 @@ Return ONLY the required structured JSON object.
         "max_repair_attempts": request.max_repair_attempts, "test_command": request.test_command,
         "change_operation": request.operation,
         "editor_engine": request.editor_engine,
+            "editor_inference_location": "ollama_cloud_via_loopback" if request.editor_engine == "aider" else "not_applicable",
         "parent_run_id": request.parent_run_id,
         "parent_candidate_ref": "ParentCandidate.json" if parent_source_texts is not None else None,
         "allowed_paths": list(target_paths),
@@ -2566,11 +2595,12 @@ Rules:
                         repository=workspace.path,  # type: ignore[arg-type]
                         objective=aider_objective,
                         allowed_paths=target_paths,
-                        model=developer_route.model,
+                        store=store,
                         timeout_seconds=request.editor_timeout_seconds,
                         phase="implementation",
                     )
 
+                    developer_route = replace(developer_route, model=editor_result.model or EDITOR_MODELS.primary)
                     if not editor_result.changed_paths:
                         raise AIDeveloperFormatError(
                             "Aider editor returned no authorized changes"
@@ -2698,11 +2728,12 @@ Rules:
                         repository=workspace.path,  # type: ignore[arg-type]
                         objective=correction_objective,
                         allowed_paths=target_paths,
-                        model=developer_route.model,
+                        store=store,
                         timeout_seconds=request.editor_timeout_seconds,
                         phase="initial_prewrite_correction",
                     )
 
+                    developer_route = replace(developer_route, model=corrected_editor_result.model or EDITOR_MODELS.primary)
                     if not corrected_editor_result.changed_paths:
                         raise AIDeveloperFormatError(
                             "Aider initial pre-write correction returned "
@@ -3199,22 +3230,34 @@ Return ONLY the required JSON object.
                 )
                 validate_task_graph(task_defs)
 
-                correction_response = ai_router.execute(
-                    TaskClass.S2,
-                    correction_prompt,
-                    correction_id,
-                    Role.DEVELOPER.value,
-                    "Correct regressing bounded repair once",
-                    request.timeout_seconds,
-                    response_format=(
-                        _ai_developer_full_file_response_schema(
-                            target_paths
-                        )
-                    ),
-                )
+                if request.editor_engine == "aider":
+                    reusable_editor_calls += 1
+                    correction_editor = _run_aider_editor(
+                        repository=workspace.path, objective=correction_prompt.replace("Return ONLY the required JSON object.", "Return complete files using the editor format."),
+                        allowed_paths=target_paths, timeout_seconds=request.timeout_seconds,
+                        phase="regression_test_correction", store=store,
+                    )
+                    correction_response = _aider_full_file_response(correction_editor)
+                else:
+                    correction_response = ai_router.execute(
+                        TaskClass.S2,
+                        correction_prompt,
+                        correction_id,
+                        Role.DEVELOPER.value,
+                        "Correct regressing bounded repair once",
+                        request.timeout_seconds,
+                        response_format=(
+                            _ai_developer_full_file_response_schema(
+                                target_paths
+                            )
+                        ),
+                    )
+
                 correction_route = ai_router.route(
                     TaskClass.S2
                 )
+                if request.editor_engine == "aider":
+                    correction_route = replace(correction_route, model=correction_editor.model or EDITOR_MODELS.primary)
                 correction_error = ""
                 correction_patch: dict[str, Any] | None = None
 
@@ -3621,17 +3664,18 @@ Rules:
                     def run_aider_repair(
                         objective: str,
                     ) -> dict[str, Any]:
-                        nonlocal reusable_editor_calls
+                        nonlocal reusable_editor_calls, repair_route
                         reusable_editor_calls += 1
                         editor_result = _run_aider_editor(
                             repository=workspace.path,  # type: ignore[arg-type]
                             objective=objective,
                             allowed_paths=target_paths,
-                            model=repair_route.model,
+                            store=store,
                             timeout_seconds=request.editor_timeout_seconds,
                             phase="test_failure_repair",
                         )
 
+                        repair_route = replace(repair_route, model=editor_result.model or EDITOR_MODELS.primary)
                         if not editor_result.changed_paths:
                             raise AIDeveloperFormatError(
                                 "Aider test-failure repair returned "
@@ -4448,29 +4492,49 @@ summary. new_text must contain complete replacement source, not a diff.
                         task_defs
                     )
 
-                    semantic_review_correction_response = (
-                        ai_router.execute(
-                            TaskClass.S2,
-                            semantic_review_correction_prompt,
-                            semantic_review_correction_id,
-                            Role.DEVELOPER.value,
-                            (
-                                "Correct remaining semantic "
-                                "review findings once"
+                    if request.editor_engine == "aider":
+                        reusable_editor_calls += 1
+                        correction_editor = _run_aider_editor(
+                            repository=workspace.path,
+                            objective=semantic_review_correction_prompt.replace(
+                                "Return ONLY the required JSON object.",
+                                "Return complete files using the editor format.",
                             ),
-                            request.timeout_seconds,
-                            response_format=(
-                                _ai_developer_full_file_response_schema(
-                                    target_paths
-                                )
-                            ),
+                            allowed_paths=target_paths,
+                            timeout_seconds=request.timeout_seconds,
+                            phase="semantic_review_correction", store=store,
                         )
-                    )
+                        semantic_review_correction_response = _aider_full_file_response(correction_editor)
+                    else:
+                        semantic_review_correction_response = (
+                            ai_router.execute(
+                                TaskClass.S2,
+                                semantic_review_correction_prompt,
+                                semantic_review_correction_id,
+                                Role.DEVELOPER.value,
+                                (
+                                    "Correct remaining semantic "
+                                    "review findings once"
+                                ),
+                                request.timeout_seconds,
+                                response_format=(
+                                    _ai_developer_full_file_response_schema(
+                                        target_paths
+                                    )
+                                ),
+                            )
+                        )
+
                     semantic_review_correction_route = (
                         ai_router.route(
                             TaskClass.S2
                         )
                     )
+                    if request.editor_engine == "aider":
+                        semantic_review_correction_route = replace(
+                            semantic_review_correction_route,
+                            model=correction_editor.model or EDITOR_MODELS.primary,
+                        )
 
                     semantic_review_correction_patch: (
                         dict[str, Any] | None
@@ -4884,11 +4948,12 @@ Return ONLY the required structured JSON object.
                         repository=workspace.path,  # type: ignore[arg-type]
                         objective=semantic_aider_objective,
                         allowed_paths=target_paths,
-                        model=semantic_repair_route.model,
+                        store=store,
                         timeout_seconds=request.editor_timeout_seconds,
                         phase="semantic_review_repair",
                     )
 
+                    semantic_repair_route = replace(semantic_repair_route, model=semantic_editor_result.model or EDITOR_MODELS.primary)
                     if not semantic_editor_result.changed_paths:
                         if semantic_editor_result.files != semantic_repair_source_texts:
                             raise AIEditorExecutionError("semantic_review_repair",
@@ -5422,29 +5487,41 @@ Return ONLY the required JSON object.
                         task_defs
                     )
 
-                    semantic_test_correction_response = (
-                        ai_router.execute(
-                            TaskClass.S2,
-                            semantic_test_correction_prompt,
-                            semantic_test_correction_id,
-                            Role.DEVELOPER.value,
-                            (
-                                "Correct failed semantic-review "
-                                "repair tests once"
-                            ),
-                            request.timeout_seconds,
-                            response_format=(
-                                _ai_developer_full_file_response_schema(
-                                    target_paths
-                                )
-                            ),
+                    if request.editor_engine == "aider":
+                        reusable_editor_calls += 1
+                        correction_editor = _run_aider_editor(
+                            repository=workspace.path, objective=semantic_test_correction_prompt.replace("Return ONLY the required JSON object.", "Return complete files using the editor format."),
+                            allowed_paths=target_paths, timeout_seconds=request.timeout_seconds,
+                            phase="semantic_test_correction", store=store,
                         )
-                    )
+                        semantic_test_correction_response = _aider_full_file_response(correction_editor)
+                    else:
+                        semantic_test_correction_response = (
+                            ai_router.execute(
+                                TaskClass.S2,
+                                semantic_test_correction_prompt,
+                                semantic_test_correction_id,
+                                Role.DEVELOPER.value,
+                                (
+                                    "Correct failed semantic-review "
+                                    "repair tests once"
+                                ),
+                                request.timeout_seconds,
+                                response_format=(
+                                    _ai_developer_full_file_response_schema(
+                                        target_paths
+                                    )
+                                ),
+                            )
+                        )
+
                     semantic_test_correction_route = (
                         ai_router.route(
                             TaskClass.S2
                         )
                     )
+                    if request.editor_engine == "aider":
+                        semantic_test_correction_route = replace(semantic_test_correction_route, model=correction_editor.model or EDITOR_MODELS.primary)
 
                     semantic_test_correction_patch: (
                         dict[str, Any] | None
@@ -5813,7 +5890,7 @@ Return ONLY the required JSON object.
         editor_failure = {
             "run_id": run_id,
             "status": "FAIL",
-            "reason": "EDITOR_EXECUTION_FAILED",
+            "reason": editor_error.reason,
             "phase": editor_error.phase,
             "final_error_type": type(editor_error).__name__,
             "final_error": str(editor_error),
@@ -5988,6 +6065,7 @@ Return ONLY the required JSON object.
             "runtime": "hybrid_local_ai",
             "provider_mode": "local_zero_spend",
             "editor_engine": request.editor_engine,
+            "editor_inference_location": "ollama_cloud_via_loopback" if request.editor_engine == "aider" else "not_applicable",
             "editor_timeout_seconds":
                 request.editor_timeout_seconds,
             "reusable_editor_calls": reusable_editor_calls,
@@ -6026,13 +6104,14 @@ Return ONLY the required JSON object.
         "changes": list(review_report.get("changed_paths", [])) if diff else [], "tests": "PASS" if final_test_passed else "FAIL",
         "repair_attempts": repair_attempts, "risk": "Patch only; source unchanged" if source_unchanged else "Source integrity failed",
         "model_usage": (
-            "Aider + Ollama local"
+            "Aider + Ollama Cloud via loopback; non-editor roles unchanged"
             if request.editor_engine == "aider"
             else ("Ollama local" if use_ai else "None")
         ),
         "decision": "Human gate pending" if passed else "Repair required", "created_at": now,
         "change_operation": request.operation,
         "editor_engine": request.editor_engine,
+            "editor_inference_location": "ollama_cloud_via_loopback" if request.editor_engine == "aider" else "not_applicable",
         "chatgpt_assistance_in_target_product_run": 0,
         "product_owner_run_actions": 1,
         "context_bundle_ref": "ContextBundle.json",
