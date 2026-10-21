@@ -245,7 +245,7 @@ class EditorAdapterTests(unittest.TestCase):
                 command,
             )
             self.assertIn(
-                "ollama_chat/qwen2.5-coder:7b",
+                "ollama_chat/gpt-oss:120b-cloud",
                 command,
             )
 
@@ -703,7 +703,7 @@ class EditorAdapterTests(unittest.TestCase):
                     "args = sys.argv[1:]\n"
                     "metadata = Path(args[args.index('--model-metadata-file') + 1])\n"
                     "data = json.loads(metadata.read_text(encoding='utf-8'))\n"
-                    "model = 'ollama_chat/qwen2.5-coder:7b'\n"
+                    "model = 'ollama_chat/gpt-oss:120b-cloud'\n"
                     "entry = data.get(model, {})\n"
                     "if entry.get('litellm_provider') != 'ollama_chat':\n"
                     "    raise SystemExit(7)\n"

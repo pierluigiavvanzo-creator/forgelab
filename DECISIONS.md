@@ -731,3 +731,13 @@ Observed: both models PASS 2/2; four editor exits 0 within 300 seconds, four gen
 Evidence: [two-model qualification](docs/audits/FORGELAB_OLLAMA_CLOUD_TWO_MODEL_QUALIFICATION_2026-10-21.md).
 
 Next: PO decision on a separate semantic-routing implementation PR and ADR-002 update after reviewing usage. No production routing change is included here.
+
+## Qualified cloud chain for all Aider editor phases — 2026-10-21
+
+PO approved gpt-oss:120b-cloud primary, gemma4:31b-cloud alternative, and explicitly rejected the previously proposed local fallback. Shared validated configuration covers implementation, pre-write correction, test repair, semantic repair and three correction subpaths. Only primary unavailability permits one alternative attempt; quota/credit/billing/402/429 stops, both unavailable stops. Evidence records models/reasons. No automatic return to local/custom editing.
+
+Local signed-in Ollama only; EUR 0; no key/direct cloud API/new provider/payment action. Synthetic data only: Dental source transfer is undecided and no Dental run is authorized. Non-editor roles, Aider engine/version/flags, timeout ceilings, repair budgets and human gate remain unchanged. One implementation PR, no merge.
+
+Validation: full Python suite PASS; one real primary-editor integration smoke through the production orchestrator, with synthetic non-editor responses, reached READY_FOR_DECISION; generated tests exit 0 and independent acceptance 6/6. Actual account quota/billing and live non-editor capability remain unverified.
+
+Evidence: [cloud routing audit](docs/audits/FORGELAB_CLOUD_EDITOR_ROUTING_2026-10-21.md). Next: PO reviews usage page and decides whether to merge the implementation PR.

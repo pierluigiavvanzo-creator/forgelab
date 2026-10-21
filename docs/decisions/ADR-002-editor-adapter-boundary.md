@@ -1,12 +1,22 @@
 # ADR-002 — Separate ForgeLab governance from the code-editing engine
 
 **Date:** 2026-10-05  
-**Status:** Implemented on main; original comparative acceptance criterion not yet evidenced
+**Status:** Aider boundary implemented; qualified cloud routing proposed for review (2026-10-21); original comparative acceptance criterion not yet evidenced
 **Class:** A — Product Critical
 
 ## Status clarification — 2026-10-08
 
 Merged PRs #50–#64 and D-023 establish actual use of the Aider boundary, including all four editor phases. The executed adapter/orchestrator tests support integration, but do not prove the comparative failure-reduction criterion below. That historical acceptance condition is retained; Golden Path #1 is still NOT PASS. See [post-merge evidence](../audits/FORGELAB_POST_PR64_VERIFICATION_2026-10-08.md).
+
+## Editor-model decision — 2026-10-21
+
+Aider remains the editing engine. PO approved `gpt-oss:120b-cloud` primary and `gemma4:31b-cloud` alternative, each qualified 2/2 in [PR #73](https://github.com/pierluigiavvanzo-creator/forgelab/pull/73). This supersedes the earlier proposal to retain a local fallback: qwen2.5-coder:7b is excluded from every Aider editor phase. The immutable validated editor configuration is independent of S1/S2, including correction subpaths previously routed directly to S2. No automatic or silent transition from Aider to the legacy custom engine is permitted.
+
+Use only signed-in local Ollama via the preserved loopback guard. Primary model unavailable (404/410, retired/not found) permits the alternative once within the original deadline. Quota/credit/billing/402/429 stops the run as EDITOR_CLOUD_QUOTA_STOP without switching; both unavailable stops as EDITOR_MODEL_UNAVAILABLE. Record model, reason and stop/switch evidence. No direct cloud API/key or new provider. EUR 0, no billing changes or upgrades.
+
+Only synthetic data is authorized for this implementation/smoke. Dental source transfer remains undecided: no Dental execution, promotion or merge in this task. Non-editor planner/reviewer/Support routes and deterministic Security remain unchanged. The separately selected legacy custom engine is outside this Aider migration and is never an automatic fallback.
+
+Aider version, edit format/flags, existing timeout ceilings, repair budgets, deterministic verification and human promotion are unchanged. Evidence: [routing audit](../audits/FORGELAB_CLOUD_EDITOR_ROUTING_2026-10-21.md). The one synthetic integration smoke passes; this does not establish live non-editor quality, Dental readiness or account quota.
 
 ## Context
 
@@ -90,7 +100,7 @@ Negative:
 - no direct write to protected/canonical source;
 - only authorized writable files exposed to the editor sandbox;
 - no dependency installation inside the target project;
-- no provider/model expansion in phase 1;
+- editor model exception approved 2026-10-21: only the qualified cloud chain below; no new provider or paid expansion;
 - same objective, tests, Reviewer and repair cap as the existing Golden Path;
 - no paid API without explicit Product Owner approval;
 - experiment must record comparative metrics.

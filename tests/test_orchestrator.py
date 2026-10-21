@@ -660,7 +660,6 @@ class MultiAgentTests(unittest.TestCase):
                                 repository=repo,
                                 objective="Make a bounded change.",
                                 allowed_paths=("calculator.py",),
-                                model="qwen2.5-coder:7b",
                                 timeout_seconds=300,
                                 phase=phase,
                             )
@@ -700,7 +699,6 @@ class MultiAgentTests(unittest.TestCase):
                         repository=repo,
                         objective="Make a bounded change.",
                         allowed_paths=("calculator.py",),
-                        model="qwen2.5-coder:7b",
                         timeout_seconds=300,
                         phase="implementation",
                     )

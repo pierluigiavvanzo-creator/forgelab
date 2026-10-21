@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlparse
@@ -17,11 +18,37 @@ class EditorAdapterError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class EditorModelConfig:
+    """PO-qualified editor chain; independent of non-editor S1/S2 routes."""
+
+    primary: str = "gpt-oss:120b-cloud"
+    alternative: str = "gemma4:31b-cloud"
+
+    def __post_init__(self) -> None:
+        if (self.primary, self.alternative) != (
+            "gpt-oss:120b-cloud", "gemma4:31b-cloud"
+        ):
+            raise EditorAdapterError("editor chain must contain the two qualified cloud models in approved order")
+
+
+EDITOR_MODELS = EditorModelConfig()
+
+
+def editor_cloud_stop_reason(output: str) -> str | None:
+    """Fail closed on credit/quota messages, even when Aider exits zero."""
+    if re.search(r"(?:quota|credit|billing)|payment required|rate.?limit|(?:http|status(?:_code)?|error)[^\n]{0,30}\b(?:402|429)\b", output, re.I):
+        return "EDITOR_CLOUD_QUOTA_STOP"
+    if re.search(r"(?:http|status(?:_code)?|error)[^\n]{0,30}\b(?:404|410)\b|\bretired\b|model[^\n]{0,160}(?:not found|unavailable)|\bNotFoundError\b", output, re.I):
+        return "EDITOR_MODEL_UNAVAILABLE"
+    return None
+
+
+@dataclass(frozen=True)
 class EditorRequest:
     repository: Path
     objective: str
     allowed_paths: tuple[str, ...]
-    model: str = "qwen2.5-coder:7b"
+    model: str = EDITOR_MODELS.primary
     timeout_seconds: int = 300
     read_only_paths: tuple[str, ...] = ()
 
@@ -37,6 +64,9 @@ class EditorResult:
     timed_out: bool
     duration_ms: int
     command: tuple[str, ...]
+    model: str = ""
+    routing_status: str = "EDITOR_COMPLETED"
+    routing_attempts: tuple[dict[str, object], ...] = ()
 
 
 class EditorAdapter(Protocol):
@@ -197,11 +227,8 @@ class AiderCliAdapter:
 
     @staticmethod
     def _model(model: str) -> str:
-        model = model.strip()
-        if not model:
-            raise EditorAdapterError("editor model must not be empty")
-        if model.startswith(("ollama/", "ollama_chat/")):
-            return model
+        if model not in (EDITOR_MODELS.primary, EDITOR_MODELS.alternative):
+            raise EditorAdapterError("editor model must be a qualified cloud model; local models are excluded")
         return f"ollama_chat/{model}"
 
     @staticmethod
@@ -222,6 +249,35 @@ including tests only when they are inside the writable set.
 """
 
     def run(self, request: EditorRequest) -> EditorResult:
+        if request.timeout_seconds < 1 or request.timeout_seconds > 600:
+            raise EditorAdapterError('editor timeout_seconds must be between 1 and 600')
+        self._model(request.model)  # validate before starting any process
+        models = (request.model,)
+        if request.model == EDITOR_MODELS.primary:
+            models += (EDITOR_MODELS.alternative,)
+        started = time.monotonic()
+        attempts: list[dict[str, object]] = []
+        for index, model in enumerate(models):
+            remaining = request.timeout_seconds if index == 0 else int(
+                request.timeout_seconds - (time.monotonic() - started)
+            )
+            if remaining < 1:
+                return replace(result, routing_status="EDITOR_MODEL_UNAVAILABLE",
+                               routing_attempts=tuple(attempts))
+            result = self._run_once(replace(request, model=model, timeout_seconds=remaining))
+            reason = editor_cloud_stop_reason(result.stdout + "\n" + result.stderr)
+            status = reason or ("EDITOR_EXECUTION_FAILED" if result.exit_status or result.timed_out else "EDITOR_COMPLETED")
+            attempts.append({"model": model, "reason": "PRIMARY" if index == 0 else "PRIMARY_UNAVAILABLE",
+                             "status": status, "exit_status": result.exit_status,
+                             "timed_out": result.timed_out, "duration_ms": result.duration_ms})
+            result = replace(result, model=model, routing_status=status,
+                             routing_attempts=tuple(attempts),
+                             duration_ms=int((time.monotonic() - started) * 1000))
+            if reason != "EDITOR_MODEL_UNAVAILABLE" or index == len(models) - 1:
+                return result
+        raise AssertionError("editor model chain is empty")
+
+    def _run_once(self, request: EditorRequest) -> EditorResult:
         if not request.allowed_paths:
             raise EditorAdapterError("at least one writable path is required")
         if len(set(request.allowed_paths)) != len(request.allowed_paths):
