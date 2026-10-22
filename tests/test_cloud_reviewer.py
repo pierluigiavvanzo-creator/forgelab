@@ -8,6 +8,7 @@ from unittest.mock import patch
 from forgelab.model_router import (
     ModelRouter, ProviderPermanentError, ProviderResponse, ProviderTransientError,
     CloudRoleModelConfig, CloudRoleRoutingError, RouterError, TaskClass, UsageLedger, load_routes,
+    with_output_contract,
 )
 from forgelab.orchestrator import run_multi_agent
 from test_orchestrator import ai_plan, make_demo, request, semantic_review_pass
@@ -41,7 +42,13 @@ class CloudReviewerTests(unittest.TestCase):
         router, provider = self.router([response()])
         schema = {'type': 'object'}
         router.execute_reviewer('prompt', 'review-0', 60, schema)
-        self.assertEqual(provider.calls, [('gemma4:31b-cloud', 'prompt', 60, schema)])
+        # The schema is sent both as `format` and, since Ollama Cloud does not
+        # enforce `format`, as a text contract appended to the prompt.
+        self.assertEqual(provider.calls, [(
+            'gemma4:31b-cloud', with_output_contract('prompt', schema), 60, schema,
+        )])
+        self.assertTrue(provider.calls[0][1].startswith('prompt'))
+        self.assertIn('{"type":"object"}', provider.calls[0][1])
         record = router.ledger.records[0]
         self.assertEqual((record.policy_route, record.model_id, record.input_tokens),
                          ('REVIEWER', 'gemma4:31b-cloud', 11))
