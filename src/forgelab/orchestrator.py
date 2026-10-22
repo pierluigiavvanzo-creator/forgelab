@@ -1819,7 +1819,7 @@ def _record_provider_failure(
     run_id: str,
     ledger: UsageLedger,
     phase: str,
-    error: ProviderTransientError,
+    error: ProviderTransientError | CloudRoleRoutingError,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     last_record = (
         ledger.records[-1]
@@ -1839,7 +1839,7 @@ def _record_provider_failure(
     artifact = {
         "run_id": run_id,
         "status": "FAIL",
-        "reason": "PROVIDER_TRANSIENT_RETRY_EXHAUSTED",
+        "reason": error.reason if isinstance(error, CloudRoleRoutingError) else "PROVIDER_TRANSIENT_RETRY_EXHAUSTED",
         "phase": phase,
         "provider": (
             last_record.provider
@@ -1864,10 +1864,10 @@ def _record_provider_failure(
     evidence = {
         "evidence_id": "ev-provider-failure",
         "check_type": "provider_runtime",
-        "command_or_tool": "local_zero_spend_model_router",
+        "command_or_tool": "loopback_zero_spend_model_router",
         "exit_status": 1,
         "summary": (
-            "Local provider retries exhausted: "
+            "Provider execution stopped: "
             + str(error)
         ),
         "artifact_ref": "ProviderFailure.json",
@@ -2080,6 +2080,12 @@ Current complete authorized files (read-only planning context):
 
 Rules:
 - decompose the objective into every explicit obligation;
+- if the target has a user interface (GUI, CLI or web), every user-facing
+  capability in the Objective must be usable through that existing interface;
+  write explicit acceptance criteria for each capability's user interaction,
+  inputs and visible results; backend-only criteria are insufficient;
+- if required interface changes exceed authorized paths, report the scope
+  limitation explicitly; never silently narrow the Objective to a helper function;
 - do not invent product requirements, optional enhancements,
   dependencies or scope beyond the objective and governed context;
 - preserve quantitative words and counts such as "three",
@@ -2104,7 +2110,7 @@ Return ONLY the required structured JSON object.
                 request.timeout_seconds,
                 response_format=_ai_plan_response_schema(),
             )
-        except ProviderTransientError as provider_error:
+        except (ProviderTransientError, CloudRoleRoutingError) as provider_error:
             _, provider_evidence = _record_provider_failure(
                 store,
                 run_id,
@@ -2170,8 +2176,7 @@ Return ONLY the required structured JSON object.
                         for role in roles
                     ],
                     "selection_reason": (
-                        "Planning provider failed after "
-                        "bounded local retries"
+                        "Planning provider stopped; inspect ProviderFailure.json"
                     ),
                     "max_repair_attempts":
                         request.max_repair_attempts,
@@ -2225,14 +2230,13 @@ Return ONLY the required structured JSON object.
                         AgentResult(
                             ResultStatus.FAIL,
                             (
-                                "Local provider retries exhausted "
-                                "during planning"
+                                str(provider_error)
                             ),
                             [],
                             ["ev-provider-failure"],
                             [],
                             [],
-                            "Retry or inspect local provider",
+                            "Inspect planning provider evidence",
                         ).to_dict()
                     ],
                     "task_result_root": "tasks/",
@@ -2259,7 +2263,7 @@ Return ONLY the required structured JSON object.
                     "semantic_requirements": [],
                     "semantic_summary": (
                         "Review did not run because the "
-                        "local provider failed during planning."
+                        "planning provider stopped."
                     ),
                     "review_round": 0,
                 },
@@ -2285,7 +2289,7 @@ Return ONLY the required structured JSON object.
                 "runtime":
                     "hybrid_local_ai",
                 "provider_mode":
-                    "local_zero_spend",
+                    "loopback_zero_spend",
             })
             store.write(
                 "UsageReport.json",
@@ -2317,7 +2321,7 @@ Return ONLY the required structured JSON object.
                     "risk":
                         "Source unchanged; provider failure",
                     "model_usage":
-                        "Ollama local",
+                        "Ollama Cloud via loopback",
                     "decision":
                         "Repair required",
                     "created_at": now,
@@ -2348,7 +2352,7 @@ Return ONLY the required structured JSON object.
                     "actor": "SYSTEM",
                     "decision": "REPAIR",
                     "scope": (
-                        "Local provider failed before "
+                        "Planning provider stopped before "
                         "implementation"
                     ),
                     "timestamp": now,
@@ -2363,16 +2367,16 @@ Return ONLY the required structured JSON object.
             ensure_ascii=False,
         )
 
-        plan_route = ai_router.route(
-            TaskClass.S1
-        )
+        plan_route = ai_ledger.records[-1]
 
         store.write_optional_json(
             "AIPlan.json",
             {
                 "role": Role.PROJECT_MANAGER.value,
                 "provider": plan_route.provider,
-                "model": plan_route.model,
+                "model": plan_route.model_id,
+                "routing_attempts": [record.to_dict() for record in ai_ledger.records
+                                     if record.task_id == "plan"],
                 **ai_plan,
                 "text": plan_response.text,
                 "context_bundle_ref": "ContextBundle.json",
@@ -4195,6 +4199,12 @@ Instructions:
   binding acceptance contract above; these review instructions are not
   product requirements;
 - decompose the objective into EVERY explicit obligation;
+- when the acceptance contract is narrower than the Objective, the Objective
+  prevails; review every original user-facing capability even if omitted from
+  the contract, and never treat a planner omission as a scope reduction;
+- a capability implemented only in backend code but unusable through the
+  existing GUI, CLI or web interface is PARTIAL and overall review status FAIL;
+  cite the missing interface integration as a BLOCKER;
 - include one requirements[] entry for each obligation;
 - preserve quantitative requirements such as exact counts,
   "three", "each", "all", percentages, validation, and tests;
@@ -6153,6 +6163,7 @@ Return ONLY the required JSON object.
             "provider_mode": "loopback_zero_spend",
             "reviewer_inference_location": "ollama_cloud_via_loopback",
             "support_inference_location": "ollama_cloud_via_loopback",
+            "planner_inference_location": "ollama_cloud_via_loopback",
             "editor_engine": request.editor_engine,
             "editor_inference_location": "ollama_cloud_via_loopback" if request.editor_engine == "aider" else "not_applicable",
             "editor_timeout_seconds":
@@ -6193,7 +6204,7 @@ Return ONLY the required JSON object.
         "changes": list(review_report.get("changed_paths", [])) if diff else [], "tests": "PASS" if final_test_passed else "FAIL",
         "repair_attempts": repair_attempts, "risk": "Patch only; source unchanged" if source_unchanged else "Source integrity failed",
         "model_usage": (
-            "Aider editor + cloud Reviewer/Support via loopback; Planner local"
+            "Aider editor + cloud Planner/Reviewer/Support via loopback"
             if request.editor_engine == "aider"
             else ("Ollama local" if use_ai else "None")
         ),

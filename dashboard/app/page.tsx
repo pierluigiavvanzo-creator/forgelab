@@ -523,7 +523,7 @@ export default function Home() {
       aiPlan?.model
       ?? aiReview?.model
       ?? usageRecords[0]?.model_id
-      ?? "qwen2.5-coder:7b"
+      ?? "non registrato"
     );
 
   const providerSpent =
@@ -3148,8 +3148,8 @@ export default function Home() {
                 <div className="full modal-note">
                   <Sparkles />
                   <span>
-                    REUSE-FIRST: Aider editor, Reviewer e Support usano Ollama Cloud
-                    tramite il servizio locale. Il Planner resta locale.
+                    REUSE-FIRST: Aider editor, Planner, Reviewer e Support usano Ollama Cloud
+                    tramite il servizio locale.
                     Il candidate viene generato sui file
                     autorizzati. ForgeLab mantiene scope, compile gate,
                     test, Reviewer, Security e ToolGateway. ChatGPT non
@@ -3277,9 +3277,9 @@ export default function Home() {
                 apiConnected
                   ? (
                       aiDeveloperMode
-                        ? "REUSE-FIRST attivo. Editor: gpt-oss / gemma cloud. Reviewer/Support: gemma / gpt-oss cloud (fallback con indipendenza ridotta). Planner locale. Solo file autorizzati; gate umano invariato. ChatGPT assistance target run: 0. Costo API EUR 0."
+                        ? "REUSE-FIRST attivo. Editor: gpt-oss / gemma cloud. Planner/Reviewer/Support: gemma / gpt-oss cloud (fallback con indipendenza ridotta). Solo file autorizzati; gate umano invariato. ChatGPT assistance target run: 0. Costo API EUR 0."
                         : aiMode
-                          ? "AI assistita attiva. Planner locale; Reviewer/Support su Ollama Cloud (gemma / gpt-oss, fallback con indipendenza ridotta). Costo provider EUR 0."
+                          ? "AI assistita attiva. Planner/Reviewer/Support su Ollama Cloud (gemma / gpt-oss, fallback con indipendenza ridotta). Costo provider EUR 0."
                           : "Runner locale autenticato. Nessun provider LLM verra chiamato."
                     )
                   : "Runner non collegato: avvia ForgeLab dal launcher."

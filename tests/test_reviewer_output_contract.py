@@ -55,7 +55,15 @@ class ReviewerOutputContractTests(unittest.TestCase):
                     root / "runs",
                 )
 
+        plan_prompt = invoke.call_args_list[0].args[1]
+        self.assertEqual(invoke.call_args_list[0].args[0], "gemma4:31b-cloud")
+        self.assertIn("every user-facing", plan_prompt)
+        self.assertIn("capability in the Objective must be usable through that existing interface", plan_prompt)
+        self.assertIn("write explicit acceptance criteria", plan_prompt)
         review_prompt = invoke.call_args_list[2].args[1]
+        self.assertIn("when the acceptance contract is narrower than the Objective, the Objective", review_prompt)
+        self.assertIn("prevails", review_prompt)
+        self.assertIn("existing GUI, CLI or web interface is PARTIAL and overall review status FAIL", review_prompt)
         self.assertIn("You are the REVIEWER agent", review_prompt)
         self.assertIn(_ai_review_output_contract(), review_prompt)
 

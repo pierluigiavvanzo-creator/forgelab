@@ -296,7 +296,7 @@ $env:FORGELAB_OLLAMA_URL = "http://127.0.0.1:11434"
 
 Write-Host "Aider    : $AiderVersionText"
 Write-Host "Editor   : Aider + Ollama Cloud: gpt-oss:120b-cloud / gemma4:31b-cloud (nessun fallback locale)"
-Write-Host "Reviewer/Support : Ollama Cloud: gemma4:31b-cloud / gpt-oss:120b-cloud (fallback: indipendenza ridotta); Planner locale"
+Write-Host "Planner/Reviewer/Support : Ollama Cloud: gemma4:31b-cloud / gpt-oss:120b-cloud (fallback: indipendenza ridotta)"
 
 
 # ---------------------------------------------------------

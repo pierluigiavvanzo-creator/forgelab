@@ -801,3 +801,15 @@ Git baseline c4ff897 confirms PR #79 was merged after Task E's audit checkpoint;
 Observed: 216 Python tests PASS; single run cloud-support-1 reaches READY_FOR_DECISION in 120.063 s after one test-only repair, generated tests 11/11 exit 0, independent acceptance 6/6, strict Gemma review PASS with no findings. Human gate PENDING; no promotion. Cloud 22,562 tokens, EUR 0 ledger; services/source unchanged. Conditional merge criterion is satisfied; no second run. Prompt compliance/general reliability and remaining account quota are not proven by one run.
 
 Evidence: [Task F audit](docs/audits/FORGELAB_CLOUD_SUPPORT_TEST_ORACLE_2026-10-22.md). Single next action: PO reads Ollama session/weekly usage before any further real workload decision.
+
+## Task G — Cloud Planner and user-visible scope — 2026-10-22
+
+PO evidence (not independently replayed here): Dental run `run-a29e11c3fa7b`, approved and promoted to `forgelab/promote/run-a29e11c3fa7b`, changed only calculate_quote after local planning narrowed the objective to that function. Existing Tkinter inputs did not expose the requested workflow; Golden Path points 5 and 8 remain NOT met. This task does not access or modify Dental or that promotion branch.
+
+PO decision: PLANNER/PROJECT_MANAGER joins the existing Reviewer/Support cloud policy: gemma4:31b-cloud primary, gpt-oss:120b-cloud only on unavailability (404/410/retired/not-found), reduced-independence evidence; quota/credit/billing/402/429 STOP, never local. Reuse one policy, retain signed-in loopback Ollama and EUR 0. Aider editor chain unchanged. PO clarification during Task G: **limit the migration to the Aider path; leave the separately selected legacy custom editor unchanged**. Therefore no LLM role in the Aider path uses local inference; S1/S2 remain available to the out-of-scope custom editor.
+
+Planner prompt requires explicit acceptance criteria making every objective user-facing capability usable through the existing GUI/CLI/web interface; it must disclose authorized-path limitations instead of silently narrowing the objective. Reviewer prompt makes the Objective prevail over a narrower acceptance contract; backend-only capability inaccessible from the existing interface is PARTIAL and review FAIL with a blocking finding. Strict output validation, timeouts, repair budgets and human gate unchanged.
+
+Implementation records actual Planner model/attempts in AIPlan and UsageReport and preserves governed early STOP evidence before any editor call. Launcher/dashboard text updated. Validation: 37 focused tests PASS (3.211 s); full Python suite 218 PASS (71.300 s). No real model calls, synthetic end-to-end run, Dental run, promotion, purchases or service restart; cost EUR 0. The rules' semantic effectiveness and Golden Path remain unverified. PO authorizes one PR and merge only after full-suite and GitHub-check PASS.
+
+Single next action: PO verifies the real Dental user workflow from the dashboard using the updated runtime. Rollback: revert Task G, retaining prior evidence.

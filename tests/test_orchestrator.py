@@ -3175,7 +3175,7 @@ class MultiAgentTests(unittest.TestCase):
         )
 
 
-    def test_planning_provider_repeat_limit_exhaustion_is_governed(self):
+    def test_planning_cloud_transient_failure_stops_without_retry(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             repo = make_demo(root)
@@ -3232,7 +3232,7 @@ class MultiAgentTests(unittest.TestCase):
             self.assertEqual(summary["repair_attempts"], 0)
             self.assertEqual(
                 provider_failure["reason"],
-                "PROVIDER_TRANSIENT_RETRY_EXHAUSTED",
+                "PROJECT_MANAGER_PROVIDER_ERROR",
             )
             self.assertEqual(
                 provider_failure["task_id"],
@@ -3240,7 +3240,7 @@ class MultiAgentTests(unittest.TestCase):
             )
             self.assertEqual(
                 provider_failure["attempts"],
-                2,
+                1,
             )
             self.assertIn(
                 "token repeat limit reached",
@@ -3258,13 +3258,10 @@ class MultiAgentTests(unittest.TestCase):
                     item["outcome"]
                     for item in usage["records"]
                 ],
-                ["RETRY", "FAIL"],
+                ["PROJECT_MANAGER_PROVIDER_ERROR"],
             )
-            self.assertEqual(len(invoke.call_args_list), 2)
-            self.assertIn(
-                "LOCAL PROVIDER RECOVERY",
-                invoke.call_args_list[1].args[1],
-            )
+            self.assertEqual(len(invoke.call_args_list), 1)
+            self.assertEqual(invoke.call_args_list[0].args[0], "gemma4:31b-cloud")
             self.assertFalse(
                 (run_dir / "Changes.patch").exists()
             )

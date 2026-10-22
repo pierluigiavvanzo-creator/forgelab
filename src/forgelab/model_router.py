@@ -52,7 +52,7 @@ class CloudRoleModelConfig:
         if (self.primary, self.alternative) not in {
             ("gemma4:31b-cloud", "gpt-oss:120b-cloud"),
         }:
-            raise RouterError("reviewer/support must use the PO-approved cloud chain; never local")
+            raise RouterError("planner/reviewer/support must use the PO-approved cloud chain; never local")
 
 
 CLOUD_ROLE_MODELS = CloudRoleModelConfig()
@@ -201,8 +201,8 @@ class ModelRouter:
                          timeout_seconds: int = 60,
                          response_format: dict[str, object] | str | None = None) -> ProviderResponse:
         """Separate cloud-only role route; no S1 retry, reset or local fallback."""
-        if role not in {"REVIEWER", "SUPPORT"}:
-            raise RouterError("cloud role must be REVIEWER or SUPPORT")
+        if role not in {"PROJECT_MANAGER", "REVIEWER", "SUPPORT"}:
+            raise RouterError("cloud role must be PROJECT_MANAGER, REVIEWER or SUPPORT")
         provider = self.providers.get("ollama")
         if provider is None:
             raise CloudRoleRoutingError(f"{role}_PROVIDER_ERROR", "Ollama is not configured", role)
@@ -255,7 +255,7 @@ class ModelRouter:
     def execute(self, task_class: TaskClass, prompt: str, task_id: str, agent_role: str,
                 routing_reason: str, timeout_seconds: int = 60,
                 response_format: dict[str, object] | str | None = None) -> ProviderResponse:
-        if agent_role in {"REVIEWER", "SUPPORT"} and task_class is not TaskClass.S0:
+        if agent_role in {"PROJECT_MANAGER", "REVIEWER", "SUPPORT"} and task_class is not TaskClass.S0:
             return self.execute_cloud_role(agent_role, prompt, task_id, timeout_seconds, response_format)
         route = self.route(task_class)
         if task_class is TaskClass.S0 or route.provider is None:

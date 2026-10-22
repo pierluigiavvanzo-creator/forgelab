@@ -385,8 +385,8 @@ class ModelRouterTests(unittest.TestCase):
             TaskClass.S1,
             "prompt",
             "t-ollama-cap",
-            "PROJECT_MANAGER",
-            "local planner",
+            "DEVELOPER",
+            "legacy custom editor",
             timeout_seconds=300,
         )
 
