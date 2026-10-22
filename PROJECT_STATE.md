@@ -1,20 +1,18 @@
 # PROJECT_STATE.md
 
-Last updated: 2026-10-21
+Last updated: 2026-10-22
 
-## Current all-real-role diagnostic checkpoint — 2026-10-21
+## Current reviewer qualification checkpoint — 2026-10-22
 
-Task A / PR #75 is merged; synchronized baseline main `4dfb0ab596ba1d94b2fc27abc7e81b1ac6645b97`. Task B ran the protected fixture and unchanged objective through the real production orchestrator with real local planner/reviewer and cloud Aider, without response stubs.
+Task C on main `0af1398` (PR #76 merged; production code unchanged from `4dfb0ab`) completed 8 local and 8 cloud reviewer-only synthetic replays. Both configurations FAIL. Local qwen2.5-coder:7b at diagnostic num_ctx=8192 receives complete prompts but falsely rejects GOOD final twice and misses both documented BAD defects. Gemma4:31b-cloud produces 8/8 responses rejected by the production schema validator and misses aggregate discount validation twice. No editor calls, production changes, Dental, approval or promotion.
 
-Run 1 CLOSED after 167.187 s; Run 2 NOT RUN under the stop rule. Initial/final candidates passed generated tests (9/11, child exit 0) and independent acceptance 6/6 each. Two local reviews falsely denied implemented validation. Ollama logs prove reviewer prompts were truncated from 4,475/4,815 to 2,050 tokens. Final unchanged editor correction was rejected before write. Support was not called despite appearing in selected_roles; it remains unqualified.
+Ollama 0.40.4's overflow/context-shift formula explains 2050: 4096-floor((4096-4)/2). It is not num_predict reservation or parallel slots. All 16 local log windows show no truncation; local request counts are corroborated by slot logs. Remote cloud internals remain unverified.
 
-Three primary cloud completions used 29,557 tokens (17,474 input / 12,083 output). EUR 0, no paid action or quota error observed. Original fixture/source and API/dashboard/Ollama processes unchanged. No Dental, approval or promotion. The unchanged failed-run gate writes SYSTEM/REPAIR, not PENDING; it was preserved, not rewritten.
+Local minimum free RAM 1.395 GiB, resident peak 2.36 GB, reported model VRAM 4.10 GB; no 1 GiB-floor breach. Cloud 49,507 tokens (41,986 input / 7,521 output), cost EUR 0; remaining account allowance unknown. No configuration qualifies REVIEWER for Dental; Planner/Support also remain outside this qualification.
 
-Verdict: current non-editor route cannot be accepted unchanged for Dental. Reviewer needs full-context qualification or separately approved migration; a single planner success and no Support invocation do not qualify those roles. Intrinsic 7B capability with full context and Free allowance remain unknown. RAM headroom fell to 0.72 GB; no observed OOM/timeout.
+Evidence: [reviewer audit](docs/audits/FORGELAB_REVIEWER_COMPLETE_CONTEXT_QUALIFICATION_2026-10-22.md). Proposed separately: reviewer-only num_ctx=8192, other options/routes unchanged, strict validation and context evidence. This addresses truncation only, not the failed semantic gate; no Gemma production routing is justified yet.
 
-Evidence: `docs/audits/FORGELAB_ALL_REAL_ROLES_SYNTHETIC_2026-10-21.md`. Documentation-only branch `codex/all-real-roles-synthetic-audit`; no production change or merge in Task B.
-
-Single next action: authorize a bounded reviewer qualification with complete context before any Dental decision.
+Single next action: PO reviews this audit and Ollama usage, then decides whether to authorize the separate reviewer-context implementation PR, with Dental remaining blocked.
 
 ## Current state
 
