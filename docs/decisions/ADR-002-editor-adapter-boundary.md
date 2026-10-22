@@ -18,6 +18,16 @@ Only synthetic data is authorized for this implementation/smoke. Dental source t
 
 Aider version, edit format/flags, existing timeout ceilings, repair budgets, deterministic verification and human promotion are unchanged. Evidence: [routing audit](../audits/FORGELAB_CLOUD_EDITOR_ROUTING_2026-10-21.md). The one synthetic integration smoke passes; this does not establish live non-editor quality, Dental readiness or account quota.
 
+## Reviewer cloud decision — 2026-10-22
+
+This supersedes the prior unchanged-reviewer restriction. The PO accepts the risk of moving REVIEWER immediately without separate qualification rounds: gemma4:31b-cloud primary, gpt-oss:120b-cloud alternative only for 404/410/retirement/not-found, marked **reduced independence** from the gpt-oss editor. No local reviewer fallback. Quota/credit/billing/402/429 stops without switching. A dedicated REVIEWER policy leaves Planner/S1 and Support/S2 on qwen2.5-coder:7b and leaves the Aider editor chain unchanged.
+
+Reuse the existing provider error classifier, loopback guard, PR #78 context sizing/truncation checks and explicit strict reviewer JSON contract. Record model/attempts/reasons in UsageReport and reviewer artifacts. Only signed-in http://127.0.0.1:11434, EUR 0, synthetic data; no credits/payment/upgrade, Dental, promotion or service restart. Engine/version/flags/timeouts/budgets/human approval unchanged.
+
+Verification is exactly one real production run with the clean product objective and max_repair_attempts=1; only a failure solely from invalid/wrong Gemma review permits one gpt-oss-primary repeat. Merge is authorized only on READY_FOR_DECISION + generated-test exit 0 + independent 6/6 + no false blocking reviewer finding, with human approval pending.
+
+Actual delivery: 213 tests PASS; single run FAIL because editor/Support repair introduced erroneous rounding to satisfy an incorrect generated test; Gemma correctly blocked it. Independent acceptance 2/6 test methods. No conditional repeat and **no merge**. The cloud reviewer implementation remains proposed on its branch, not active in main. [Audit](../audits/FORGELAB_CLOUD_REVIEWER_ROUTE_2026-10-22.md).
+
 ## Context
 
 ForgeLab's current control plane provides valuable governance: planning, isolated workspaces, deterministic testing, bounded repair, independent review, security evidence and human-gated promotion.

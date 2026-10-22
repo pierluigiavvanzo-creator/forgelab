@@ -385,8 +385,8 @@ class ModelRouterTests(unittest.TestCase):
             TaskClass.S1,
             "prompt",
             "t-ollama-cap",
-            "REVIEWER",
-            "blocking semantic review",
+            "SUPPORT",
+            "local support",
             timeout_seconds=300,
         )
 
