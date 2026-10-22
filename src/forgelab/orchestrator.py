@@ -772,6 +772,34 @@ def _ai_review_response_schema() -> dict[str, object]:
     }
 
 
+def _ai_review_output_contract() -> str:
+    """Spell out the reviewer JSON contract inside the prompt itself.
+
+    Local Ollama enforces ``format`` with constrained decoding, so the
+    prompt never needed the field names. Ollama Cloud did not enforce it
+    (PR #77: gemma4:31b-cloud invented its own keys 8/8), so a reviewer
+    must be told the contract in plain text. Validation stays strict.
+    """
+
+    schema = json.dumps(
+        _ai_review_response_schema(),
+        separators=(",", ":"),
+    )
+
+    return (
+        "Output contract:\n"
+        "- return exactly one JSON object and nothing else;\n"
+        "- top-level keys exactly: schema_version, status, summary,\n"
+        "  requirements, findings; schema_version is \"1.0\";\n"
+        "- status is PASS or FAIL; each requirements[] item has exactly\n"
+        "  requirement, status (SATISFIED, MISSING, UNVERIFIED or PARTIAL)\n"
+        "  and evidence; each findings[] item has exactly severity\n"
+        "  (BLOCKER, WARN or INFO), category and description;\n"
+        "- the object must validate against this JSON Schema:\n"
+        f"{schema}"
+    )
+
+
 def _validate_ai_review(
     response_text: str,
 ) -> dict[str, Any]:
@@ -4165,6 +4193,8 @@ Instructions:
   or UNVERIFIED and set overall status FAIL;
 - use BLOCKER findings for missing required behavior;
 - do not approve promotion.
+
+{_ai_review_output_contract()}
 
 Return ONLY the required JSON object.
 """
