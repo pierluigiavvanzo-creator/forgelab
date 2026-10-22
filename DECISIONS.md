@@ -813,3 +813,7 @@ Planner prompt requires explicit acceptance criteria making every objective user
 Implementation records actual Planner model/attempts in AIPlan and UsageReport and preserves governed early STOP evidence before any editor call. Launcher/dashboard text updated. Validation: 37 focused tests PASS (3.211 s); full Python suite 218 PASS (71.300 s). No real model calls, synthetic end-to-end run, Dental run, promotion, purchases or service restart; cost EUR 0. The rules' semantic effectiveness and Golden Path remain unverified. PO authorizes one PR and merge only after full-suite and GitHub-check PASS.
 
 Single next action: PO verifies the real Dental user workflow from the dashboard using the updated runtime. Rollback: revert Task G, retaining prior evidence.
+
+## Cloud roles state their JSON schema in the prompt — 2026-10-22
+
+Ollama Cloud does not enforce `format`; any cloud role with structured output must carry the schema in its prompt text. Implemented centrally in `ModelRouter.execute_cloud_role` (`with_output_contract`), so PROJECT_MANAGER, REVIEWER and SUPPORT, and any future cloud role, get it without per-prompt duplication. Validation remains strict; no coercion. Evidence: failed Dental run `run-23bea612fbbe`; live planner check on the fixed prompt passed the production validator. Routes, models, budgets and gates unchanged.

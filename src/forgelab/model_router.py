@@ -12,6 +12,37 @@ from typing import Protocol
 from .editor_adapter import editor_cloud_stop_reason
 
 
+def with_output_contract(
+    prompt: str,
+    response_format: dict[str, object] | str | None,
+) -> str:
+    """Put a JSON-schema contract in the prompt text for cloud roles.
+
+    Ollama Cloud does not enforce ``format`` (PR #77: gemma4 invented its
+    own keys 8/8; run-23bea612fbbe: planner missing every required field).
+    Validation stays strict; this only tells the model the contract.
+    """
+
+    if not isinstance(response_format, dict):
+        return prompt
+
+    schema = json.dumps(response_format, separators=(",", ":"))
+
+    if schema in prompt:
+        return prompt
+
+    return (
+        prompt.rstrip()
+        + "\n\nOutput contract (structured output is not enforced by the "
+        "runtime):\n"
+        "- return exactly one JSON object and nothing else;\n"
+        "- use exactly the property names and value types of this JSON "
+        "Schema, including every required property:\n"
+        + schema
+        + "\n"
+    )
+
+
 class TaskClass(str, Enum):
     S0 = "S0"
     S1 = "S1"
@@ -203,6 +234,7 @@ class ModelRouter:
         """Separate cloud-only role route; no S1 retry, reset or local fallback."""
         if role not in {"PROJECT_MANAGER", "REVIEWER", "SUPPORT"}:
             raise RouterError("cloud role must be PROJECT_MANAGER, REVIEWER or SUPPORT")
+        prompt = with_output_contract(prompt, response_format)
         provider = self.providers.get("ollama")
         if provider is None:
             raise CloudRoleRoutingError(f"{role}_PROVIDER_ERROR", "Ollama is not configured", role)

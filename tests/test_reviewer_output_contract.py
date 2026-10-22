@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from forgelab.model_router import ProviderResponse
 from forgelab.orchestrator import (
+    _ai_plan_response_schema,
     _ai_review_output_contract,
     _ai_review_response_schema,
     _validate_ai_review,
@@ -60,12 +61,18 @@ class ReviewerOutputContractTests(unittest.TestCase):
         self.assertIn("every user-facing", plan_prompt)
         self.assertIn("capability in the Objective must be usable through that existing interface", plan_prompt)
         self.assertIn("write explicit acceptance criteria", plan_prompt)
+        # run-23bea612fbbe: the cloud planner never saw its schema and
+        # returned none of the required fields.
+        plan_schema = json.dumps(_ai_plan_response_schema(), separators=(",", ":"))
+        self.assertEqual(plan_prompt.count(plan_schema), 1)
         review_prompt = invoke.call_args_list[2].args[1]
         self.assertIn("when the acceptance contract is narrower than the Objective, the Objective", review_prompt)
         self.assertIn("prevails", review_prompt)
         self.assertIn("existing GUI, CLI or web interface is PARTIAL and overall review status FAIL", review_prompt)
         self.assertIn("You are the REVIEWER agent", review_prompt)
         self.assertIn(_ai_review_output_contract(), review_prompt)
+        review_schema = json.dumps(_ai_review_response_schema(), separators=(",", ":"))
+        self.assertEqual(review_prompt.count(review_schema), 1)
 
     def test_validation_stays_strict_for_invented_keys(self):
         # Shape returned by gemma4:31b-cloud in PR #77 (format not enforced).

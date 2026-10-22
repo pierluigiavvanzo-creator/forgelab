@@ -2,7 +2,17 @@
 
 Last updated: 2026-10-22
 
-## Current Task G checkpoint — 2026-10-22
+## Current checkpoint — cloud structured-output contract — 2026-10-22
+
+Dental run `run-23bea612fbbe` (runtime `c615ae5`) FAILED at planning: `AI Project Manager missing fields: acceptance_criteria, execution_steps, intended_outcome, principal_risks, schema_version`. Cause: the planner moved to Ollama Cloud (PR #81), which does not enforce `format`, and its prompt never stated the schema (PR #78 had fixed this for the reviewer only).
+
+Fix (branch `claude/cloud-structured-output-contract-2026-10-22`): `ModelRouter.execute_cloud_role` appends the compact JSON Schema as a text contract whenever a cloud role passes `response_format`, once (the reviewer's existing contract is detected, not duplicated). Strict validation unchanged. 221 tests pass.
+
+Live check (Claude, via the PO's signed-in local Ollama): the exact Dental planner prompt built by this branch (SHA-256 `227c3c93…bac1e`, verified byte-identical in the browser) sent to gemma4:31b-cloud returned a plan that passes the production `_validate_ai_plan`, with 5 of 9 acceptance criteria on the Tkinter GUI (three treatment/price pairs, discount field, visible totals). One call, 1,546 + 609 tokens, EUR 0.
+
+Single next action: PO restarts ForgeLab on the merged main and reruns Dental from the dashboard.
+
+## Previous checkpoint — Task G — 2026-10-22
 
 Base main `b2f67cd` (PR #80), branch `codex/cloud-planner-visible-scope`. Planner joins the shared Gemma/gpt-oss cloud policy; all LLM roles in the Aider path are cloud-only. PO explicitly leaves the legacy custom editor/S1/S2 routes unchanged. Planner/reviewer prompts require user-visible GUI/CLI/web scope and make the original Objective prevail over a narrower contract. Actual planning model/attempts and early STOP evidence recorded; Aider chain, budgets and human gate unchanged.
 
