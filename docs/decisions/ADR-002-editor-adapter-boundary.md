@@ -36,6 +36,16 @@ Generated tests are not an oracle: Support and all repair/correction prompts mus
 
 The single authorized production run (max_repair_attempts=2, one used) PASS: READY_FOR_DECISION, generated tests 11/11 exit 0, independent acceptance 6/6, no reviewer findings, human gate PENDING. 216 Python tests PASS. Cloud 22,562 tokens; no second run, Dental, promotion, purchases or service restart. Merge condition met. [Task F audit](../audits/FORGELAB_CLOUD_SUPPORT_TEST_ORACLE_2026-10-22.md). PO must inspect account usage before any further real workload decision; broader reliability remains unverified.
 
+## Planner cloud and user-visible acceptance — 2026-10-22
+
+Task G supersedes the local Planner restriction. PROJECT_MANAGER uses the same validated cloud policy as REVIEWER/SUPPORT: Gemma primary, gpt-oss alternative only on unavailability, quota/billing STOP, no local fallback. Actual planning model and attempts are recorded; planning failures close the run before implementation with role-specific evidence. Aider remains the editor with its existing chain/flags/timeouts. Only signed-in loopback Ollama, EUR 0.
+
+The PO explicitly limited Task G to the Aider path after clarification: the separately selected legacy custom editor and its S1/S2 routes remain unchanged. All LLM roles on the Aider path now use cloud models; this is not a claim that the legacy custom engine no longer uses local inference.
+
+Planner must preserve every user-facing objective capability through the existing GUI/CLI/web interface and state explicit acceptance criteria. If the planner contract narrows the Objective, the Objective prevails in review: backend-only inaccessible capability is PARTIAL and overall FAIL. This is a prompt-level safeguard, not proof of semantic reliability. Scope limits must be disclosed, never silently substituted for the objective.
+
+37 focused tests and 218 full-suite tests PASS. No real inference/E2E run authorized or performed in Task G; Dental repository/promotion branch untouched. Merge conditional on suite and GitHub checks. PO performs the next dashboard Dental verification; Golden Path points 5/8 are not declared satisfied. No service restart or promotion by this task.
+
 ## Context
 
 ForgeLab's current control plane provides valuable governance: planning, isolated workspaces, deterministic testing, bounded repair, independent review, security evidence and human-gated promotion.

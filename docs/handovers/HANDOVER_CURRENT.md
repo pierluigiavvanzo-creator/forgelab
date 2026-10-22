@@ -2,7 +2,15 @@
 
 Date: 2026-10-22
 
-## Current cloud Support / test-oracle checkpoint — 2026-10-22
+## Current Task G checkpoint — 2026-10-22
+
+Base main `b2f67cd` (PR #80), branch `codex/cloud-planner-visible-scope`. Planner joins the shared Gemma/gpt-oss cloud policy; all LLM roles in the Aider path are cloud-only. PO explicitly leaves the legacy custom editor/S1/S2 routes unchanged. Planner/reviewer prompts require user-visible GUI/CLI/web scope and make the original Objective prevail over a narrower contract. Actual planning model/attempts and early STOP evidence recorded; Aider chain, budgets and human gate unchanged.
+
+Validation: **37 focused tests PASS; 218 full Python tests PASS (71.300 s)**. No real model calls or E2E run; EUR 0. Dental repository and promotion branch untouched, services not restarted. PO-reported Dental run `run-a29e11c3fa7b` missed usable workflow despite backend completion; Golden Path points 5/8 remain NOT met. Prompt effectiveness and current Dental behavior are NOT independently verified by this task.
+
+Delivery: one code/docs PR; merge authorized only after full-suite and GitHub checks pass. Runtime test log: `.forgelab/runtime/task-g-planner-2026-10-22/python-suite.txt` (ignored). Rollback: revert Task G. Single next action: PO verifies the real Dental user workflow from the dashboard with updated runtime; no autonomous Dental execution.
+
+## Previous cloud Support / test-oracle checkpoint — 2026-10-22
 
 Task F base main `c4ff897` includes PR #79 merged. Branch `codex/cloud-support-test-oracle`: shared cloud REVIEWER/SUPPORT policy (Gemma primary, gpt-oss only on unavailability, reduced independence); quota stops and never local. Planner stays local; editor chain unchanged. Support receives current authorized files/contract, and all repair/correction prompts require recomputing generated-test expectations before modifying implementation.
 

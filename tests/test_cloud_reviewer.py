@@ -59,12 +59,12 @@ class CloudReviewerTests(unittest.TestCase):
             router.execute(TaskClass.S0, 'prompt', 'r', 'REVIEWER', 'test')
         self.assertEqual(provider.calls, [])
 
-    def test_planner_stays_local_and_support_uses_cloud(self):
+    def test_planner_and_support_use_cloud(self):
         router, provider = self.router([response(), response()])
         for task, role in ((TaskClass.S1, 'PROJECT_MANAGER'), (TaskClass.S2, 'SUPPORT')):
             router.execute(task, 'prompt', role, role, 'test')
-        self.assertEqual([c[0] for c in provider.calls], ['qwen2.5-coder:7b', 'gemma4:31b-cloud'])
-        self.assertEqual([r.policy_route for r in router.ledger.records], ['S1', 'SUPPORT'])
+        self.assertEqual([c[0] for c in provider.calls], ['gemma4:31b-cloud'] * 2)
+        self.assertEqual([r.policy_route for r in router.ledger.records], ['PROJECT_MANAGER', 'SUPPORT'])
 
     def test_unavailable_switches_once_with_reduced_independence(self):
         for message in ('Ollama HTTP 404: missing', 'Ollama HTTP 410: retired',
@@ -140,36 +140,42 @@ class CloudReviewerTests(unittest.TestCase):
 
 
     def test_support_error_policy_switch_stop_and_never_local(self):
+        self.assert_cloud_role_error_policy("SUPPORT")
+
+    def test_planner_error_policy_switch_stop_and_never_local(self):
+        self.assert_cloud_role_error_policy("PROJECT_MANAGER")
+
+    def assert_cloud_role_error_policy(self, role):
         cases = [
             ([ProviderPermanentError(message), response()], None, 2)
             for message in ('HTTP 404', 'HTTP 410', 'model retired', 'model not found')
         ] + [
-            ([ProviderPermanentError(message)], 'SUPPORT_CLOUD_QUOTA_STOP', 1)
+            ([ProviderPermanentError(message)], f'{role}_CLOUD_QUOTA_STOP', 1)
             for message in ('HTTP 402', 'HTTP 429', 'quota exhausted', 'no credits',
                             'billing required', 'HTTP 410: quota exhausted')
         ] + [
             ([ProviderPermanentError('HTTP 404'), ProviderPermanentError('HTTP 410')],
-             'SUPPORT_MODEL_UNAVAILABLE', 2),
+             f'{role}_MODEL_UNAVAILABLE', 2),
             ([ProviderPermanentError('HTTP 410'), ProviderPermanentError('HTTP 429')],
-             'SUPPORT_CLOUD_QUOTA_STOP', 2),
-            ([ProviderTransientError('timeout')], 'SUPPORT_PROVIDER_ERROR', 1),
+             f'{role}_CLOUD_QUOTA_STOP', 2),
+            ([ProviderTransientError('timeout')], f'{role}_PROVIDER_ERROR', 1),
         ]
         for outcomes, expected, count in cases:
             with self.subTest(outcomes=str(outcomes)):
                 router, provider = self.router(outcomes)
                 def execute():
-                    return router.execute(TaskClass.S2, 'prompt', 'support-1', 'SUPPORT', 'diagnose')
+                    return router.execute(TaskClass.S2, 'prompt', 'cloud-role-1', role, 'test')
                 if expected:
                     with self.assertRaises(CloudRoleRoutingError) as error:
                         execute()
                     self.assertEqual(error.exception.reason, expected)
-                    self.assertEqual(error.exception.role, 'SUPPORT')
+                    self.assertEqual(error.exception.role, role)
                 else:
                     execute()
                     self.assertIn('reduced independence', router.ledger.records[-1].routing_reason)
                 self.assertEqual([c[0] for c in provider.calls],
                                  ['gemma4:31b-cloud', 'gpt-oss:120b-cloud'][:count])
-                self.assertTrue(all(r.policy_route == r.agent_role == 'SUPPORT'
+                self.assertTrue(all(r.policy_route == r.agent_role == role
                                     for r in router.ledger.records))
 
     def test_production_support_quota_stops_before_repair_and_records_evidence(self):
@@ -212,6 +218,22 @@ class CloudReviewerTests(unittest.TestCase):
                          'rounding or bucketing not required by the objective'):
             self.assertIn(required, rule)
 
+
+
+    def test_planner_quota_is_governed_before_any_editor_call(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); repo = make_demo(root)
+            with patch('forgelab.orchestrator.OllamaProvider.invoke',
+                       side_effect=ProviderPermanentError('HTTP 429: quota')) as invoke:
+                run = run_multi_agent(request(repo, operation='ai_generate', old_text='', new_text='',
+                                              editor_engine='aider'), root/'runs')
+            self.assertEqual(invoke.call_count, 1)
+            self.assertEqual(invoke.call_args.args[0], 'gemma4:31b-cloud')
+            self.assertEqual(json.loads((run/'RunSummary.json').read_text())['status'], 'CLOSED')
+            failure = json.loads((run/'ProviderFailure.json').read_text())
+            self.assertEqual(failure['reason'], 'PROJECT_MANAGER_CLOUD_QUOTA_STOP')
+            self.assertFalse((run/'Changes.patch').exists())
+            self.assertNotEqual(json.loads((run/'GateDecision.json').read_text())['decision'], 'APPROVE')
 
 if __name__ == '__main__':
     unittest.main()
