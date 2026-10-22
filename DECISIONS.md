@@ -761,3 +761,13 @@ Observed on main baseline 4dfb0ab: Run 1 CLOSED in 167.187 s; Run 2 omitted. Ini
 Disposition: the current non-editor path is not qualified for Dental. Do not infer inherent model incapability from a truncated-context run or qualify Support from selected_roles metadata. No route/configuration change is authorized by this diagnostic result.
 
 Evidence: [all-real-role audit](docs/audits/FORGELAB_ALL_REAL_ROLES_SYNTHETIC_2026-10-21.md). Next: authorize one bounded reviewer qualification with complete context before any Dental decision.
+
+## Complete-context reviewer qualification — 2026-10-22
+
+PO authorized a synthetic-only reviewer replay: local qwen2.5-coder:7b with diagnostic context override, then gemma4:31b-cloud only after local failure, eight reviews per configuration, EUR 0 through signed-in loopback Ollama. No editor, Dental, production changes, purchases or merge. This is a diagnostic exception, not approval to route a production non-editor role to cloud.
+
+Observed: local 8192 resolves truncation but fails the semantic gate; Gemma fails the strict response contract 8/8 and misses aggregate discount validation twice. Neither reviewer is qualified. Ollama's 2050-token result is its overflow context-shift calculation, not output reservation or parallel slots. Local minimum free RAM 1.395 GiB stayed above the declared 1 GiB abort floor. Cloud 49,507 tokens; no quota/payment event; account balance unverified.
+
+Disposition: retain production routes. Proposed for separate approval only: reviewer-specific num_ctx=8192 with existing num_predict=2048/temperature=0.1 / 60 s timeout, strict schema validation and context evidence. This corrects the demonstrated truncation, not semantic reliability; no automatic schema conversion or cloud reviewer promotion. Dental remains blocked pending a passing reviewer gate.
+
+Evidence: [reviewer qualification audit](docs/audits/FORGELAB_REVIEWER_COMPLETE_CONTEXT_QUALIFICATION_2026-10-22.md). Next: PO reviews audit and Ollama usage and decides on the separate reviewer-context implementation PR.
