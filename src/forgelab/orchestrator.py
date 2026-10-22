@@ -18,6 +18,7 @@ from .state_machine import RunStateMachine
 from .workspace import IsolatedWorkspace
 from .model_router import (
     ModelRouter,
+    ReviewerRoutingError,
     ProviderTransientError,
     ProviderResponse,
     TaskClass,
@@ -4200,12 +4201,9 @@ Return ONLY the required JSON object.
 """
 
                     ai_review_response = (
-                        ai_router.execute(
-                            TaskClass.S1,
+                        ai_router.execute_reviewer(
                             review_prompt,
                             f"review-{review_round}",
-                            Role.REVIEWER.value,
-                            "Blocking AI semantic review",
                             request.timeout_seconds,
                             response_format=(
                                 _ai_review_response_schema()
@@ -4213,22 +4211,25 @@ Return ONLY the required JSON object.
                         )
                     )
 
-                    review_route = (
-                        ai_router.route(
-                            TaskClass.S1
-                        )
-                    )
-
-                    semantic_review = (
-                        _validate_ai_review(
-                            ai_review_response.text
-                        )
-                    )
+                    review_route = ai_router.ledger.records[-1]
+                    review_attempts = [record.to_dict() for record in ai_router.ledger.records
+                                       if record.task_id == f"review-{review_round}"
+                                       and record.agent_role == Role.REVIEWER.value]
+                    store.write_optional_json("ReviewerResponse.json", {
+                        "round": review_round, "model": review_route.model_id,
+                        "routing_attempts": review_attempts, "text": ai_review_response.text,
+                    })
+                    try:
+                        semantic_review = _validate_ai_review(ai_review_response.text)
+                    except ValueError as error:
+                        raise ReviewerRoutingError("REVIEWER_CONTRACT_INVALID", str(error)) from error
 
                     semantic_review_history.append({
                         "round":
                             review_round,
                         **semantic_review,
+                        "model": review_route.model_id,
+                        "routing_attempts": review_attempts,
                     })
 
                     store.write_optional_json(
@@ -4239,7 +4240,8 @@ Return ONLY the required JSON object.
                             "provider":
                                 review_route.provider,
                             "model":
-                                review_route.model,
+                                review_route.model_id,
+                            "routing_attempts": review_attempts,
                             **semantic_review,
                             "attempts":
                                 semantic_review_history,
@@ -5916,6 +5918,20 @@ Return ONLY the required JSON object.
                     machine.transition(
                         RunStatus.READY_FOR_DECISION
                     )
+    except ReviewerRoutingError as reviewer_error:
+        store.write_optional_json("ReviewerFailure.json", {
+            "run_id": run_id, "status": "FAIL", "reason": reviewer_error.reason,
+            "phase": machine.status.value, "error": str(reviewer_error),
+            "attempts": [record.to_dict() for record in ai_ledger.records
+                         if record.agent_role == Role.REVIEWER.value],
+        })
+        evidence.append({"evidence_id": "ev-reviewer-failure", "check_type": "reviewer",
+                         "exit_status": 1, "summary": str(reviewer_error),
+                         "artifact_ref": "ReviewerFailure.json"})
+        results.append(AgentResult(ResultStatus.FAIL, str(reviewer_error), [],
+                                   ["ev-reviewer-failure"], [], [], "Inspect reviewer evidence").to_dict())
+        if machine.status != RunStatus.CLOSED:
+            machine.transition(RunStatus.CLOSED)
     except AIEditorExecutionError as editor_error:
         editor_failure = {
             "run_id": run_id,
@@ -6093,7 +6109,8 @@ Return ONLY the required JSON object.
             "run_id": run_id,
             "estimated_cost": str(ai_ledger.spent),
             "runtime": "hybrid_local_ai",
-            "provider_mode": "local_zero_spend",
+            "provider_mode": "loopback_zero_spend",
+            "reviewer_inference_location": "ollama_cloud_via_loopback",
             "editor_engine": request.editor_engine,
             "editor_inference_location": "ollama_cloud_via_loopback" if request.editor_engine == "aider" else "not_applicable",
             "editor_timeout_seconds":
@@ -6134,7 +6151,7 @@ Return ONLY the required JSON object.
         "changes": list(review_report.get("changed_paths", [])) if diff else [], "tests": "PASS" if final_test_passed else "FAIL",
         "repair_attempts": repair_attempts, "risk": "Patch only; source unchanged" if source_unchanged else "Source integrity failed",
         "model_usage": (
-            "Aider + Ollama Cloud via loopback; non-editor roles unchanged"
+            "Aider editor + cloud Reviewer via loopback; Planner/Support local"
             if request.editor_engine == "aider"
             else ("Ollama local" if use_ai else "None")
         ),

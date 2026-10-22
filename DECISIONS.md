@@ -779,3 +779,13 @@ PR #76/#77 measured the reviewer with the semantic-repair objective, which conta
 Decision (implementation PR, PO merge required): state the reviewer JSON contract in the prompt with the exact schema, keep strict validation, and size Ollama `num_ctx` from the prompt (4096 to 16384, fail closed above the ceiling or when the evaluated prompt is implausibly short). Routes, models, timeouts, repair budgets, gates and the cloud editor chain are unchanged; no cloud reviewer route is introduced.
 
 Evidence: [confound and fix](docs/audits/FORGELAB_REVIEWER_GATE_CONFOUND_AND_CONTRACT_FIX_2026-10-22.md). Next: clean-objective reviewer replay on this code before any routing decision; Dental remains blocked.
+
+## Cloud reviewer decision and conditional end-to-end delivery — 2026-10-22
+
+The PO explicitly accepts immediate REVIEWER cloud routing without separate qualification rounds, using exactly one end-to-end synthetic run as verification. Primary gemma4:31b-cloud (different family from gpt-oss editor); alternative gpt-oss:120b-cloud only on 404/410/retired/not-found, recorded as reduced independence. Quota/credit/billing/402/429 stops; never a local reviewer. Planner and Support stay local qwen2.5-coder:7b; editor chain unchanged. Signed-in local Ollama 127.0.0.1:11434 only, EUR 0, no purchases, Dental, promotion or service restart.
+
+PO also authorizes one gpt-oss-primary repeat only if failure is solely due to invalid/wrong Gemma review, and merge only after end-to-end PASS. Implementation reuses PR #75 classification and PR #78 context/contract checks; strict validation stays intact.
+
+Observed: 213 Python tests PASS; one clean-objective run ends REVIEW in 108.375 s. Generated tests pass after one repair, but independent acceptance is 2/6 test methods (5 failure records). An incorrect generated test expects 20 from 10+6+3; Support suggests rounding and editor introduces rounding to tens. Gemma returns valid JSON and correctly blocks that line, while missing exact item count in requirements. Cloud 17,564 tokens, EUR 0. Conditional repeat and merge are not authorized by this outcome: neither is performed. Unchanged failure gate remains SYSTEM/REPAIR; no promotion.
+
+Evidence: [cloud reviewer route](docs/audits/FORGELAB_CLOUD_REVIEWER_ROUTE_2026-10-22.md). Next: PO reviews the PR and authorizes a separate bounded fix for generated-test expectations and repair reasoning before another end-to-end run.

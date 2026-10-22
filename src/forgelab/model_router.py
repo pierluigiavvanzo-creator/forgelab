@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Protocol
+
+from .editor_adapter import editor_cloud_stop_reason
 
 
 class TaskClass(str, Enum):
@@ -31,6 +34,28 @@ class ProviderTransientError(RouterError):
 
 class ProviderPermanentError(RouterError):
     pass
+
+
+class ReviewerRoutingError(ProviderPermanentError):
+    def __init__(self, reason: str, detail: str) -> None:
+        self.reason = reason
+        super().__init__(f"{reason}: {detail}")
+
+
+@dataclass(frozen=True)
+class ReviewerModelConfig:
+    primary: str = "gemma4:31b-cloud"
+    alternative: str | None = "gpt-oss:120b-cloud"
+
+    def __post_init__(self) -> None:
+        if (self.primary, self.alternative) not in {
+            ("gemma4:31b-cloud", "gpt-oss:120b-cloud"),
+            ("gpt-oss:120b-cloud", None),
+        }:
+            raise RouterError("reviewer must use the PO-approved cloud chain; never local")
+
+
+REVIEWER_MODELS = ReviewerModelConfig()
 
 
 @dataclass(frozen=True)
@@ -172,9 +197,59 @@ class ModelRouter:
     def route(self, task_class: TaskClass) -> ModelRoute:
         return self.routes[task_class]
 
+    def execute_reviewer(self, prompt: str, task_id: str,
+                         timeout_seconds: int = 60,
+                         response_format: dict[str, object] | str | None = None) -> ProviderResponse:
+        """Separate cloud-only role route; no S1 retry, reset or local fallback."""
+        provider = self.providers.get("ollama")
+        if provider is None:
+            raise ReviewerRoutingError("REVIEWER_PROVIDER_ERROR", "Ollama is not configured")
+        deadline = time.monotonic() + timeout_seconds
+        models = (REVIEWER_MODELS.primary, REVIEWER_MODELS.alternative)
+        for attempt, model in enumerate(models, 1):
+            if model is None:
+                break
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ReviewerRoutingError("REVIEWER_TIMEOUT", "review deadline exhausted")
+            reason = "PRIMARY" if attempt == 1 else "PRIMARY_UNAVAILABLE"
+            reason += ("; reduced independence" if model == "gpt-oss:120b-cloud"
+                       else "; independent model family")
+            started = time.monotonic()
+            try:
+                response = provider.invoke(model, prompt, min(timeout_seconds, math.ceil(remaining)), response_format)
+            except (ProviderPermanentError, ProviderTransientError) as error:
+                # These are provider exceptions, never generated review text.
+                classified = editor_cloud_stop_reason(str(error))
+                status = {
+                    "EDITOR_CLOUD_QUOTA_STOP": "REVIEWER_CLOUD_QUOTA_STOP",
+                    "EDITOR_MODEL_UNAVAILABLE": "REVIEWER_MODEL_UNAVAILABLE",
+                }.get(classified, "REVIEWER_PROVIDER_ERROR")
+                self.ledger.records.append(UsageRecord(
+                    "ollama", model, "REVIEWER", "REVIEWER", task_id,
+                    0, 0, 0, "0", int((time.monotonic() - started) * 1000),
+                    attempt, status, reason, str(error),
+                ))
+                if status == "REVIEWER_MODEL_UNAVAILABLE" and attempt == 1 and models[1] is not None:
+                    continue
+                raise ReviewerRoutingError(status, str(error)) from error
+            cost = _cost(response, None)
+            self.ledger.records.append(UsageRecord(
+                "ollama", model, "REVIEWER", "REVIEWER", task_id,
+                response.input_tokens, response.output_tokens, response.cache_read_tokens,
+                str(cost), int((time.monotonic() - started) * 1000), attempt,
+                "SUCCESS" if cost == 0 else "BUDGET_BLOCKED", reason,
+            ))
+            if cost != 0:
+                raise ReviewerRoutingError("REVIEWER_CLOUD_COST_STOP", "reviewer requires EUR 0")
+            return response
+        raise ReviewerRoutingError("REVIEWER_MODEL_UNAVAILABLE", "cloud reviewer chain exhausted")
+
     def execute(self, task_class: TaskClass, prompt: str, task_id: str, agent_role: str,
                 routing_reason: str, timeout_seconds: int = 60,
                 response_format: dict[str, object] | str | None = None) -> ProviderResponse:
+        if agent_role == "REVIEWER" and task_class is not TaskClass.S0:
+            return self.execute_reviewer(prompt, task_id, timeout_seconds, response_format)
         route = self.route(task_class)
         if task_class is TaskClass.S0 or route.provider is None:
             raise RouterError("S0 deterministic work must not call an LLM provider")

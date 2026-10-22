@@ -2,15 +2,17 @@
 
 Date: 2026-10-22
 
-## Current reviewer gate checkpoint — 2026-10-22 (after PR #77)
+## Current cloud reviewer implementation checkpoint — 2026-10-22
 
-The PR #76/#77 reviewer failures are confounded: their objective was the semantic-repair objective, which embeds a stale "Blocking semantic review" of the original one-item code (AC1/AC2/AC6 missing, AC3/AC4/AC5 satisfied). The reviewer prompt shows it under `Objective:`. Local false blockers repeat AC1/AC2/AC6; Gemma's two misses repeat AC3/AC4 "satisfied". Causality is a hypothesis until a clean-objective replay.
+Task E baseline main `6726573` (PR #78 merged), branch `codex/cloud-reviewer-route`. PO accepts cloud REVIEWER without separate qualification: Gemma primary, gpt-oss alternative only for unavailable model with reduced-independence evidence; quota stops, never local. Planner/Support and editor chain unchanged. Implementation and user-facing notes updated; 213 Python tests PASS. This branch is **not merged**.
 
-Branch `claude/reviewer-context-output-contract-2026-10-22` fixes two production defects without changing routes, models, timeouts, budgets or gates: (1) the reviewer prompt now states the JSON contract and schema (Ollama Cloud did not enforce `format`; Gemma invented keys 8/8); (2) `OllamaProvider` sizes `num_ctx` from the prompt (floor 4096, ceiling 16384) and fails closed on oversized or truncated prompts. 200 tests pass. Live behaviour with the new prompt is NOT VERIFIED.
+Exactly one run with clean PR #74 objective ends REVIEW after 108.375 s. Real Planner/Support use local 7B, editor gpt-oss cloud, reviewer Gemma cloud. Generated tests 10/10 pass after one repair, independent acceptance 2/6 test methods (5 failure records). A generated test expects 20 for 10+6+3; Support suggests rounding; editor rounds totals to tens. Gemma's strict JSON is valid and its blocker identifies the real defect. It misses exact-count enforcement in requirements, so this is not broad reviewer qualification.
 
-Evidence: [confound and fix](../audits/FORGELAB_REVIEWER_GATE_CONFOUND_AND_CONTRACT_FIX_2026-10-22.md). Dental remains blocked.
+Cloud 17,564 tokens, EUR 0; sources and service PIDs unchanged. No second run: failure is not solely invalid/wrong Gemma review. No merge under the conditional authorization; no Dental or promotion. Failure gate remains SYSTEM/REPAIR per unchanged production behavior, not PENDING.
 
-Single next action: clean-objective reviewer replay on this branch (local first, Gemma only if local fails).
+Evidence: [Task E audit](../audits/FORGELAB_CLOUD_REVIEWER_ROUTE_2026-10-22.md). Account quota and broader reliability remain unverified.
+
+Single next action: PO reviews the PR and authorizes a separate bounded fix for generated-test expectations and repair reasoning before another end-to-end run.
 
 ## Previous checkpoint — PR #77 reviewer qualification — 2026-10-22
 
