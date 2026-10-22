@@ -771,3 +771,11 @@ Observed: local 8192 resolves truncation but fails the semantic gate; Gemma fail
 Disposition: retain production routes. Proposed for separate approval only: reviewer-specific num_ctx=8192 with existing num_predict=2048/temperature=0.1 / 60 s timeout, strict schema validation and context evidence. This corrects the demonstrated truncation, not semantic reliability; no automatic schema conversion or cloud reviewer promotion. Dental remains blocked pending a passing reviewer gate.
 
 Evidence: [reviewer qualification audit](docs/audits/FORGELAB_REVIEWER_COMPLETE_CONTEXT_QUALIFICATION_2026-10-22.md). Next: PO reviews audit and Ollama usage and decides on the separate reviewer-context implementation PR.
+
+## Reviewer gate confound and reviewer contract fix — 2026-10-22
+
+PR #76/#77 measured the reviewer with the semantic-repair objective, which contains a stale blocking review of the pre-change code. Their reviewer results are not a valid measurement of reviewer reliability; they remain valid evidence of truncation (PR #76) and of the cloud schema failure (PR #77).
+
+Decision (implementation PR, PO merge required): state the reviewer JSON contract in the prompt with the exact schema, keep strict validation, and size Ollama `num_ctx` from the prompt (4096 to 16384, fail closed above the ceiling or when the evaluated prompt is implausibly short). Routes, models, timeouts, repair budgets, gates and the cloud editor chain are unchanged; no cloud reviewer route is introduced.
+
+Evidence: [confound and fix](docs/audits/FORGELAB_REVIEWER_GATE_CONFOUND_AND_CONTRACT_FIX_2026-10-22.md). Next: clean-objective reviewer replay on this code before any routing decision; Dental remains blocked.

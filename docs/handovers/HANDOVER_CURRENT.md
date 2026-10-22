@@ -2,7 +2,17 @@
 
 Date: 2026-10-22
 
-## Current reviewer qualification checkpoint — 2026-10-22
+## Current reviewer gate checkpoint — 2026-10-22 (after PR #77)
+
+The PR #76/#77 reviewer failures are confounded: their objective was the semantic-repair objective, which embeds a stale "Blocking semantic review" of the original one-item code (AC1/AC2/AC6 missing, AC3/AC4/AC5 satisfied). The reviewer prompt shows it under `Objective:`. Local false blockers repeat AC1/AC2/AC6; Gemma's two misses repeat AC3/AC4 "satisfied". Causality is a hypothesis until a clean-objective replay.
+
+Branch `claude/reviewer-context-output-contract-2026-10-22` fixes two production defects without changing routes, models, timeouts, budgets or gates: (1) the reviewer prompt now states the JSON contract and schema (Ollama Cloud did not enforce `format`; Gemma invented keys 8/8); (2) `OllamaProvider` sizes `num_ctx` from the prompt (floor 4096, ceiling 16384) and fails closed on oversized or truncated prompts. 200 tests pass. Live behaviour with the new prompt is NOT VERIFIED.
+
+Evidence: [confound and fix](../audits/FORGELAB_REVIEWER_GATE_CONFOUND_AND_CONTRACT_FIX_2026-10-22.md). Dental remains blocked.
+
+Single next action: clean-objective reviewer replay on this branch (local first, Gemma only if local fails).
+
+## Previous checkpoint — PR #77 reviewer qualification — 2026-10-22
 
 Task C on main `0af1398` (PR #76 merged; production code unchanged from `4dfb0ab`) completed 8 local and 8 cloud reviewer-only synthetic replays. Both configurations FAIL. Local qwen2.5-coder:7b at diagnostic num_ctx=8192 receives complete prompts but falsely rejects GOOD final twice and misses both documented BAD defects. Gemma4:31b-cloud produces 8/8 responses rejected by the production schema validator and misses aggregate discount validation twice. No editor calls, production changes, Dental, approval or promotion.
 
@@ -129,4 +139,4 @@ No new CI/PASS claim exists until local validation is executed.
 
 ## Single next action
 
-PO_USAGE_PAGE_REVIEW_AND_IMPLEMENTATION_PR_MERGE_DECISION
+CLEAN_OBJECTIVE_REVIEWER_REPLAY_ON_CONTRACT_FIX_BRANCH
