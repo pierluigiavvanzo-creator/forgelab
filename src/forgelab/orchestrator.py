@@ -18,7 +18,7 @@ from .state_machine import RunStateMachine
 from .workspace import IsolatedWorkspace
 from .model_router import (
     ModelRouter,
-    ReviewerRoutingError,
+    CloudRoleRoutingError,
     ProviderTransientError,
     ProviderResponse,
     TaskClass,
@@ -257,6 +257,16 @@ def _build_local_ai_router() -> tuple[ModelRouter, UsageLedger]:
     )
 
     return router, ledger
+
+
+GENERATED_TEST_REPAIR_RULE = """Generated tests are NOT an oracle.
+Before changing implementation to satisfy a failing generated test, recompute
+the expected values from the objective and the test inputs, showing the calculation.
+If the expectation is wrong, fix the TEST and preserve the objective's coverage.
+Never add logic whose only purpose is to make a specific assertion pass, including
+rounding or bucketing not required by the objective. Passing tests are regression
+evidence, not authority over the objective.
+"""
 
 
 def _read_ai_developer_target(
@@ -2806,6 +2816,8 @@ Rules:
                     })
                 else:
                     prewrite_repair_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
 You are the DEVELOPER agent in ForgeLab.
 
 Your prior response failed deterministic pre-write
@@ -3187,6 +3199,8 @@ For Python files, return complete syntactically valid Python.
                 )
 
                 correction_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
 You are the DEVELOPER agent in ForgeLab.
 
 The single bounded repair attempt introduced a deterministic
@@ -3443,7 +3457,14 @@ Return ONLY the required JSON object.
             support_id = f"support-{repair_attempts + 1}"
 
             if ai_router is not None:
+                diagnostic_sources = _read_ai_developer_targets(workspace.path, target_paths)
+                diagnostic_files_context = "\n\n".join(
+                    f"--- BEGIN FILE {path} ---\n{source}\n--- END FILE {path} ---"
+                    for path, source in diagnostic_sources.items()
+                )
                 diagnostic_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
 You are the SUPPORT agent in ForgeLab.
 
 A bounded software change failed its acceptance test.
@@ -3453,6 +3474,12 @@ Objective:
 
 Authorized targets:
 {chr(10).join(f"- {path}" for path in target_paths)}
+
+Project Manager binding acceptance contract:
+{plan_contract_text}
+
+Current complete authorized files AFTER the failed candidate (including test inputs):
+{diagnostic_files_context}
 
 Failed deterministic evidence id:
 {ev_id}
@@ -3598,6 +3625,8 @@ Do not repeat a prior hypothesis. Do not invent test results.
 """
 
                 repair_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
 You are the DEVELOPER agent in ForgeLab.
 
 A prior bounded AI patch failed a deterministic test.
@@ -3811,6 +3840,8 @@ Rules:
                         repair_prewrite_attempts = 1
 
                         repair_prewrite_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
     You are the DEVELOPER agent in ForgeLab.
 
     Your prior test-failure repair candidate failed deterministic
@@ -4222,7 +4253,7 @@ Return ONLY the required JSON object.
                     try:
                         semantic_review = _validate_ai_review(ai_review_response.text)
                     except ValueError as error:
-                        raise ReviewerRoutingError("REVIEWER_CONTRACT_INVALID", str(error)) from error
+                        raise CloudRoleRoutingError("REVIEWER_CONTRACT_INVALID", str(error)) from error
 
                     semantic_review_history.append({
                         "round":
@@ -4443,6 +4474,8 @@ Return ONLY the required JSON object.
                     )
 
                     semantic_review_correction_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
 You are the DEVELOPER agent in ForgeLab.
 
 The single top-level semantic-review repair has already been used and
@@ -4898,6 +4931,8 @@ summary. new_text must contain complete replacement source, not a diff.
                 )
 
                 semantic_repair_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
 You are the DEVELOPER agent in ForgeLab.
 
 The candidate passed deterministic tests but FAILED the
@@ -5108,6 +5143,8 @@ Return ONLY the required structured JSON object.
                         semantic_prewrite_attempts = 1
 
                         semantic_prewrite_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
     You are the DEVELOPER agent in ForgeLab.
 
     Your semantic-review repair failed deterministic pre-write
@@ -5438,6 +5475,8 @@ Return ONLY the required structured JSON object.
                     )
 
                     semantic_test_correction_prompt = f"""
+{GENERATED_TEST_REPAIR_RULE}
+
 You are the DEVELOPER agent in ForgeLab.
 
 The single bounded semantic-review repair was applied, but its
@@ -5918,18 +5957,20 @@ Return ONLY the required JSON object.
                     machine.transition(
                         RunStatus.READY_FOR_DECISION
                     )
-    except ReviewerRoutingError as reviewer_error:
-        store.write_optional_json("ReviewerFailure.json", {
-            "run_id": run_id, "status": "FAIL", "reason": reviewer_error.reason,
-            "phase": machine.status.value, "error": str(reviewer_error),
+    except CloudRoleRoutingError as role_error:
+        role_name = role_error.role.lower()
+        artifact = f"{role_error.role.title()}Failure.json"
+        evidence_id = f"ev-{role_name}-failure"
+        store.write_optional_json(artifact, {
+            "run_id": run_id, "status": "FAIL", "reason": role_error.reason,
+            "role": role_error.role, "phase": machine.status.value, "error": str(role_error),
             "attempts": [record.to_dict() for record in ai_ledger.records
-                         if record.agent_role == Role.REVIEWER.value],
+                         if record.agent_role == role_error.role],
         })
-        evidence.append({"evidence_id": "ev-reviewer-failure", "check_type": "reviewer",
-                         "exit_status": 1, "summary": str(reviewer_error),
-                         "artifact_ref": "ReviewerFailure.json"})
-        results.append(AgentResult(ResultStatus.FAIL, str(reviewer_error), [],
-                                   ["ev-reviewer-failure"], [], [], "Inspect reviewer evidence").to_dict())
+        evidence.append({"evidence_id": evidence_id, "check_type": role_name,
+                         "exit_status": 1, "summary": str(role_error), "artifact_ref": artifact})
+        results.append(AgentResult(ResultStatus.FAIL, str(role_error), [],
+                                   [evidence_id], [], [], f"Inspect {role_name} evidence").to_dict())
         if machine.status != RunStatus.CLOSED:
             machine.transition(RunStatus.CLOSED)
     except AIEditorExecutionError as editor_error:
@@ -6111,6 +6152,7 @@ Return ONLY the required JSON object.
             "runtime": "hybrid_local_ai",
             "provider_mode": "loopback_zero_spend",
             "reviewer_inference_location": "ollama_cloud_via_loopback",
+            "support_inference_location": "ollama_cloud_via_loopback",
             "editor_engine": request.editor_engine,
             "editor_inference_location": "ollama_cloud_via_loopback" if request.editor_engine == "aider" else "not_applicable",
             "editor_timeout_seconds":
@@ -6151,7 +6193,7 @@ Return ONLY the required JSON object.
         "changes": list(review_report.get("changed_paths", [])) if diff else [], "tests": "PASS" if final_test_passed else "FAIL",
         "repair_attempts": repair_attempts, "risk": "Patch only; source unchanged" if source_unchanged else "Source integrity failed",
         "model_usage": (
-            "Aider editor + cloud Reviewer via loopback; Planner/Support local"
+            "Aider editor + cloud Reviewer/Support via loopback; Planner local"
             if request.editor_engine == "aider"
             else ("Ollama local" if use_ai else "None")
         ),

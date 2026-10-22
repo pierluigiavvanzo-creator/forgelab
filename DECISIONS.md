@@ -789,3 +789,15 @@ PO also authorizes one gpt-oss-primary repeat only if failure is solely due to i
 Observed: 213 Python tests PASS; one clean-objective run ends REVIEW in 108.375 s. Generated tests pass after one repair, but independent acceptance is 2/6 test methods (5 failure records). An incorrect generated test expects 20 from 10+6+3; Support suggests rounding and editor introduces rounding to tens. Gemma returns valid JSON and correctly blocks that line, while missing exact item count in requirements. Cloud 17,564 tokens, EUR 0. Conditional repeat and merge are not authorized by this outcome: neither is performed. Unchanged failure gate remains SYSTEM/REPAIR; no promotion.
 
 Evidence: [cloud reviewer route](docs/audits/FORGELAB_CLOUD_REVIEWER_ROUTE_2026-10-22.md). Next: PO reviews the PR and authorizes a separate bounded fix for generated-test expectations and repair reasoning before another end-to-end run.
+
+## Shared cloud Reviewer/Support and generated-test oracle decision — 2026-10-22
+
+PO Task F supersedes the previous local Support restriction: SUPPORT and REVIEWER share gemma4:31b-cloud primary and gpt-oss:120b-cloud alternative only on 404/410/retired/not-found, recording reduced independence. Quota/credit/billing/402/429 stops, never local. Planner stays local qwen2.5-coder:7b; Aider/editor chain unchanged; only signed-in loopback Ollama, EUR 0, synthetic data. No Dental, purchases, promotion or service restart. Generalize the existing reviewer policy, do not duplicate it.
+
+Generated tests are NOT an oracle. Support and every repair/correction prompt must recompute expected results from the objective and inputs, correct an incorrect TEST while preserving coverage, and forbid assertion-fitting implementation logic (including unjustified rounding/bucketing). Support receives complete authorized current files and the binding contract through existing bounded readers.
+
+Git baseline c4ff897 confirms PR #79 was merged after Task E's audit checkpoint; its failed run remains valid historical evidence. Task F authorizes exactly one fresh production synthetic run with clean objective SHA-256 ebb6eb21a7293a6850eece17653625f949067ffdfeafb90cf8cada10446ba5f0 and max_repair_attempts=2. Merge is authorized only on the full end-to-end PASS.
+
+Observed: 216 Python tests PASS; single run cloud-support-1 reaches READY_FOR_DECISION in 120.063 s after one test-only repair, generated tests 11/11 exit 0, independent acceptance 6/6, strict Gemma review PASS with no findings. Human gate PENDING; no promotion. Cloud 22,562 tokens, EUR 0 ledger; services/source unchanged. Conditional merge criterion is satisfied; no second run. Prompt compliance/general reliability and remaining account quota are not proven by one run.
+
+Evidence: [Task F audit](docs/audits/FORGELAB_CLOUD_SUPPORT_TEST_ORACLE_2026-10-22.md). Single next action: PO reads Ollama session/weekly usage before any further real workload decision.

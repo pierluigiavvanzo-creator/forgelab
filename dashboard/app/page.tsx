@@ -3148,8 +3148,8 @@ export default function Home() {
                 <div className="full modal-note">
                   <Sparkles />
                   <span>
-                    REUSE-FIRST: Aider editor e Reviewer usano Ollama Cloud
-                    tramite il servizio locale. Planner e Support restano locali.
+                    REUSE-FIRST: Aider editor, Reviewer e Support usano Ollama Cloud
+                    tramite il servizio locale. Il Planner resta locale.
                     Il candidate viene generato sui file
                     autorizzati. ForgeLab mantiene scope, compile gate,
                     test, Reviewer, Security e ToolGateway. ChatGPT non
@@ -3277,9 +3277,9 @@ export default function Home() {
                 apiConnected
                   ? (
                       aiDeveloperMode
-                        ? "REUSE-FIRST attivo. Editor: gpt-oss / gemma cloud. Reviewer: gemma / gpt-oss cloud (fallback con indipendenza ridotta). Planner e Support locali. Solo file autorizzati; gate umano invariato. ChatGPT assistance target run: 0. Costo API EUR 0."
+                        ? "REUSE-FIRST attivo. Editor: gpt-oss / gemma cloud. Reviewer/Support: gemma / gpt-oss cloud (fallback con indipendenza ridotta). Planner locale. Solo file autorizzati; gate umano invariato. ChatGPT assistance target run: 0. Costo API EUR 0."
                         : aiMode
-                          ? "AI assistita attiva. Planner e Support locali; Reviewer su Ollama Cloud (gemma / gpt-oss, fallback con indipendenza ridotta). Costo provider EUR 0."
+                          ? "AI assistita attiva. Planner locale; Reviewer/Support su Ollama Cloud (gemma / gpt-oss, fallback con indipendenza ridotta). Costo provider EUR 0."
                           : "Runner locale autenticato. Nessun provider LLM verra chiamato."
                     )
                   : "Runner non collegato: avvia ForgeLab dal launcher."

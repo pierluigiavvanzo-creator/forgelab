@@ -2,17 +2,15 @@
 
 Last updated: 2026-10-22
 
-## Current cloud reviewer implementation checkpoint — 2026-10-22
+## Current cloud Support / test-oracle checkpoint — 2026-10-22
 
-Task E baseline main `6726573` (PR #78 merged), branch `codex/cloud-reviewer-route`. PO accepts cloud REVIEWER without separate qualification: Gemma primary, gpt-oss alternative only for unavailable model with reduced-independence evidence; quota stops, never local. Planner/Support and editor chain unchanged. Implementation and user-facing notes updated; 213 Python tests PASS. This branch is **not merged**.
+Task F base main `c4ff897` includes PR #79 merged. Branch `codex/cloud-support-test-oracle`: shared cloud REVIEWER/SUPPORT policy (Gemma primary, gpt-oss only on unavailability, reduced independence); quota stops and never local. Planner stays local; editor chain unchanged. Support receives current authorized files/contract, and all repair/correction prompts require recomputing generated-test expectations before modifying implementation.
 
-Exactly one run with clean PR #74 objective ends REVIEW after 108.375 s. Real Planner/Support use local 7B, editor gpt-oss cloud, reviewer Gemma cloud. Generated tests 10/10 pass after one repair, independent acceptance 2/6 test methods (5 failure records). A generated test expects 20 for 10+6+3; Support suggests rounding; editor rounds totals to tens. Gemma's strict JSON is valid and its blocker identifies the real defect. It misses exact-count enforcement in requirements, so this is not broad reviewer qualification.
+**PASS:** 216 Python tests; exactly one real production run `cloud-support-1`, 120.063 s, READY_FOR_DECISION, generated tests 11/11 exit 0, independent 6/6, strict Gemma review PASS/no findings. One repair used from cap 2: incorrect CLI test expectation fixed; implementation unchanged during repair. Human gate PENDING, no promotion. Cloud 22,562 tokens, EUR 0 ledger. Fixture/source and service PIDs unchanged; no second run, Dental or service restart.
 
-Cloud 17,564 tokens, EUR 0; sources and service PIDs unchanged. No second run: failure is not solely invalid/wrong Gemma review. No merge under the conditional authorization; no Dental or promotion. Failure gate remains SYSTEM/REPAIR per unchanged production behavior, not PENDING.
+One code/docs PR; conditional merge criterion met. General reliability, exact old arithmetic-failure replay, live fallback/quota and account capacity are NOT VERIFIED. Already-running services have not been restarted to load new code. [Task F audit](docs/audits/FORGELAB_CLOUD_SUPPORT_TEST_ORACLE_2026-10-22.md). Local ignored evidence: `.forgelab/runtime/semantic-completion-audit/cloud-support-production-2026-10-22/`. Rollback: revert this change set, preserving runtime evidence.
 
-Evidence: [Task E audit](docs/audits/FORGELAB_CLOUD_REVIEWER_ROUTE_2026-10-22.md). Account quota and broader reliability remain unverified.
-
-Single next action: PO reviews the PR and authorizes a separate bounded fix for generated-test expectations and repair reasoning before another end-to-end run.
+Single next action: PO reads Ollama session/weekly usage before authorizing any further real workload. Dental remains separately undecided.
 
 ## Previous checkpoint — PR #77 reviewer qualification — 2026-10-22
 
