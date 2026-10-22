@@ -4797,6 +4797,13 @@ class MultiAgentTests(unittest.TestCase):
             self.assertIn("M88_SHARED_CONTEXT_MARKER", prompts[1])
             self.assertIn("M88_SHARED_CONTEXT_MARKER", prompts[2])
             self.assertIn("M88_SHARED_CONTEXT_MARKER", prompts[3])
+            self.assertEqual(invoke.call_args_list[2].args[0], "gemma4:31b-cloud")
+            self.assertIn("Current complete authorized files AFTER the failed candidate", prompts[2])
+            self.assertIn("return a * b", prompts[2])
+            self.assertIn("Project Manager binding acceptance contract", prompts[2])
+            for prompt in (prompts[2], prompts[3]):
+                self.assertIn("Generated tests are NOT an oracle", prompt)
+                self.assertIn("fix the TEST", prompt)
             self.assertIn(
                 "new or modified tests must exercise the candidate API "
                 "consistently",

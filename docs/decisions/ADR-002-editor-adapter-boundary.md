@@ -26,7 +26,15 @@ Reuse the existing provider error classifier, loopback guard, PR #78 context siz
 
 Verification is exactly one real production run with the clean product objective and max_repair_attempts=1; only a failure solely from invalid/wrong Gemma review permits one gpt-oss-primary repeat. Merge is authorized only on READY_FOR_DECISION + generated-test exit 0 + independent 6/6 + no false blocking reviewer finding, with human approval pending.
 
-Actual delivery: 213 tests PASS; single run FAIL because editor/Support repair introduced erroneous rounding to satisfy an incorrect generated test; Gemma correctly blocked it. Independent acceptance 2/6 test methods. No conditional repeat and **no merge**. The cloud reviewer implementation remains proposed on its branch, not active in main. [Audit](../audits/FORGELAB_CLOUD_REVIEWER_ROUTE_2026-10-22.md).
+Actual delivery: 213 tests PASS; single run FAIL because editor/Support repair introduced erroneous rounding to satisfy an incorrect generated test; Gemma correctly blocked it. Independent acceptance 2/6 test methods. No conditional repeat and **no merge**. At that Task E checkpoint the cloud reviewer implementation remained on its branch. PR #79 was subsequently merged; Task F starts from main c4ff897. [Audit](../audits/FORGELAB_CLOUD_REVIEWER_ROUTE_2026-10-22.md).
+
+## Shared Reviewer/Support cloud policy — 2026-10-22
+
+PO Task F supersedes the local Support restriction above. REVIEWER and SUPPORT now use the same validated policy: gemma4:31b-cloud primary, gpt-oss:120b-cloud only on model unavailability, with reduced-independence evidence. No local model, no quota-triggered switch, no generic S1/S2 retries. Quota/credit/billing/402/429 stops with a role-specific reason. Planner remains local S1; Aider/editor chain, loopback restriction, EUR 0 and strict review validation remain unchanged. Only synthetic data is authorized.
+
+Generated tests are not an oracle: Support and all repair/correction prompts must recompute expectations from objective and inputs, repair an incorrect test while preserving coverage, and reject assertion-fitting implementation logic. Support receives complete authorized candidate files and PM contract via the existing bounded readers. This is a prompt/evidence safeguard, not a guarantee of LLM reasoning correctness.
+
+The single authorized production run (max_repair_attempts=2, one used) PASS: READY_FOR_DECISION, generated tests 11/11 exit 0, independent acceptance 6/6, no reviewer findings, human gate PENDING. 216 Python tests PASS. Cloud 22,562 tokens; no second run, Dental, promotion, purchases or service restart. Merge condition met. [Task F audit](../audits/FORGELAB_CLOUD_SUPPORT_TEST_ORACLE_2026-10-22.md). PO must inspect account usage before any further real workload decision; broader reliability remains unverified.
 
 ## Context
 
