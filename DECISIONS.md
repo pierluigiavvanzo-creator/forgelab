@@ -817,3 +817,7 @@ Single next action: PO verifies the real Dental user workflow from the dashboard
 ## Cloud roles state their JSON schema in the prompt — 2026-10-22
 
 Ollama Cloud does not enforce `format`; any cloud role with structured output must carry the schema in its prompt text. Implemented centrally in `ModelRouter.execute_cloud_role` (`with_output_contract`), so PROJECT_MANAGER, REVIEWER and SUPPORT, and any future cloud role, get it without per-prompt duplication. Validation remains strict; no coercion. Evidence: failed Dental run `run-23bea612fbbe`; live planner check on the fixed prompt passed the production validator. Routes, models, budgets and gates unchanged.
+
+## Governance fast lane — AGENTS_MASTER v2.3 — 2026-10-24
+
+Product Owner approved AGENTS_MASTER v2.3 (governance@d36b666) and the matching ForgeLab AGENTS.md: standing approvals replace routine approvals (merge own PR on green suite + CI + end-to-end smoke for runtime changes; Free-plan Ollama Cloud models without per-model approval, superseding ADR-002 phase-1 approvals; permissive pinned dependencies; new files and new-project architecture). Hard gates kept: money, irreversible actions, real world/devices, real data, external effect, rule changes; in ForgeLab also target promotion and widening ToolGateway policies. Revert: `git revert` of this PR's merge commit and of governance@d36b666, then sync.
