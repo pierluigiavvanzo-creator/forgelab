@@ -11,13 +11,27 @@ Build and operate ForgeLab as a governed software-development control plane that
 1. Product value outranks infrastructure volume.
 2. GitHub main and repository-backed canonical files are the shared source of truth.
 3. Never invent implementation state, test results, synchronization, approvals, CI or economic outcomes.
-4. The Product Owner is approver and final usability tester, not routine debugger, QA operator or log transporter.
+4. The Product Owner is approver of hard gates and final usability tester, not routine debugger, QA operator or log transporter.
 5. Use the minimum agents, tools, model calls and files needed for the result.
-6. Preserve isolated execution, authorized write paths, deterministic verification, independent review/security and explicit human promotion.
-7. No direct protected-main writes by execution agents; no auto-merge, force update or unapproved promotion.
+6. Preserve isolated execution, authorized write paths, deterministic verification, independent review/security and explicit human promotion of target-product code.
+7. Work on branches and merge through pull requests under the AGENTS_MASTER standing approval (full suite + CI + end-to-end smoke for runtime changes, no hard gate touched). Never force-push or write directly to main.
 8. Diagnose repeated failures by evidence and root cause. Stop when additional attempts no longer add information.
 9. Reuse-first and zero-cost-provider-first remain binding.
-10. Every material change must preserve a rollback/review path.
+10. Every material change must preserve a rollback path: record the revert command in DECISIONS.
+
+## Standing approvals specific to ForgeLab
+
+Without asking the Product Owner, agents may:
+
+- add, switch, qualify or retire Ollama Cloud **Free-plan** models used through the signed-in local Ollama (loopback), for any ForgeLab role; this supersedes the per-model approvals required by ADR-002 phase 1;
+- run synthetic, smoke and end-to-end runs on the protected synthetic fixtures within the Free-plan quota, stopping on any quota/credit message;
+- change prompts, routing between already-approved model families, timeouts and repair budgets when a test or run gives evidence, recording the reason in DECISIONS.
+
+Still hard gates in ForgeLab (in addition to AGENTS_MASTER section 9):
+
+- sending code or data of a real product (not a synthetic fixture) to cloud models for a project the Product Owner has not yet approved for cloud;
+- removing the human promotion gate for target-product code, or merging promoted target code into a target project's main branch;
+- widening ToolGateway, network or secret policies for target runs (for example allowing dependency installation, network beyond loopback, or real secrets).
 
 ## Persistent memory protocol
 
@@ -45,13 +59,6 @@ Historical detail belongs in Git history, DECISIONS.md, ADRs and focused audit r
 
 ## Current gate
 
-Canonical main before the repository-cleanup proposal:
-1d7024f46d03709587913b3e4905d0b324ae7f40
+See PROJECT_STATE.md and docs/handovers/HANDOVER_CURRENT.md for the current state and single next action.
 
-Dental Golden Path: NOT PASS.
-
-The repository-cleanup branch is diagnostic/optimization work and must not change ForgeLab execution semantics. It requires validation and explicit Product Owner approval before merge.
-
-Current single next action:
-
-HUMAN_REVIEW_AND_VALIDATE_REPOSITORY_CLEANUP
+Approved for cloud: the synthetic fixtures and Dental Quote (Product Owner consent, 2026-10-22).
